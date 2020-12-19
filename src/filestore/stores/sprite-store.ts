@@ -1,7 +1,18 @@
 import { ByteBuffer, logger } from '@runejs/core';
-import { Filestore } from '../filestore';
+import { Filestore, getFileName } from '../filestore';
 import { hash } from '../util/name-hash';
+import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'fs';
+import { PNG } from 'pngjs';
 
+
+function toRgba(num: number): number[] {
+    num >>>= 0;
+    const b = num & 0xFF,
+        g = (num & 0xFF00) >>> 8,
+        r = (num & 0xFF0000) >>> 16,
+        a = ( (num & 0xFF000000) >>> 24 ) / 255;
+    return [ r, g, b, a ];
+}
 
 /**
  * A single Sprite within a SpritePack.
@@ -25,10 +36,40 @@ export class Sprite {
         this.maxHeight = height;
     }
 
+    /**
+     * Sets the sprite's size to it's maximum size.
+     */
     public autoSize(): Sprite {
         this.width = this.maxWidth;
         this.height = this.maxHeight;
         return this;
+    }
+
+    /**
+     * Converts the Sprite into a PNG image and returns the resulting PNG object.
+     */
+    public toPng(): PNG {
+        const png = new PNG({
+            width: this.width,
+            height: this.height,
+            filterType: -1
+        });
+
+        for(let x = 0; x < this.width; x++) {
+            for(let y = 0; y < this.height; y++) {
+                const pixel = this.pixels[this.width * y + x];
+                const [ r, g, b ] = toRgba(pixel);
+                const pngIndex = (this.width * y + x) << 2;
+
+                png.data[pngIndex] = r;
+                png.data[pngIndex + 1] = g;
+                png.data[pngIndex + 2] = b;
+
+                png.data[pngIndex + 3] = pixel >> 24;
+            }
+        }
+
+        return png;
     }
 
 }
@@ -48,6 +89,53 @@ export class SpritePack {
         this.nameHash = nameHash;
         this.archive = buffer;
         this.packId = packId;
+    }
+
+    public async writeToDisk(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            try {
+                const fileName = getFileName(this.nameHash).replace(/ /g, '_');
+
+                if(!existsSync('./unpacked/sprite-packs')) {
+                    mkdirSync('./unpacked/sprite-packs');
+                }
+
+                if(this._sprites.length > 1) {
+                    if(!existsSync(`./unpacked/sprite-packs/${this.packId}_${fileName}`)) {
+                        mkdirSync((`./unpacked/sprite-packs/${this.packId}_${fileName}`));
+                    }
+
+                    let spriteIndex: number = 0;
+                    for(const sprite of this._sprites) {
+                        if(!sprite) {
+                            spriteIndex++;
+                            return;
+                        }
+
+                        const png = sprite.toPng();
+                        png.pack();
+
+                        const pngBuffer = PNG.sync.write(png);
+                        writeFileSync(`./unpacked/sprite-packs/${this.packId}_${fileName}/${spriteIndex++}.png`, pngBuffer);
+                    }
+                } else if(this._sprites.length === 1) {
+                    const sprite = this._sprites[0];
+                    if(!sprite) {
+                        reject(`No sprite data found.`);
+                    } else {
+                        const png = sprite.toPng();
+                        png.pack();
+
+                        const pngBuffer = PNG.sync.write(png);
+
+                        writeFileSync(`./unpacked/sprite-packs/${this.packId}_${fileName}.png`, pngBuffer);
+                    }
+                }
+                resolve();
+            } catch(error) {
+                reject(error);
+            }
+        });
     }
 
     /**
@@ -170,6 +258,19 @@ export class SpriteStore {
 
     public constructor(fileStore: Filestore) {
         this.fileStore = fileStore;
+    }
+
+    public async writeToDisk(): Promise<void> {
+        rmdirSync('./unpacked/sprite-packs', { recursive: true });
+        const spritePacks = this.decodeSpriteStore();
+        for(const spritePack of spritePacks) {
+            try {
+                await spritePack.writeToDisk();
+            } catch(e) {
+                logger.error(`Error writing spritepack ${spritePack.packId} to disk.`);
+                logger.error(e);
+            }
+        }
     }
 
     /**

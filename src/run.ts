@@ -15,6 +15,8 @@ async function writeMidisToDisk() {
     }
 }*/
 
-filestore.binaryStore.writeToDisk();
+// filestore.binaryStore.writeToDisk();
+
+filestore.spriteStore.writeToDisk();
 
 // writeMidisToDisk();

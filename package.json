@@ -1,0 +1,31 @@
+{
+    "name": "@runejs/filestore",
+    "version": "0.1.0",
+    "description": "Tools for managing the RuneJS filestore.",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "start": "ts-node src/run.ts"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+ssh://git@github.com/rune-js/filestore.git"
+    },
+    "author": "Tynarus",
+    "license": "GPL-3.0",
+    "bugs": {
+        "url": "https://github.com/rune-js/filestore/issues"
+    },
+    "homepage": "https://github.com/rune-js/filestore#readme",
+    "dependencies": {
+        "@runejs/core": "^1.0.0-beta.0",
+        "seek-bzip": "^1.0.5",
+        "typescript": "^3.7.2"
+    },
+    "devDependencies": {
+        "@types/node": "^12.12.6",
+        "ts-node": "^8.5.4",
+        "tslib": "^1.10.0"
+    }
+}

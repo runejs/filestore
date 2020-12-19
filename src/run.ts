@@ -2,4 +2,14 @@ import { Filestore } from './filestore/filestore';
 
 const filestore = new Filestore('./packed', './config');
 
-filestore.midiStore.getMidi('harmony').writeToDisk();
+const midiFiles = filestore.midiStore.decodeMidiStore();
+
+async function writeMidisToDisk() {
+    for(const file of midiFiles) {
+        try {
+            await file.writeToDisk();
+        } catch(e) {}
+    }
+}
+
+writeMidisToDisk();

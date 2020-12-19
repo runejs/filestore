@@ -1,8 +1,11 @@
-import { ByteBuffer } from '@runejs/core';
+import { ByteBuffer, logger } from '@runejs/core';
 import { Filestore } from '../filestore';
 import { hash } from '../util/name-hash';
 
 
+/**
+ * A single Sprite within a SpritePack.
+ */
 export class Sprite {
 
     spriteId: number;
@@ -30,6 +33,10 @@ export class Sprite {
 
 }
 
+
+/**
+ * A package of one or many Sprite objects.
+ */
 export class SpritePack {
 
     public readonly nameHash: number;
@@ -43,6 +50,9 @@ export class SpritePack {
         this.packId = packId;
     }
 
+    /**
+     * Decodes the sprite pack file.
+     */
     public decode(): void {
         const buffer = this.archive;
 
@@ -151,43 +161,88 @@ export class SpritePack {
 }
 
 
+/**
+ * Controls SpritePack file storage.
+ */
 export class SpriteStore {
 
-    public spritePacks: SpritePack[] = [];
     private readonly fileStore: Filestore;
 
     public constructor(fileStore: Filestore) {
         this.fileStore = fileStore;
     }
 
-    public getPack(name: string): SpritePack {
-        const nameHash = hash(name);
-        for(const pack of this.spritePacks) {
-            if(nameHash === pack.nameHash) {
-                return pack;
+    /**
+     * Decodes the specified sprite pack.
+     * @param fileName The name of the sprite pack file.
+     * @returns The decoded SpritePack object, or null if the file is not found.
+     */
+    public getSpritePack(fileName: string): SpritePack | null;
+
+    /**
+     * Decodes the specified sprite pack.
+     * @param id The ID of the sprite pack file.
+     * @returns The decoded SpritePack object, or null if the file is not found.
+     */
+    public getSpritePack(id: number): SpritePack | null;
+
+    /**
+     * Decodes the specified sprite pack.
+     * @param nameOrId The name or ID of the sprite pack file.
+     * @returns The decoded SpritePack object, or null if the file is not found.
+     */
+    public getSpritePack(nameOrId: string | number): SpritePack | null {
+        if(!nameOrId) {
+            return null;
+        }
+
+        const spritePackIndex = this.fileStore.getIndex('sprites');
+
+        if(typeof nameOrId === 'string') {
+            const packCount = spritePackIndex.archives.size;
+            const nameHash = hash(nameOrId);
+            for(let spritePackId = 0; spritePackId < packCount; spritePackId++) {
+                const archive = spritePackIndex.getArchive(spritePackId, false);
+                if(!archive) {
+                    continue;
+                }
+
+                if(nameHash === archive.nameHash) {
+                    return new SpritePack(archive.nameHash, archive.content, spritePackId);
+                }
+            }
+        } else {
+            const archive = spritePackIndex.getArchive(nameOrId, false);
+            if(archive) {
+                return new SpritePack(archive.nameHash, archive.content, nameOrId);
             }
         }
+
         return null;
     }
 
-    public decodeSpritePacks(): SpritePack[] {
+    /**
+     * Decodes all sprite packs within the filestore.
+     * @returns The list of decoded SpritePack objects from the sprite store.
+     */
+    public decodeSpriteStore(): SpritePack[] {
         const spritePackIndex = this.fileStore.getIndex('sprites');
         const packCount = spritePackIndex.archives.size;
-        const spritePacks: SpritePack[] = [];
+        const spritePacks: SpritePack[] = new Array(packCount);
 
         for(let spritePackId = 0; spritePackId < packCount; spritePackId++) {
             const archive = spritePackIndex.getArchive(spritePackId, false);
             if(!archive) {
-                console.log(`No archive found for sprite pack ${spritePackId}`);
+                spritePacks[spritePackId] = null;
+                logger.warn(`No archive found for sprite pack ID ${spritePackId}.`);
                 continue;
             }
 
             const spritePack = new SpritePack(archive.nameHash, archive.content, spritePackId);
             spritePack.decode();
-            spritePacks.push(spritePack);
+            spritePacks[spritePackId] = spritePack;
         }
 
-        this.spritePacks = spritePacks;
         return spritePacks;
     }
 

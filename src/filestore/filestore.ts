@@ -1,10 +1,11 @@
-import { CacheChannel, loadCacheChannels } from './fs/channels';
+import { CacheChannel, loadCacheChannels } from './data/channels';
 import { ArchiveIndex, IndexId, indexIdMap } from './archive-index';
 import { SpriteStore } from './stores/sprite-store';
 import { getFileNames } from './util/name-hash';
+import { MidiStore } from './stores/midi-store';
 
 
-export let fileNames: { [ key: string ]: string | null } = getFileNames('cache'); // @TODO configurable
+export let fileNames: { [ key: string ]: string | null };
 
 export const getFileName = (nameHash: number): string | null => {
     return fileNames[nameHash.toString()] || nameHash.toString();
@@ -16,14 +17,18 @@ export class Filestore {
     public readonly filestoreDir: string;
     public readonly configDir: string;
     public readonly spriteStore = new SpriteStore(this);
+    public readonly midiStore = new MidiStore(this);
     private readonly channels: CacheChannel;
     private readonly indexes = new Map<number, ArchiveIndex>();
 
-    public constructor(filestoreDir: string, configDir: string) {
+    public constructor(filestoreDir: string, configDir?: string) {
         this.filestoreDir = filestoreDir;
         this.configDir = configDir;
         this.channels = loadCacheChannels(filestoreDir);
-        fileNames = getFileNames(configDir);
+
+        if(configDir) {
+            fileNames = getFileNames(configDir);
+        }
     }
 
     public getIndex(indexId: number | IndexId): ArchiveIndex {

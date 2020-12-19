@@ -1,16 +1,17 @@
-import { readIndexEntry } from './fs/parser';
+import { readIndexEntry } from './data/parser';
 import { Archive } from './archive';
 import { FileData } from './file-data';
-import { CacheChannel } from './fs/channels';
-import { decompress } from './fs/compression';
+import { CacheChannel } from './data/channels';
+import { decompress } from './data/compression';
 
 
 const flagName = 0x01;
 const flagWhirlpool = 0x02;
 
-export type IndexId = 'sprites';
+export type IndexId = 'sprites' | 'midi';
 
 export const indexIdMap: { [key: string]: number } = {
+    'midi': 6,
     'sprites': 8
 };
 

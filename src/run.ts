@@ -3,7 +3,7 @@ import { mkdirSync, rmdirSync } from 'fs';
 
 const filestore = new Filestore('./packed', './config');
 
-const midiFiles = filestore.midiStore.decodeMidiStore();
+/*const midiFiles = filestore.midiStore.decodeMidiStore();
 
 async function writeMidisToDisk() {
     await rmdirSync('./unpacked/midi', { recursive: true })
@@ -13,6 +13,8 @@ async function writeMidisToDisk() {
             await file.writeToDisk();
         } catch(e) {}
     }
-}
+}*/
 
-writeMidisToDisk();
+filestore.binaryStore.writeToDisk();
+
+// writeMidisToDisk();

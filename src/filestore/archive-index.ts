@@ -8,11 +8,12 @@ import { decompress } from './data/compression';
 const flagName = 0x01;
 const flagWhirlpool = 0x02;
 
-export type IndexId = 'sprites' | 'midi';
+export type IndexId = 'sprites' | 'midi' | 'binary';
 
 export const indexIdMap: { [key: string]: number } = {
     'midi': 6,
-    'sprites': 8
+    'sprites': 8,
+    'binary': 10
 };
 
 export class ArchiveIndex {

@@ -3,6 +3,7 @@ import { ArchiveIndex, IndexId, indexIdMap } from './archive-index';
 import { SpriteStore } from './stores/sprite-store';
 import { getFileNames } from './util/name-hash';
 import { MidiStore } from './stores/midi-store';
+import { BinaryStore } from './stores/binary-store';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -16,6 +17,7 @@ export class Filestore {
 
     public readonly filestoreDir: string;
     public readonly configDir: string;
+    public readonly binaryStore = new BinaryStore(this);
     public readonly spriteStore = new SpriteStore(this);
     public readonly midiStore = new MidiStore(this);
     private readonly channels: CacheChannel;

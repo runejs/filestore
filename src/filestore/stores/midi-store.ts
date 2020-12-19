@@ -26,7 +26,7 @@ export class MidiFile {
         return new Promise((resolve, reject) => {
             try {
                 const fileName = getFileName(this.nameHash).replace(/ /g, '_');
-                writeFileSync(`./unpacked/midi/${fileName}.mid`, Buffer.from(this.content));
+                writeFileSync(`./unpacked/midi/${this.fileId}_${fileName}.mid`, Buffer.from(this.content));
                 resolve();
             } catch(error) {
                 reject(error);

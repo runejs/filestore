@@ -5,4 +5,4 @@
 
 # RuneJS Filestore
 
-Tools for managing the RuneJS filestore.
+Tools for managing the RuneScape filestore used for RuneJS.

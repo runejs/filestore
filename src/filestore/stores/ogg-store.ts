@@ -1,6 +1,5 @@
-import { Filestore, getFileName } from '../filestore';
+import { Filestore } from '../filestore';
 import { ByteBuffer, logger } from '@runejs/core';
-import { hash } from '../util/name-hash';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 
@@ -20,7 +19,7 @@ export class OggFile {
     }
 
     /**
-     * Writes this unpacked OGG file to the disk under `./unpacked/ogg/{oggFileName}.ogg`
+     * Writes this unpacked OGG file to the disk under `./unpacked/ogg/{oggId}.ogg`
      */
     public async writeToDisk(): Promise<void> {
         return new Promise((resolve, reject) => {
@@ -52,39 +51,17 @@ export class OggStore {
 
     /**
      * Decodes the specified OGG file.
-     * @param nameOrId The name or ID of the OGG file.
+     * @param id The ID of the OGG file.
      * @returns The decoded OggFile object, or null if the file is not found.
      */
-    public getOgg(nameOrId: string | number): OggFile | null {
-        if(!nameOrId) {
+    public getOgg(id: number): OggFile | null {
+        if(id === undefined || id === null) {
             return null;
         }
 
         const oggArchiveIndex = this.fileStore.getIndex('ogg');
-
-        if(typeof nameOrId === 'string') {
-            const packCount = oggArchiveIndex.archives.size;
-            const nameHash = hash(nameOrId);
-            for(let oggId = 0; oggId < packCount; oggId++) {
-                try {
-                    const archive = oggArchiveIndex.getArchive(oggId, false);
-                    if(!archive) {
-                        continue;
-                    }
-
-                    if(nameHash === archive.nameHash) {
-                        return new OggFile(oggId, archive.nameHash, archive.content);
-                    }
-                } catch(e) {}
-            }
-        } else {
-            const archive = oggArchiveIndex.getArchive(nameOrId, false);
-            if(archive) {
-                return new OggFile(nameOrId, archive.nameHash, archive.content);
-            }
-        }
-
-        return null;
+        const archive = oggArchiveIndex.getArchive(id, false);
+        return archive ? new OggFile(id, archive.nameHash, archive.content) : null;
     }
 
     /**

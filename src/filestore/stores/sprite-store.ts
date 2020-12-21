@@ -46,6 +46,31 @@ export class Sprite {
     }
 
     /**
+     * First converts the Sprite into a base64 PNG image.
+     */
+    public async toBase64(): Promise<string> {
+        return new Promise(async (resolve, reject) => {
+            const png = this.toPng();
+
+            try {
+                png.pack();
+
+                const chunks = [];
+
+                png.on('data', (chunk) => {
+                    chunks.push(chunk);
+                });
+                png.on('end', () => {
+                    const str = Buffer.concat(chunks).toString('base64');
+                    resolve(str);
+                });
+            } catch(error) {
+                reject(error);
+            }
+        });
+    }
+
+    /**
      * Converts the Sprite into a PNG image and returns the resulting PNG object.
      */
     public toPng(): PNG {

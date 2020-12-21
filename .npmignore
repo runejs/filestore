@@ -1,5 +1,6 @@
 tsconfig.json
 src
 .idea
-/cache
-/data
+packed
+config
+unpacked

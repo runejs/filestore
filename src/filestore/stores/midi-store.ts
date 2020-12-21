@@ -1,7 +1,7 @@
 import { Filestore, getFileName } from '../filestore';
 import { ByteBuffer, logger } from '@runejs/core';
 import { hash } from '../util/name-hash';
-import { writeFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 
 /**
@@ -26,6 +26,9 @@ export class MidiFile {
         return new Promise((resolve, reject) => {
             try {
                 const fileName = getFileName(this.nameHash).replace(/ /g, '_');
+                if(!existsSync('./unpacked/midi')) {
+                    mkdirSync('./unpacked/midi');
+                }
                 writeFileSync(`./unpacked/midi/${this.fileId}_${fileName}.mid`, Buffer.from(this.content));
                 resolve();
             } catch(error) {
@@ -108,7 +111,6 @@ export class MidiStore {
                 midiFiles[midiId] = null;
                 logger.error(`Error parsing midi ID ${midiId}.`);
                 logger.error(e);
-                continue;
             }
         }
 

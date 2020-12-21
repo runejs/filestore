@@ -4,6 +4,7 @@ import { SpriteStore } from './stores/sprite-store';
 import { getFileNames } from './util/name-hash';
 import { MidiStore } from './stores/midi-store';
 import { BinaryStore } from './stores/binary-store';
+import { OggStore } from './stores/ogg-store';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -20,6 +21,7 @@ export class Filestore {
     public readonly binaryStore = new BinaryStore(this);
     public readonly spriteStore = new SpriteStore(this);
     public readonly midiStore = new MidiStore(this);
+    public readonly oggStore = new OggStore(this);
     private readonly channels: CacheChannel;
     private readonly indexes = new Map<number, ArchiveIndex>();
 

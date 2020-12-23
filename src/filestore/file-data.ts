@@ -1,8 +1,8 @@
 import { ByteBuffer } from '@runejs/core';
-import { readIndexEntry } from './data/parser';
+import { readIndexedDataChunk } from './data/chunk-parser';
 import { decompress } from './data/compression';
 import { FileIndex } from './file-index';
-import { FilestoreChannels } from './data/channels';
+import { FilestoreChannels } from './data/filestore-loader';
 
 
 export class FileData {
@@ -25,7 +25,7 @@ export class FileData {
     }
 
     public decompress(): void {
-        const archiveEntry = readIndexEntry(this.fileId, this.index.indexId, this.filestoreChannels);
+        const archiveEntry = readIndexedDataChunk(this.fileId, this.index.indexId, this.filestoreChannels);
         const { buffer } = decompress(archiveEntry?.dataFile);
         this.content = buffer;
     }

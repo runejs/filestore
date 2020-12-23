@@ -1,5 +1,5 @@
 import { ByteBuffer } from '@runejs/core';
-import { FilestoreChannels } from './channels';
+import { FilestoreChannels } from './filestore-loader';
 
 
 export const indexFileLength = 6;
@@ -7,26 +7,26 @@ export const dataChunkLength = 512;
 export const sectorLength = 520;
 
 
-export interface IndexFile {
+export interface IndexChunk {
     readonly indexId: number;
     readonly fileId: number;
     readonly size: number;
     readonly sector: number;
 }
 
-export interface IndexEntry {
-    indexFile: IndexFile;
+export interface IndexedDataChunk {
+    indexFile: IndexChunk;
     dataFile: ByteBuffer;
 }
 
-export const readIndexEntry = (fileId: number, indexId: number, cacheChannel: FilestoreChannels): IndexEntry => {
-    const indexFile = readIndexFile(fileId, indexId, indexId === 255 ?
+export const readIndexedDataChunk = (fileId: number, indexId: number, cacheChannel: FilestoreChannels): IndexedDataChunk => {
+    const indexFile = readIndexChunk(fileId, indexId, indexId === 255 ?
         cacheChannel.metaChannel : cacheChannel.indexChannels[indexId]);
     if(!indexFile) {
         throw new Error(`Error parsing index file for file ID ${fileId} in index ${indexId}.`);
     }
 
-    const dataFile = readDataFile(fileId, indexFile, cacheChannel.dataChannel);
+    const dataFile = readDataChunk(fileId, indexFile, cacheChannel.dataChannel);
     if(!dataFile) {
         throw new Error(`Error parsing data file for file ID ${fileId} in index ${indexId}.`);
     }
@@ -34,7 +34,7 @@ export const readIndexEntry = (fileId: number, indexId: number, cacheChannel: Fi
     return { indexFile, dataFile };
 };
 
-export const readIndexFile = (fileId: number, indexId: number, indexChannel: ByteBuffer): IndexFile => {
+export const readIndexChunk = (fileId: number, indexId: number, indexChannel: ByteBuffer): IndexChunk => {
     let ptr = fileId * indexFileLength;
     if(ptr < 0 || ptr >= indexChannel.length) {
         throw new Error('File Not Found');
@@ -52,7 +52,7 @@ export const readIndexFile = (fileId: number, indexId: number, indexChannel: Byt
     return { indexId, fileId, size, sector };
 };
 
-export const readDataFile = (fileId: number, indexFile: IndexFile, dataChannel: ByteBuffer): ByteBuffer => {
+export const readDataChunk = (fileId: number, indexFile: IndexChunk, dataChannel: ByteBuffer): ByteBuffer => {
     const data = new ByteBuffer(indexFile.size);
 
     let chunk = 0, remaining = indexFile.size;

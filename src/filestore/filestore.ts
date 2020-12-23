@@ -1,4 +1,4 @@
-import { FilestoreChannels, loadFilestore } from './data/channels';
+import { FilestoreChannels, loadFilestore } from './data/filestore-loader';
 import { FileIndex, IndexId, indexIdMap } from './file-index';
 import { SpriteStore } from './stores/sprite-store';
 import { getFileNames } from './util/name-hash';

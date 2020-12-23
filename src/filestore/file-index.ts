@@ -1,7 +1,7 @@
-import { readIndexEntry } from './data/parser';
+import { readIndexedDataChunk } from './data/chunk-parser';
 import { Archive } from './archive';
 import { FileData } from './file-data';
-import { FilestoreChannels } from './data/channels';
+import { FilestoreChannels } from './data/filestore-loader';
 import { decompress } from './data/compression';
 import { hash } from './util/name-hash';
 import { logger } from '@runejs/core';
@@ -107,7 +107,7 @@ export class FileIndex {
     }
 
     public decodeIndex(): void {
-        const indexEntry = readIndexEntry(this.indexId, 255, this.filestoreChannels);
+        const indexEntry = readIndexedDataChunk(this.indexId, 255, this.filestoreChannels);
         const { compression, version, buffer } = decompress(indexEntry.dataFile);
 
         this.version = version;

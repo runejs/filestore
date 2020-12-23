@@ -26,7 +26,7 @@ export class FileData {
 
     public decompress(): void {
         const archiveEntry = readIndexEntry(this.fileId, this.index.indexId, this.filestoreChannels);
-        const { buffer } = decompress(archiveEntry.dataFile);
+        const { buffer } = decompress(archiveEntry?.dataFile);
         this.content = buffer;
     }
 

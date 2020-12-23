@@ -3,9 +3,19 @@ import { mkdirSync, rmdirSync } from 'fs';
 
 const filestore = new Filestore('./packed', './config');
 
-/*const midiFiles = filestore.midiStore.decodeMidiStore();
+// filestore.binaryStore.writeToDisk();
+
+// filestore.spriteStore.writeToDisk();
+
+const oggs = filestore.oggStore.decodeOggStore();
+oggs.forEach(ogg => {
+    if(ogg) {
+        ogg.writeToDisk();
+    }
+});
 
 async function writeMidisToDisk() {
+    const midiFiles = filestore.midiStore.decodeMidiStore();
     await rmdirSync('./unpacked/midi', { recursive: true })
     await mkdirSync('./unpacked/midi');
     for(const file of midiFiles) {
@@ -13,18 +23,5 @@ async function writeMidisToDisk() {
             await file.writeToDisk();
         } catch(e) {}
     }
-}*/
-
-filestore.binaryStore.writeToDisk();
-
-filestore.spriteStore.writeToDisk();
-
-/*const oggs = filestore.oggStore.decodeOggStore();
-oggs.forEach(ogg => {
-    if(ogg) {
-        console.log(ogg);
-        ogg.writeToDisk();
-    }
-});*/
-
-// writeMidisToDisk();
+}
+writeMidisToDisk();

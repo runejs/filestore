@@ -4,7 +4,6 @@ import { FileData } from './file-data';
 import { FilestoreChannels } from './data/channels';
 import { decompress } from './data/compression';
 import { hash } from './util/name-hash';
-import { MidiFile } from './stores/midi-store';
 import { logger } from '@runejs/core';
 
 

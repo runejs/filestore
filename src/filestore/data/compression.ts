@@ -4,6 +4,10 @@ const seekBzip = require('seek-bzip');
 
 
 export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: number, buffer: ByteBuffer, version: number } {
+    if(!buffer || buffer.length === 0) {
+        return { compression: -1, buffer: null, version: -1 };
+    }
+
     const compression = buffer.get('BYTE', 'UNSIGNED');
     const length = buffer.get('INT');
 

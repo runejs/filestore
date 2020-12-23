@@ -19,19 +19,19 @@ export interface IndexedDataChunk {
     dataFile: ByteBuffer;
 }
 
-export const readIndexedDataChunk = (fileId: number, indexId: number, cacheChannel: FilestoreChannels): IndexedDataChunk => {
+export const readIndexedDataChunk = (fileId: number, indexId: number, channels: FilestoreChannels): IndexedDataChunk => {
     const indexFile = readIndexChunk(fileId, indexId, indexId === 255 ?
-        cacheChannel.metaChannel : cacheChannel.indexChannels[indexId]);
+        channels.metaChannel : channels.indexChannels[indexId]);
     if(!indexFile) {
         throw new Error(`Error parsing index file for file ID ${fileId} in index ${indexId}.`);
     }
 
-    const dataFile = readDataChunk(fileId, indexFile, cacheChannel.dataChannel);
+    const dataFile = readDataChunk(fileId, indexFile, channels.dataChannel);
     if(!dataFile) {
         throw new Error(`Error parsing data file for file ID ${fileId} in index ${indexId}.`);
     }
 
-    return { indexFile, dataFile };
+    return {indexFile, dataFile};
 };
 
 export const readIndexChunk = (fileId: number, indexId: number, indexChannel: ByteBuffer): IndexChunk => {
@@ -49,7 +49,7 @@ export const readIndexChunk = (fileId: number, indexId: number, indexChannel: By
 
     const size = buf.get('INT24');
     const sector = buf.get('INT24');
-    return { indexId, fileId, size, sector };
+    return {indexId, fileId, size, sector};
 };
 
 export const readDataChunk = (fileId: number, indexFile: IndexChunk, dataChannel: ByteBuffer): ByteBuffer => {
@@ -62,7 +62,7 @@ export const readDataChunk = (fileId: number, indexFile: IndexChunk, dataChannel
         let buf = new ByteBuffer(sectorLength);
         dataChannel.copy(buf, 0, ptr, ptr + sectorLength);
 
-        if(buf.readable != sectorLength) {
+        if(buf.readable !== sectorLength) {
             throw new Error(`Not Enough Readable Sector Data: Buffer contains ${buf.readable} but needed ${sectorLength}`);
         }
 
@@ -99,4 +99,68 @@ export const readDataChunk = (fileId: number, indexFile: IndexChunk, dataChannel
     } while(remaining > 0);
 
     return data;
+};
+
+export const writeDataChunk = (indexId: number, archiveId: number, data: ByteBuffer, channels: FilestoreChannels): void => {
+    let sector;
+
+    const writeBuffer = new ByteBuffer(sectorLength);
+
+    sector = (channels.dataChannel.length + (sectorLength - 1)) / sectorLength;
+    if(sector === 0) {
+        sector = 1;
+    }
+
+    for(let i = 0; data.readable > 0; i++) {
+        let nextSector = 0;
+        let writableDataLength = 0;
+
+        if(nextSector == 0) {
+            nextSector = (channels.dataChannel.length + (sectorLength - 1)) / sectorLength;
+            if(nextSector === 0) {
+                nextSector++;
+            }
+
+            if(nextSector === sector) {
+                nextSector++;
+            }
+        }
+
+        let writableMax = 512;
+
+        if(0xFFFF < archiveId) {
+            if(data.readable <= 510) {
+                nextSector = 0;
+            }
+
+            writeBuffer.put(archiveId >> 24);
+            writeBuffer.put(archiveId >> 16);
+            writableMax = 510;
+        } else {
+            if(data.readable <= 512) {
+                nextSector = 0;
+            }
+        }
+
+        writeBuffer.put(archiveId >> 8);
+        writeBuffer.put(archiveId);
+        writeBuffer.put(i >> 8);
+        writeBuffer.put(i);
+        writeBuffer.put(nextSector >> 16);
+        writeBuffer.put(nextSector >> 8);
+        writeBuffer.put(nextSector);
+        writeBuffer.put(indexId);
+        channels.dataChannel.writerIndex = sectorLength * sector;
+        channels.dataChannel.putBytes(writeBuffer);
+
+        writableDataLength = data.readable;
+        if(writableDataLength > writableMax) {
+            writableDataLength = writableMax;
+        }
+
+        data.copy(writeBuffer, writeBuffer.writerIndex, 0, writableDataLength);
+        writeBuffer.copy(channels.dataChannel)
+        channels.dataChannel.putBytes(writeBuffer);
+        sector = nextSector;
+    }
 };

@@ -1,4 +1,4 @@
-import { readIndexedDataChunk } from './data/chunk-parser';
+import { readIndexedDataChunk } from './data/chunk';
 import { Archive } from './archive';
 import { FileData } from './file-data';
 import { FilestoreChannels } from './data/filestore-loader';

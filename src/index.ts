@@ -9,4 +9,4 @@ export * from './filestore/stores/sound-store';
 export * from './filestore/stores/sprite-store';
 export * from './filestore/data/filestore-loader';
 export * from './filestore/data/compression';
-export * from './filestore/data/chunk-parser';
+export * from './filestore/data/chunk';

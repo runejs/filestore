@@ -60,8 +60,8 @@ export class OggStore {
         }
 
         const oggArchiveIndex = this.fileStore.getIndex('ogg');
-        const archive = oggArchiveIndex.getArchive(id, false);
-        return archive ? new OggFile(id, archive.nameHash, archive.content) : null;
+        const fileData = oggArchiveIndex.getFile(id);
+        return fileData ? new OggFile(id, fileData.nameHash, fileData.content) : null;
     }
 
     /**
@@ -70,19 +70,19 @@ export class OggStore {
      */
     public decodeOggStore(): OggFile[] {
         const oggArchiveIndex = this.fileStore.getIndex('ogg');
-        const fileCount = oggArchiveIndex.archives.size;
+        const fileCount = oggArchiveIndex.files.size;
         const oggFiles: OggFile[] = new Array(fileCount);
 
         for(let oggId = 0; oggId < fileCount; oggId++) {
             try {
-                const archive = oggArchiveIndex.getArchive(oggId, false);
-                if(!archive) {
+                const fileData = oggArchiveIndex.getFile(oggId);
+                if(!fileData) {
                     oggFiles[oggId] = null;
-                    logger.warn(`No archive found for OGG ID ${oggId}.`);
+                    logger.warn(`No file found for OGG ID ${oggId}.`);
                     continue;
                 }
 
-                oggFiles[oggId] = new OggFile(oggId, archive.nameHash, archive.content);
+                oggFiles[oggId] = new OggFile(oggId, fileData.nameHash, fileData.content);
             } catch(e) {
                 oggFiles[oggId] = null;
                 logger.error(`Error parsing OGG ID ${oggId}.`);

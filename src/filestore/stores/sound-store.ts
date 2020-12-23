@@ -60,8 +60,8 @@ export class SoundStore {
         }
 
         const soundArchiveIndex = this.fileStore.getIndex('sounds');
-        const archive = soundArchiveIndex.getArchive(id, false);
-        return archive ? new SoundFile(id, archive.nameHash, archive.content) : null;
+        const fileData = soundArchiveIndex.getFile(id);
+        return fileData ? new SoundFile(id, fileData.nameHash, fileData.content) : null;
     }
 
     /**
@@ -70,19 +70,19 @@ export class SoundStore {
      */
     public decodeSoundStore(): SoundFile[] {
         const soundArchiveIndex = this.fileStore.getIndex('sounds');
-        const fileCount = soundArchiveIndex.archives.size;
+        const fileCount = soundArchiveIndex.files.size;
         const soundFiles: SoundFile[] = new Array(fileCount);
 
         for(let soundId = 0; soundId < fileCount; soundId++) {
             try {
-                const archive = soundArchiveIndex.getArchive(soundId, false);
-                if(!archive) {
+                const fileData = soundArchiveIndex.getFile(soundId);
+                if(!fileData) {
                     soundFiles[soundId] = null;
-                    logger.warn(`No archive found for sound ID ${soundId}.`);
+                    logger.warn(`No file found for sound ID ${soundId}.`);
                     continue;
                 }
 
-                soundFiles[soundId] = new SoundFile(soundId, archive.nameHash, archive.content);
+                soundFiles[soundId] = new SoundFile(soundId, fileData.nameHash, fileData.content);
             } catch(e) {
                 soundFiles[soundId] = null;
                 logger.error(`Error parsing sound ID ${soundId}.`);

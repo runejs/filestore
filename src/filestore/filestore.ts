@@ -1,5 +1,5 @@
-import { CacheChannel, loadCacheChannels } from './data/channels';
-import { ArchiveIndex, IndexId, indexIdMap } from './archive-index';
+import { FilestoreChannels, loadFilestore } from './data/channels';
+import { FileIndex, IndexId, indexIdMap } from './file-index';
 import { SpriteStore } from './stores/sprite-store';
 import { getFileNames } from './util/name-hash';
 import { MidiStore } from './stores/midi-store';
@@ -22,26 +22,26 @@ export class Filestore {
     public readonly spriteStore = new SpriteStore(this);
     public readonly midiStore = new MidiStore(this);
     public readonly oggStore = new OggStore(this);
-    private readonly channels: CacheChannel;
-    private readonly indexes = new Map<number, ArchiveIndex>();
+    private readonly channels: FilestoreChannels;
+    private readonly indexes = new Map<number, FileIndex>();
 
     public constructor(filestoreDir: string, configDir?: string) {
         this.filestoreDir = filestoreDir;
         this.configDir = configDir;
-        this.channels = loadCacheChannels(filestoreDir);
+        this.channels = loadFilestore(filestoreDir);
 
         if(configDir) {
             fileNames = getFileNames(configDir);
         }
     }
 
-    public getIndex(indexId: number | IndexId): ArchiveIndex {
+    public getIndex(indexId: number | IndexId): FileIndex {
         if(typeof indexId !== 'number') {
             indexId = indexIdMap[indexId];
         }
 
         if(!this.indexes.has(indexId)) {
-            const archiveIndex = new ArchiveIndex(indexId, this.channels);
+            const archiveIndex = new FileIndex(indexId, this.channels);
             archiveIndex.decodeIndex();
             this.indexes.set(indexId, archiveIndex);
             return archiveIndex;
@@ -50,11 +50,11 @@ export class Filestore {
         }
     }
 
-    public getSpriteIndex(): ArchiveIndex {
+    public getSpriteIndex(): FileIndex {
         return this.getIndex(5);
     }
 
-    public getBinaryIndex(): ArchiveIndex {
+    public getBinaryIndex(): FileIndex {
         return this.getIndex(10);
     }
 

@@ -3,13 +3,13 @@ import { join } from 'path';
 import { ByteBuffer } from '@runejs/core';
 
 
-export interface CacheChannel {
+export interface FilestoreChannels {
     dataChannel: ByteBuffer;
     indexChannels: ByteBuffer[];
     metaChannel: ByteBuffer;
 }
 
-export const loadCacheChannels = (dir: string): CacheChannel => {
+export const loadFilestore = (dir: string): FilestoreChannels => {
     const dataChannel = new ByteBuffer(readFileSync(join(dir, 'main_file_cache.dat2')));
     const indexChannels = [];
 

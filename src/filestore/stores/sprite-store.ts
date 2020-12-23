@@ -105,15 +105,15 @@ export class Sprite {
  */
 export class SpritePack {
 
-    public readonly nameHash: number;
-    public readonly archive: ByteBuffer;
     public readonly packId: number;
+    public readonly nameHash: number;
+    public readonly fileBuffer: ByteBuffer;
     private _sprites: Sprite[];
 
-    public constructor(nameHash: number, buffer: ByteBuffer, packId: number) {
-        this.nameHash = nameHash;
-        this.archive = buffer;
+    public constructor(packId: number, buffer: ByteBuffer, nameHash: number) {
         this.packId = packId;
+        this.nameHash = nameHash;
+        this.fileBuffer = buffer;
     }
 
     public async writeToDisk(): Promise<void> {
@@ -166,8 +166,8 @@ export class SpritePack {
     /**
      * Decodes the sprite pack file.
      */
-    public decode(): void {
-        const buffer = this.archive;
+    public decode(): SpritePack {
+        const buffer = this.fileBuffer;
 
         if(buffer.length === 0) {
             throw new Error(`Empty file content for Sprite Pack ${this.packId}.`);
@@ -266,6 +266,8 @@ export class SpritePack {
 
             this._sprites = sprites;
         }
+
+        return this;
     }
 
     public get sprites(): Sprite[] {
@@ -323,28 +325,8 @@ export class SpriteStore {
         }
 
         const spritePackIndex = this.fileStore.getIndex('sprites');
-
-        if(typeof nameOrId === 'string') {
-            const packCount = spritePackIndex.archives.size;
-            const nameHash = hash(nameOrId);
-            for(let spritePackId = 0; spritePackId < packCount; spritePackId++) {
-                const archive = spritePackIndex.getArchive(spritePackId, false);
-                if(!archive) {
-                    continue;
-                }
-
-                if(nameHash === archive.nameHash) {
-                    return new SpritePack(archive.nameHash, archive.content, spritePackId);
-                }
-            }
-        } else {
-            const archive = spritePackIndex.getArchive(nameOrId, false);
-            if(archive) {
-                return new SpritePack(archive.nameHash, archive.content, nameOrId);
-            }
-        }
-
-        return null;
+        const fileData = spritePackIndex.getFile(nameOrId) || null;
+        return fileData ? new SpritePack(fileData.fileId, fileData.content, fileData.nameHash) : null;
     }
 
     /**
@@ -353,18 +335,18 @@ export class SpriteStore {
      */
     public decodeSpriteStore(): SpritePack[] {
         const spritePackIndex = this.fileStore.getIndex('sprites');
-        const packCount = spritePackIndex.archives.size;
+        const packCount = spritePackIndex.files.size;
         const spritePacks: SpritePack[] = new Array(packCount);
 
         for(let spritePackId = 0; spritePackId < packCount; spritePackId++) {
-            const archive = spritePackIndex.getArchive(spritePackId, false);
-            if(!archive) {
+            const fileData = spritePackIndex.getFile(spritePackId);
+            if(!fileData) {
                 spritePacks[spritePackId] = null;
-                logger.warn(`No archive found for sprite pack ID ${spritePackId}.`);
+                logger.warn(`No file found for sprite pack ID ${spritePackId}.`);
                 continue;
             }
 
-            const spritePack = new SpritePack(archive.nameHash, archive.content, spritePackId);
+            const spritePack = new SpritePack(spritePackId, fileData.content, fileData.nameHash);
             spritePack.decode();
             spritePacks[spritePackId] = spritePack;
         }

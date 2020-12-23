@@ -15,9 +15,9 @@ async function writeMidisToDisk() {
     }
 }*/
 
-// filestore.binaryStore.writeToDisk();
+filestore.binaryStore.writeToDisk();
 
-// filestore.spriteStore.writeToDisk();
+filestore.spriteStore.writeToDisk();
 
 /*const oggs = filestore.oggStore.decodeOggStore();
 oggs.forEach(ogg => {

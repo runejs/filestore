@@ -1,6 +1,5 @@
 import { Filestore, getFileName } from '../filestore';
 import { ByteBuffer, logger } from '@runejs/core';
-import { hash } from '../util/name-hash';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 
@@ -62,30 +61,9 @@ export class MidiStore {
         }
 
         const midiArchiveIndex = this.fileStore.getIndex('midi');
+        const fileData = midiArchiveIndex.getFile(nameOrId);
 
-        if(typeof nameOrId === 'string') {
-            const packCount = midiArchiveIndex.archives.size;
-            const nameHash = hash(nameOrId);
-            for(let midiId = 0; midiId < packCount; midiId++) {
-                try {
-                    const archive = midiArchiveIndex.getArchive(midiId, false);
-                    if(!archive) {
-                        continue;
-                    }
-
-                    if(nameHash === archive.nameHash) {
-                        return new MidiFile(midiId, archive.nameHash, archive.content);
-                    }
-                } catch(e) {}
-            }
-        } else {
-            const archive = midiArchiveIndex.getArchive(nameOrId, false);
-            if(archive) {
-                return new MidiFile(nameOrId, archive.nameHash, archive.content);
-            }
-        }
-
-        return null;
+        return fileData ? new MidiFile(fileData.fileId, fileData.nameHash, fileData.content) : null;
     }
 
     /**
@@ -94,19 +72,19 @@ export class MidiStore {
      */
     public decodeMidiStore(): MidiFile[] {
         const midiArchiveIndex = this.fileStore.getIndex('midi');
-        const fileCount = midiArchiveIndex.archives.size;
+        const fileCount = midiArchiveIndex.files.size;
         const midiFiles: MidiFile[] = new Array(fileCount);
 
         for(let midiId = 0; midiId < fileCount; midiId++) {
             try {
-                const archive = midiArchiveIndex.getArchive(midiId, false);
-                if(!archive) {
+                const fileData = midiArchiveIndex.getFile(midiId);
+                if(!fileData) {
                     midiFiles[midiId] = null;
-                    logger.warn(`No archive found for midi ID ${midiId}.`);
+                    logger.warn(`No file found for midi ID ${midiId}.`);
                     continue;
                 }
 
-                midiFiles[midiId] = new MidiFile(midiId, archive.nameHash, archive.content);
+                midiFiles[midiId] = new MidiFile(midiId, fileData.nameHash, fileData.content);
             } catch(e) {
                 midiFiles[midiId] = null;
                 logger.error(`Error parsing midi ID ${midiId}.`);

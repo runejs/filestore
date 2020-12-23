@@ -8,6 +8,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
     const length = buffer.get('INT');
 
     if(compression == 0) {
+        // Uncompressed file
         const data = new ByteBuffer(length);
         buffer.copy(data, 0, buffer.readerIndex, length);
         const decryptedData = this.decryptXtea(data, keys, length);
@@ -20,6 +21,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
 
         return { compression, buffer: decryptedData, version };
     } else {
+        // Compressed file
         const uncompressedLength = buffer.get('INT');
 
         const compressed = new ByteBuffer(length);
@@ -73,7 +75,6 @@ export function decryptXtea(input: ByteBuffer, keys: number[], length: number): 
     }
 
     input.copy(output, output.writerIndex, input.readerIndex);
-
     return output;
 }
 

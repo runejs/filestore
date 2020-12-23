@@ -1,5 +1,5 @@
 import { ByteBuffer } from '@runejs/core';
-import { CacheChannel } from './channels';
+import { FilestoreChannels } from './channels';
 
 
 export const indexFileLength = 6;
@@ -19,7 +19,7 @@ export interface IndexEntry {
     dataFile: ByteBuffer;
 }
 
-export const readIndexEntry = (fileId: number, indexId: number, cacheChannel: CacheChannel): IndexEntry => {
+export const readIndexEntry = (fileId: number, indexId: number, cacheChannel: FilestoreChannels): IndexEntry => {
     const indexFile = readIndexFile(fileId, indexId, indexId === 255 ?
         cacheChannel.metaChannel : cacheChannel.indexChannels[indexId]);
     if(!indexFile) {

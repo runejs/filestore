@@ -1,25 +1,32 @@
 import { ByteBuffer } from '@runejs/core';
 import { FileData } from './file-data';
-import { ArchiveIndex } from './archive-index';
-import { CacheChannel } from './data/channels';
+import { FileIndex } from './file-index';
+import { FilestoreChannels } from './data/channels';
 import { readIndexEntry } from './data/parser';
 import { decompress } from './data/compression';
 
 
 export class Archive extends FileData {
 
-    public readonly index: ArchiveIndex;
-    public crc: number;
-    public whirlpool: ByteBuffer = new ByteBuffer(64);
-    public version: number;
-    public compression: number;
     public files: Map<number, FileData>;
-    private readonly cacheChannel: CacheChannel;
+    public type: 'archive' | 'file' = 'archive';
 
-    public constructor(id: number, index: ArchiveIndex, cacheChannel: CacheChannel) {
-        super(id);
-        this.index = index;
-        this.cacheChannel = cacheChannel;
+    public constructor(id: number, index: FileIndex, filestoreChannels: FilestoreChannels);
+    public constructor(fileData: FileData, index: FileIndex, filestoreChannels: FilestoreChannels);
+    public constructor(idOrFileData: number | FileData, index: FileIndex, filestoreChannels: FilestoreChannels) {
+        super(typeof idOrFileData === 'number' ? idOrFileData : idOrFileData.fileId, index, filestoreChannels);
+
+        if(typeof idOrFileData !== 'number') {
+            const fileData = idOrFileData as FileData;
+            const { content, nameHash, crc, whirlpool, version, compression } = fileData;
+            this.content = content;
+            this.nameHash = nameHash;
+            this.crc = crc;
+            this.whirlpool = whirlpool;
+            this.version = version;
+            this.compression = compression;
+        }
+
         this.files = new Map<number, FileData>();
     }
 
@@ -27,16 +34,10 @@ export class Archive extends FileData {
         return this.files.get(fileId);
     }
 
-    public decompress(): void {
-        const archiveEntry = readIndexEntry(this.fileId, this.index.indexId, this.cacheChannel);
-        const { buffer } = decompress(archiveEntry.dataFile);
-        this.content = buffer;
-    }
-
-    public decodeArchive(): void {
-        const archiveEntry = readIndexEntry(this.fileId, this.index.indexId, this.cacheChannel);
+    public decodeArchiveFiles(): void {
+        const archiveEntry = readIndexEntry(this.fileId, this.index.indexId, this.filestoreChannels);
         const  { compression, version, buffer } = decompress(archiveEntry.dataFile);
-        const archiveSize = this.index.archives.size;
+        const archiveSize = this.index.files.size;
 
         this.content = buffer;
 
@@ -62,7 +63,9 @@ export class Archive extends FileData {
         }
 
         for(let id = 0; id < archiveSize; id++) {
-            this.files.set(id, new FileData(id, null, new ByteBuffer(sizes[id])));
+            const fileData = new FileData(id, this.index, this.filestoreChannels);
+            fileData.content = new ByteBuffer(sizes[id]);
+            this.files.set(id, fileData);
         }
 
         buffer.readerIndex = 0;

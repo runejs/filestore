@@ -19,6 +19,7 @@ export interface IndexedDataChunk {
     dataFile: ByteBuffer;
 }
 
+
 export const readIndexedDataChunk = (fileId: number, indexId: number, channels: FilestoreChannels): IndexedDataChunk => {
     const indexFile = readIndexChunk(fileId, indexId, indexId === 255 ?
         channels.metaChannel : channels.indexChannels[indexId]);
@@ -31,8 +32,9 @@ export const readIndexedDataChunk = (fileId: number, indexId: number, channels: 
         throw new Error(`Error parsing data file for file ID ${fileId} in index ${indexId}.`);
     }
 
-    return {indexFile, dataFile};
+    return { indexFile, dataFile };
 };
+
 
 export const readIndexChunk = (fileId: number, indexId: number, indexChannel: ByteBuffer): IndexChunk => {
     let ptr = fileId * indexFileLength;
@@ -49,8 +51,18 @@ export const readIndexChunk = (fileId: number, indexId: number, indexChannel: By
 
     const size = buf.get('INT24');
     const sector = buf.get('INT24');
-    return {indexId, fileId, size, sector};
+    return { indexId, fileId, size, sector };
 };
+
+export const writeIndexChunk = (indexChunk: IndexChunk, indexChannel: ByteBuffer): void => {
+    const indexBuffer = new ByteBuffer(indexFileLength);
+    indexBuffer.put(indexChunk.size, 'INT24');
+    indexBuffer.put(indexChunk.sector, 'INT24');
+
+    indexChannel.writerIndex = indexChunk.indexId * indexFileLength;
+    indexChannel.putBytes(indexBuffer);
+};
+
 
 export const readDataChunk = (fileId: number, indexFile: IndexChunk, dataChannel: ByteBuffer): ByteBuffer => {
     const data = new ByteBuffer(indexFile.size);
@@ -101,22 +113,22 @@ export const readDataChunk = (fileId: number, indexFile: IndexChunk, dataChannel
     return data;
 };
 
-export const writeDataChunk = (indexId: number, archiveId: number, data: ByteBuffer, channels: FilestoreChannels): void => {
+export const writeDataChunk = (indexId: number, fileId: number, fileBuffer: ByteBuffer, filestoreChannels: FilestoreChannels): void => {
     let sector;
 
     const writeBuffer = new ByteBuffer(sectorLength);
 
-    sector = (channels.dataChannel.length + (sectorLength - 1)) / sectorLength;
+    sector = (filestoreChannels.dataChannel.length + (sectorLength - 1)) / sectorLength;
     if(sector === 0) {
         sector = 1;
     }
 
-    for(let i = 0; data.readable > 0; i++) {
+    for(let i = 0; fileBuffer.readable > 0; i++) {
         let nextSector = 0;
         let writableDataLength = 0;
 
-        if(nextSector == 0) {
-            nextSector = (channels.dataChannel.length + (sectorLength - 1)) / sectorLength;
+        if(nextSector === 0) {
+            nextSector = (filestoreChannels.dataChannel.length + (sectorLength - 1)) / sectorLength;
             if(nextSector === 0) {
                 nextSector++;
             }
@@ -126,41 +138,35 @@ export const writeDataChunk = (indexId: number, archiveId: number, data: ByteBuf
             }
         }
 
-        let writableMax = 512;
+        let writableMax;
 
-        if(0xFFFF < archiveId) {
-            if(data.readable <= 510) {
-                nextSector = 0;
-            }
-
-            writeBuffer.put(archiveId >> 24);
-            writeBuffer.put(archiveId >> 16);
+        if(0xFFFF < fileId) {
             writableMax = 510;
+            writeBuffer.put(fileId, 'INT');
         } else {
-            if(data.readable <= 512) {
-                nextSector = 0;
-            }
+            writableMax = 512;
+            writeBuffer.put(fileId, 'SHORT');
         }
 
-        writeBuffer.put(archiveId >> 8);
-        writeBuffer.put(archiveId);
-        writeBuffer.put(i >> 8);
-        writeBuffer.put(i);
-        writeBuffer.put(nextSector >> 16);
-        writeBuffer.put(nextSector >> 8);
-        writeBuffer.put(nextSector);
-        writeBuffer.put(indexId);
-        channels.dataChannel.writerIndex = sectorLength * sector;
-        channels.dataChannel.putBytes(writeBuffer);
+        if(fileBuffer.readable <= writableMax) {
+            nextSector = 0;
+        }
 
-        writableDataLength = data.readable;
+        writeBuffer.put(i, 'SHORT');
+        writeBuffer.put(nextSector, 'INT24');
+        writeBuffer.put(indexId);
+
+        filestoreChannels.dataChannel.writerIndex = sectorLength * sector;
+        filestoreChannels.dataChannel.putBytes(writeBuffer);
+
+        writableDataLength = fileBuffer.readable;
         if(writableDataLength > writableMax) {
             writableDataLength = writableMax;
         }
 
-        data.copy(writeBuffer, writeBuffer.writerIndex, 0, writableDataLength);
-        writeBuffer.copy(channels.dataChannel)
-        channels.dataChannel.putBytes(writeBuffer);
+        fileBuffer.copy(writeBuffer, writeBuffer.writerIndex, 0, writableDataLength);
+        writeBuffer.copy(filestoreChannels.dataChannel)
+        filestoreChannels.dataChannel.putBytes(writeBuffer);
         sector = nextSector;
     }
 };

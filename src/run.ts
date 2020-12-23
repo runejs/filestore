@@ -1,13 +1,13 @@
 import { Filestore } from './filestore/filestore';
 import { mkdirSync, rmdirSync } from 'fs';
 
-const filestore = new Filestore('./packed', './config');
+// const filestore = new Filestore('./packed', './config');
 
 // filestore.binaryStore.writeToDisk();
 
 // filestore.spriteStore.writeToDisk();
 
-const oggs = filestore.oggStore.decodeOggStore();
+/*const oggs = filestore.oggStore.decodeOggStore();
 oggs.forEach(ogg => {
     if(ogg) {
         ogg.writeToDisk();
@@ -24,4 +24,4 @@ async function writeMidisToDisk() {
         } catch(e) {}
     }
 }
-writeMidisToDisk();
+writeMidisToDisk();*/

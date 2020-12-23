@@ -19,7 +19,7 @@ export class SoundFile {
     }
 
     /**
-     * Writes this unpacked sound file to the disk under `./unpacked/sounds/{soundId}.ogg`
+     * Writes this unpacked sound file to the disk under `./unpacked/sounds/{soundId}.wav`
      */
     public async writeToDisk(): Promise<void> {
         return new Promise((resolve, reject) => {
@@ -47,6 +47,20 @@ export class SoundStore {
 
     public constructor(fileStore: Filestore) {
         this.fileStore = fileStore;
+    }
+
+    /**
+     * Writes all unpacked WAV files to the disk under `./unpacked/sounds/`
+     */
+    public async writeToDisk(): Promise<void> {
+        const files = this.decodeSoundStore();
+        for(const wav of files) {
+            try {
+                await wav.writeToDisk();
+            } catch(e) {
+                logger.error(e);
+            }
+        }
     }
 
     /**

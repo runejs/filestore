@@ -51,6 +51,20 @@ export class MidiStore {
     }
 
     /**
+     * Writes all unpacked MIDI files to the disk under `./unpacked/midi/`
+     */
+    public async writeToDisk(): Promise<void> {
+        const files = this.decodeMidiStore();
+        for(const midi of files) {
+            try {
+                await midi.writeToDisk();
+            } catch(e) {
+                logger.error(e);
+            }
+        }
+    }
+
+    /**
      * Decodes the specified midi file.
      * @param nameOrId The name or ID of the midi file.
      * @returns The decoded MidiFile object, or null if the file is not found.

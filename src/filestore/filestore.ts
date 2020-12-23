@@ -5,6 +5,7 @@ import { getFileNames } from './util/name-hash';
 import { MidiStore } from './stores/midi-store';
 import { BinaryStore } from './stores/binary-store';
 import { OggStore } from './stores/ogg-store';
+import { SoundStore } from './stores/sound-store';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -22,6 +23,7 @@ export class Filestore {
     public readonly spriteStore = new SpriteStore(this);
     public readonly midiStore = new MidiStore(this);
     public readonly oggStore = new OggStore(this);
+    public readonly soundStore = new SoundStore(this);
     private readonly channels: FilestoreChannels;
     private readonly indexes = new Map<number, FileIndex>();
 

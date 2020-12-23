@@ -50,6 +50,20 @@ export class OggStore {
     }
 
     /**
+     * Writes all unpacked OGG files to the disk under `./unpacked/ogg/`
+     */
+    public async writeToDisk(): Promise<void> {
+        const files = this.decodeOggStore();
+        for(const ogg of files) {
+            try {
+                await ogg.writeToDisk();
+            } catch(e) {
+                logger.error(e);
+            }
+        }
+    }
+
+    /**
      * Decodes the specified OGG file.
      * @param id The ID of the OGG file.
      * @returns The decoded OggFile object, or null if the file is not found.

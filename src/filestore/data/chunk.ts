@@ -157,16 +157,37 @@ export const writeDataChunk = (indexId: number, fileId: number, fileBuffer: Byte
         writeBuffer.put(indexId);
 
         filestoreChannels.dataChannel.writerIndex = sectorLength * sector;
-        filestoreChannels.dataChannel.putBytes(writeBuffer);
+
+        // Ensure space
+        if(filestoreChannels.dataChannel.length < filestoreChannels.dataChannel.writerIndex + writeBuffer.length) {
+            const newBuffer = new ByteBuffer(filestoreChannels.dataChannel.writerIndex + writeBuffer.length);
+            filestoreChannels.dataChannel.copy(newBuffer, 0, 0, filestoreChannels.dataChannel.length);
+            newBuffer.writerIndex = filestoreChannels.dataChannel.writerIndex;
+            filestoreChannels.dataChannel = newBuffer;
+        }
+
+        // Write the header
+        filestoreChannels.dataChannel.putBytes(writeBuffer.getSlice(0, 8));
 
         writableDataLength = fileBuffer.readable;
         if(writableDataLength > writableMax) {
             writableDataLength = writableMax;
         }
 
-        fileBuffer.copy(writeBuffer, writeBuffer.writerIndex, 0, writableDataLength);
-        writeBuffer.copy(filestoreChannels.dataChannel)
-        filestoreChannels.dataChannel.putBytes(writeBuffer);
+        writeBuffer.putBytes(fileBuffer.getSlice(fileBuffer.readerIndex, writableDataLength));
+        fileBuffer.readerIndex += writableDataLength;
+
+        // Ensure space
+        if(filestoreChannels.dataChannel.length < filestoreChannels.dataChannel.writerIndex + writeBuffer.length) {
+            const newBuffer = new ByteBuffer(filestoreChannels.dataChannel.writerIndex + writeBuffer.length);
+            filestoreChannels.dataChannel.copy(newBuffer, 0, 0, filestoreChannels.dataChannel.length);
+            newBuffer.writerIndex = filestoreChannels.dataChannel.writerIndex;
+            filestoreChannels.dataChannel = newBuffer;
+        }
+
+        // Write the sector
+        filestoreChannels.dataChannel.putBytes(writeBuffer.getSlice(writeBuffer.readerIndex, writeBuffer.length - writeBuffer.readerIndex));
+
         sector = nextSector;
     }
 };

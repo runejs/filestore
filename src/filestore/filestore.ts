@@ -7,6 +7,7 @@ import { BinaryStore } from './stores/binary-store';
 import { OggStore } from './stores/ogg-store';
 import { SoundStore } from './stores/sound-store';
 import { RegionStore } from './stores/region-store';
+import { ConfigStore } from './stores/config-store';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -27,6 +28,7 @@ export class Filestore {
     public readonly oggStore: OggStore;
     public readonly soundStore: SoundStore;
     public readonly regionStore: RegionStore;
+    public readonly configStore: ConfigStore;
 
     private readonly channels: FilestoreChannels;
 
@@ -46,6 +48,7 @@ export class Filestore {
         this.oggStore = new OggStore(this);
         this.soundStore = new SoundStore(this);
         this.regionStore = new RegionStore(this);
+        this.configStore = new ConfigStore(this);
     }
 
     /**

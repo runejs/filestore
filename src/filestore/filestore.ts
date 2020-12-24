@@ -20,7 +20,7 @@ export class Filestore {
 
     public readonly filestoreDir: string;
     public readonly configDir: string;
-    
+
     public readonly binaryStore: BinaryStore;
     public readonly spriteStore: SpriteStore;
     public readonly midiStore: MidiStore;

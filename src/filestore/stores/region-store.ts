@@ -30,6 +30,15 @@ export class MapTile {
     }
 }
 
+export interface LandscapeObject {
+    objectId: number;
+    x: number;
+    y: number;
+    level: number;
+    type: number;
+    orientation: number;
+}
+
 export interface MapFile {
     fileId: number;
     regionX: number;
@@ -41,6 +50,7 @@ export class LandscapeFile {
     fileId: number;
     regionX: number;
     regionY: number;
+    landscapeObjects: LandscapeObject[];
 }
 
 export class RegionStore {
@@ -53,18 +63,52 @@ export class RegionStore {
         this.regionIndex = fileStore.getIndex('regions');
     }
 
-    public decodeLanscapeFile(regionX: number, regionY: number): LandscapeFile | null {
+    public decodeLandscapeFile(regionX: number, regionY: number): LandscapeFile | null {
         const landscapeFile = this.regionIndex.getFile(`l${regionX}_${regionY}`);
         if(!landscapeFile) {
             logger.warn(`Landscape file not found for region ${regionX},${regionY}`);
             return null;
         }
 
-        // @TODO parse
+        const landscapeObjects = [];
+
+        let objectId = -1;
+        landscapeFile.content.readerIndex = 0;
+
+        while(true) {
+            const objectIdOffset = landscapeFile.content.get('SMART');
+
+            if(objectIdOffset === 0) {
+                break;
+            }
+
+            objectId += objectIdOffset;
+            let objectPositionInfo = 0;
+
+            while(true) {
+                const objectPositionInfoOffset = landscapeFile.content.get('SMART');
+
+                if(objectPositionInfoOffset === 0) {
+                    break;
+                }
+
+                objectPositionInfo += objectPositionInfoOffset - 1;
+
+                const x = (objectPositionInfo >> 6 & 0x3f) + regionX;
+                const y = (objectPositionInfo & 0x3f) + regionY;
+                const level = objectPositionInfo >> 12 & 0x3;
+                const objectMetadata = landscapeFile.content.get('BYTE', 'UNSIGNED');
+                const type = objectMetadata >> 2;
+                const orientation = objectMetadata & 0x3;
+
+                landscapeObjects.push({ objectId, x, y, level, type, orientation });
+            }
+        }
 
         return {
             fileId: landscapeFile.fileId,
-            regionX, regionY
+            regionX, regionY,
+            landscapeObjects
         };
     }
 
@@ -80,6 +124,7 @@ export class RegionStore {
 
         for(let level = 0; level < 4; level++) {
             tileMap[level] = new Array(64);
+
             for(let x = 0; x < 64; x++) {
                 tileMap[level][x] = new Array(64);
 

@@ -6,6 +6,7 @@ import { MidiStore } from './stores/midi-store';
 import { BinaryStore } from './stores/binary-store';
 import { OggStore } from './stores/ogg-store';
 import { SoundStore } from './stores/sound-store';
+import { RegionStore } from './stores/region-store';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -19,11 +20,12 @@ export class Filestore {
 
     public readonly filestoreDir: string;
     public readonly configDir: string;
-    public readonly binaryStore = new BinaryStore(this);
-    public readonly spriteStore = new SpriteStore(this);
-    public readonly midiStore = new MidiStore(this);
-    public readonly oggStore = new OggStore(this);
-    public readonly soundStore = new SoundStore(this);
+    public readonly binaryStore: BinaryStore;
+    public readonly spriteStore: SpriteStore;
+    public readonly midiStore: MidiStore;
+    public readonly oggStore: OggStore;
+    public readonly soundStore: SoundStore;
+    public readonly regionStore: RegionStore;
     private readonly channels: FilestoreChannels;
     private readonly indexes = new Map<number, FileIndex>();
 
@@ -35,6 +37,12 @@ export class Filestore {
         if(configDir) {
             fileNames = getFileNames(configDir);
         }
+        this.binaryStore = new BinaryStore(this);
+        this.spriteStore = new SpriteStore(this);
+        this.midiStore = new MidiStore(this);
+        this.oggStore = new OggStore(this);
+        this.soundStore = new SoundStore(this);
+        this.regionStore = new RegionStore(this);
     }
 
     public getIndex(indexId: number | IndexId): FileIndex {

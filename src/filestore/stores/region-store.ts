@@ -6,8 +6,6 @@ import { logger } from '@runejs/core';
 export const maxRegions = 32768;
 
 
-export type LandscapeObjectData = [ number, number, number ]; // objectId, type, orientation
-
 export interface MapFile {
     fileId: number;
     regionX: number;
@@ -20,11 +18,20 @@ export interface MapFile {
     tileUnderlayIds: Uint8Array[][];
 }
 
+export interface LandscapeObject {
+    objectId: number;
+    x: number;
+    y: number;
+    level: number;
+    type: number;
+    orientation: number;
+}
+
 export interface LandscapeFile {
     fileId: number;
     regionX: number;
     regionY: number;
-    landscapeObjects: LandscapeObjectData[][][];
+    landscapeObjects: LandscapeObject[];
 }
 
 export interface Region {
@@ -86,8 +93,8 @@ export class RegionStore {
 
                 objectPositionInfo += objectPositionInfoOffset - 1;
 
-                const x = (objectPositionInfo >> 6 & 0x3f) + regionX;
-                const y = (objectPositionInfo & 0x3f) + regionY;
+                const x = (objectPositionInfo >> 6 & 0x3f);
+                const y = (objectPositionInfo & 0x3f);
                 const level = objectPositionInfo >> 12 & 0x3;
                 const objectMetadata = landscapeFile.content.get('BYTE', 'UNSIGNED');
                 const type = objectMetadata >> 2;

@@ -20,13 +20,16 @@ export class Filestore {
 
     public readonly filestoreDir: string;
     public readonly configDir: string;
+    
     public readonly binaryStore: BinaryStore;
     public readonly spriteStore: SpriteStore;
     public readonly midiStore: MidiStore;
     public readonly oggStore: OggStore;
     public readonly soundStore: SoundStore;
     public readonly regionStore: RegionStore;
+
     private readonly channels: FilestoreChannels;
+
     private readonly indexes = new Map<number, FileIndex>();
 
     public constructor(filestoreDir: string, configDir?: string) {
@@ -45,6 +48,10 @@ export class Filestore {
         this.regionStore = new RegionStore(this);
     }
 
+    /**
+     * Fetches the specified File Index.
+     * @param indexId The string or numberic ID of the File Index to find.
+     */
     public getIndex(indexId: number | IndexId): FileIndex {
         if(typeof indexId !== 'number') {
             indexId = indexIdMap[indexId];
@@ -58,14 +65,6 @@ export class Filestore {
         } else {
             return this.indexes.get(indexId);
         }
-    }
-
-    public getSpriteIndex(): FileIndex {
-        return this.getIndex(5);
-    }
-
-    public getBinaryIndex(): FileIndex {
-        return this.getIndex(10);
     }
 
 }

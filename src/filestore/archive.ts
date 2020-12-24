@@ -8,11 +8,32 @@ import { decompress } from './data/compression';
 
 export class Archive extends FileData {
 
+    /**
+     * A map of files housed within this Archive.
+     */
     public files: Map<number, FileData>;
+
+    /**
+     * The type of file, either an `archive` or a plain `file`.
+     */
     public type: 'archive' | 'file' = 'archive';
 
+    /**
+     * Creates a new `Archive` object.
+     * @param id The ID of the Archive within it's File Index.
+     * @param index The File Index that this Archive belongs to.
+     * @param filestoreChannels The main filestore channel for data access.
+     */
     public constructor(id: number, index: FileIndex, filestoreChannels: FilestoreChannels);
+
+    /**
+     * Creates a new `Archive` object.
+     * @param fileData Data about a file that's being recognized as an Archive.
+     * @param index The File Index that this Archive belongs to.
+     * @param filestoreChannels The main filestore channel for data access.
+     */
     public constructor(fileData: FileData, index: FileIndex, filestoreChannels: FilestoreChannels);
+
     public constructor(idOrFileData: number | FileData, index: FileIndex, filestoreChannels: FilestoreChannels) {
         super(typeof idOrFileData === 'number' ? idOrFileData : idOrFileData.fileId, index, filestoreChannels);
 
@@ -30,10 +51,17 @@ export class Archive extends FileData {
         this.files = new Map<number, FileData>();
     }
 
-    public getFile(fileId: number): FileData {
-        return this.files.get(fileId);
+    /**
+     * Fetches a file from this Archive by ID.
+     * @param fileId The ID of the file to find.
+     */
+    public getFile(fileId: number): FileData | null {
+        return this.files.get(fileId) || null;
     }
 
+    /**
+     * Decodes the packed Archive files from the filestore on disk.
+     */
     public decodeArchiveFiles(): void {
         const archiveEntry = readIndexedDataChunk(this.fileId, this.index.indexId, this.filestoreChannels);
         const  { compression, version, buffer } = decompress(archiveEntry.dataFile);

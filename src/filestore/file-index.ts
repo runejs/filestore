@@ -7,8 +7,8 @@ import { hash } from './util/name-hash';
 import { logger } from '@runejs/core';
 
 
-const flagName = 0x01;
-const flagWhirlpool = 0x02;
+const NAME_FLAG = 0x01;
+const WHIRLPOOL_FLAG = 0x02;
 
 export type IndexId = 'sprites' | 'midi' | 'ogg' | 'sounds' | 'binary' | 'widgets' | 'regions' | 'models' | 'textures' | 'scripts';
 
@@ -27,21 +27,67 @@ export const indexIdMap: { [key: string]: number } = {
 
 export class FileIndex {
 
+    /**
+     * The ID of this File Index.
+     */
     public readonly indexId: number;
+
+    /**
+     * The file format used by the File Index.
+     */
     public format: number;
+
+    /**
+     * The current version of the File Index, if versioned.
+     */
     public version: number;
+
+    /**
+     * The method used by the File Index for data compression.
+     */
     public compression: number;
-    public flags: number;
+
+    /**
+     * Additional settings and information about the File Index (name & whirlpool information).
+     */
+    public settings: number;
+
+    /**
+     * A map of all files housed within this File Index. Values are either an `Archive` or `FileData` object.
+     */
     public files: Map<number, Archive | FileData> = new Map<number, Archive | FileData>();
+
     private readonly filestoreChannels: FilestoreChannels;
 
-    public constructor(indexId: number, cacheChannel: FilestoreChannels) {
+    /**
+     * Creates a new File Index with the specified index ID and filestore channel.
+     * @param indexId The ID of this File Index.
+     * @param filestoreChannels The main filestore channel for data access.
+     */
+    public constructor(indexId: number, filestoreChannels: FilestoreChannels) {
         this.indexId = indexId;
-        this.filestoreChannels = cacheChannel;
+        this.filestoreChannels = filestoreChannels;
     }
 
+    /**
+     * Fetches a single file from this index.
+     * @param fileId The ID of the file to fetch.
+     * @returns The requested FileData object, or null if no matching file was found.
+     */
     public getFile(fileId: number): FileData | null;
+
+    /**
+     * Fetches a single file from this index.
+     * @param fileName The name of the file to fetch.
+     * @returns The requested FileData object, or null if no matching file was found.
+     */
     public getFile(fileName: string): FileData | null;
+
+    /**
+     * Fetches a single file from this index.
+     * @param fileIdOrName The ID or name of the file to fetch.
+     * @returns The requested FileData object, or null if no matching file was found.
+     */
     public getFile(fileIdOrName: number | string): FileData | null;
     public getFile(fileIdOrName: number | string): FileData | null {
         let fileData: FileData;
@@ -67,9 +113,26 @@ export class FileIndex {
         return fileData;
     }
 
+    /**
+     * Fetches an archive from this index.
+     * @param archiveId The ID of the archive to fetch.
+     * @returns The requested Archive object, or null if no Archive was found.
+     */
     public getArchive(archiveId: number): Archive | null;
+
+    /**
+     * Fetches an archive from this index.
+     * @param archiveName The name of the archive to fetch.
+     * @returns The requested Archive object, or null if no Archive was found.
+     */
     public getArchive(archiveName: string): Archive | null;
-    public getArchive(archiveIdOrName: number | string);
+
+    /**
+     * Fetches an archive from this index.
+     * @param archiveIdOrName The ID or name of the archive to fetch.
+     * @returns The requested Archive object, or null if no Archive was found.
+     */
+    public getArchive(archiveIdOrName: number | string): Archive | null;
     public getArchive(archiveIdOrName: number | string): Archive | null {
         let archive: Archive;
 
@@ -93,7 +156,12 @@ export class FileIndex {
         return archive;
     }
 
-    public findByName(fileName: string): Archive | FileData {
+    /**
+     * Fetches an archive or file from this index by name.
+     * @param fileName The name of the archive or file to search for.
+     * @returns An Archive or FileData object, or null if no matching files were found with the specified name.
+     */
+    public findByName(fileName: string): Archive | FileData | null {
         const indexFileCount = this.files.size;
         const nameHash = hash(fileName);
         for(let fileId = 0; fileId < indexFileCount; fileId++) {
@@ -106,6 +174,9 @@ export class FileIndex {
         return null;
     }
 
+    /**
+     * Decodes the packed index file data from the filestore on disk.
+     */
     public decodeIndex(): void {
         const indexEntry = readIndexedDataChunk(this.indexId, 255, this.filestoreChannels);
         const { compression, version, buffer } = decompress(indexEntry.dataFile);
@@ -118,7 +189,7 @@ export class FileIndex {
         if(this.format >= 6) {
             this.version = buffer.get('INT');
         }
-        this.flags = buffer.get('BYTE', 'UNSIGNED');
+        this.settings = buffer.get('BYTE', 'UNSIGNED');
 
         /* file ids */
         const fileCount = buffer.get('SHORT', 'UNSIGNED');
@@ -140,7 +211,7 @@ export class FileIndex {
         }
 
         /* read the name hashes if present */
-        if((this.flags & flagName) !== 0) {
+        if((this.settings & NAME_FLAG) !== 0) {
             for(const id of ids) {
                 this.files.get(id).nameHash = buffer.get('INT');
             }
@@ -152,7 +223,7 @@ export class FileIndex {
         }
 
         /* read the whirlpool values */
-        if((this.flags & flagWhirlpool) !== 0) {
+        if((this.settings & WHIRLPOOL_FLAG) !== 0) {
             for(const id of ids) {
                 buffer.copy(this.files.get(id).whirlpool, 0,
                     buffer.readerIndex, buffer.readerIndex + 64);
@@ -202,7 +273,7 @@ export class FileIndex {
         }
 
         /* read the child name hashes */
-        if((this.flags & flagName) !== 0) {
+        if((this.settings & NAME_FLAG) !== 0) {
             for(const id of ids) {
                 const archive = this.files.get(id) as Archive;
                 for(const childId of members[id]) {

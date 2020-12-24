@@ -10,9 +10,11 @@ import { logger } from '@runejs/core';
 const NAME_FLAG = 0x01;
 const WHIRLPOOL_FLAG = 0x02;
 
-export type IndexId = 'sprites' | 'midi' | 'ogg' | 'sounds' | 'binary' | 'widgets' | 'regions' | 'models' | 'textures' | 'scripts';
+export type IndexId = 'configs' | 'sprites' | 'midi' | 'ogg' | 'sounds' | 'binary' |
+    'widgets' | 'regions' | 'models' | 'textures' | 'scripts';
 
 export const indexIdMap: { [key: string]: number } = {
+    'configs': 2,
     'widgets': 3,
     'sounds': 4,
     'regions': 5,

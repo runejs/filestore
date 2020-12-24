@@ -5,52 +5,33 @@ import { logger } from '@runejs/core';
 
 export const maxRegions = 32768;
 
-export class MapTile {
-    public x: number;
-    public y: number;
-    public level: number;
-    public height: number;
-    public attrOpcode: number;
-    public overlayId: number;
-    public overlayPath: number;
-    public overlayOrientation: number;
-    public underlayId: number;
-    public bridge: boolean;
-    public nonWalkable: boolean;
-    private _flags: number = 0;
 
-    public set flags(flags: number) {
-        this._flags = flags;
-        this.bridge = (this.flags & 0x2) == 0x2;
-        this.nonWalkable = (this.flags & 0x1) == 0x1;
-    }
-
-    public get flags(): number {
-        return this._flags;
-    }
-}
-
-export interface LandscapeObject {
-    objectId: number;
-    x: number;
-    y: number;
-    level: number;
-    type: number;
-    orientation: number;
-}
+export type LandscapeObjectData = [ number, number, number ]; // objectId, type, orientation
 
 export interface MapFile {
     fileId: number;
     regionX: number;
     regionY: number;
-    tileMap: MapTile[][][];
+    tileHeights: number[][][];
+    tileSettings: Uint8Array[][];
+    tileOverlayIds: Uint8Array[][];
+    tileOverlayPaths: Uint8Array[][];
+    tileOverlayOrientations: Uint8Array[][];
+    tileUnderlayIds: Uint8Array[][];
 }
 
-export class LandscapeFile {
+export interface LandscapeFile {
     fileId: number;
     regionX: number;
     regionY: number;
-    landscapeObjects: LandscapeObject[];
+    landscapeObjects: LandscapeObjectData[][][];
+}
+
+export interface Region {
+    regionX: number;
+    regionY: number;
+    mapFile: MapFile;
+    landscapeFile: LandscapeFile | null;
 }
 
 export class RegionStore {
@@ -63,7 +44,18 @@ export class RegionStore {
         this.regionIndex = fileStore.getIndex('regions');
     }
 
-    public decodeLandscapeFile(regionX: number, regionY: number): LandscapeFile | null {
+    public getRegion(regionX: number, regionY: number): Region | null {
+        const mapFile = this.getMapFile(regionX, regionY);
+        if(!mapFile) {
+            return null;
+        }
+
+        const landscapeFile = this.getLandscapeFile(regionX, regionY) || null;
+
+        return { regionX, regionY, mapFile, landscapeFile };
+    }
+
+    public getLandscapeFile(regionX: number, regionY: number): LandscapeFile | null {
         const landscapeFile = this.regionIndex.getFile(`l${regionX}_${regionY}`);
         if(!landscapeFile) {
             logger.warn(`Landscape file not found for region ${regionX},${regionY}`);
@@ -112,56 +104,61 @@ export class RegionStore {
         };
     }
 
-    public decodeMapFile(regionX: number, regionY: number): MapFile | null {
+    public getMapFile(regionX: number, regionY: number): MapFile | null {
         const mapFile = this.regionIndex.getFile(`m${regionX}_${regionY}`);
         if(!mapFile) {
             logger.warn(`Map file not found for region ${regionX},${regionY}`);
             return null;
         }
 
-        const tileMap: MapTile[][][] = new Array(4);
+        const tileHeights: number[][][] = new Array(4);
+        const tileSettings: Uint8Array[][] = new Array(4);
+        const tileOverlayIds: Uint8Array[][] = new Array(4);
+        const tileOverlayPaths: Uint8Array[][] = new Array(4);
+        const tileOverlayOrientations: Uint8Array[][] = new Array(4);
+        const tileUnderlayIds: Uint8Array[][] = new Array(4);
+
+        const arrays = [ tileHeights, tileSettings, tileOverlayIds, tileOverlayPaths,
+            tileOverlayOrientations, tileUnderlayIds ];
+        arrays.forEach(tileArray => {
+            tileArray.fill(new Array(64));
+            tileArray.forEach(xArr => {
+                xArr.fill(new Array(64));
+            });
+        });
+
         const buffer = mapFile.content;
 
         for(let level = 0; level < 4; level++) {
-            tileMap[level] = new Array(64);
-
             for(let x = 0; x < 64; x++) {
-                tileMap[level][x] = new Array(64);
-
                 for(let y = 0; y < 64; y++) {
-                    const tile = new MapTile();
-                    tile.x = x + regionX;
-                    tile.y = y + regionY;
-                    tile.level = level;
-
                     while(true) {
                         const opcode = buffer.get('BYTE', 'UNSIGNED');
 
                         if(opcode === 0) {
                             break;
                         } else if(opcode === 1) {
-                            tile.height = buffer.get('BYTE', 'UNSIGNED');
+                            tileHeights[level][x][y] = buffer.get('BYTE', 'UNSIGNED');
                             break;
                         } else if(opcode <= 49) {
-                            tile.attrOpcode = opcode;
-                            tile.overlayId = buffer.get('BYTE');
-                            tile.overlayPath = (opcode - 2) / 4;
-                            tile.overlayOrientation = opcode - 2 & 3;
+                            tileOverlayIds[level][x][y] = buffer.get('BYTE');
+                            tileOverlayPaths[level][x][y] = (opcode - 2) / 4;
+                            tileOverlayOrientations[level][x][y] = opcode - 2 & 3;
                         } else if(opcode <= 81) {
-                            tile.flags = opcode - 49;
+                            tileSettings[level][x][y] = opcode - 49;
                         } else {
-                            tile.underlayId = opcode - 81;
+                            tileUnderlayIds[level][x][y] = opcode - 81;
                         }
                     }
-
-                    tileMap[level][x][y] = tile;
                 }
             }
         }
 
         return {
             fileId: mapFile.fileId,
-            regionX, regionY, tileMap
+            regionX, regionY,
+            tileHeights, tileOverlayIds, tileOverlayOrientations,
+            tileOverlayPaths, tileSettings, tileUnderlayIds
         };
     }
 

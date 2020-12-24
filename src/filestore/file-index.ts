@@ -10,12 +10,12 @@ import { logger } from '@runejs/core';
 const flagName = 0x01;
 const flagWhirlpool = 0x02;
 
-export type IndexId = 'sprites' | 'midi' | 'ogg' | 'sounds' | 'binary' | 'widgets' | 'mapdata' | 'models' | 'textures' | 'scripts';
+export type IndexId = 'sprites' | 'midi' | 'ogg' | 'sounds' | 'binary' | 'widgets' | 'regions' | 'models' | 'textures' | 'scripts';
 
 export const indexIdMap: { [key: string]: number } = {
     'widgets': 3,
     'sounds': 4,
-    'mapdata': 5,
+    'regions': 5,
     'midi': 6,
     'models': 7,
     'sprites': 8,

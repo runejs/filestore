@@ -1,5 +1,6 @@
 import { ConfigStore } from '../config-store';
 import { FileData } from '../../file-data';
+import { logger } from '@runejs/core';
 
 
 export class ItemConfig {
@@ -60,15 +61,17 @@ export class ItemStore {
     }
 
     public getItem(itemId: number): ItemConfig | null {
-        const itemArchive = this.configStore.getItemArchive();
+        const itemArchive = this.configStore.itemArchive;
 
         if(!itemArchive) {
+            logger.error(`Item archive not found.`);
             return null;
         }
 
         const itemFile = itemArchive.getFile(itemId) || null;
 
         if(!itemFile) {
+            logger.error(`Item file not found.`);
             return null;
         }
 
@@ -146,6 +149,7 @@ export class ItemStore {
             } else if(opcode === 40) {
                 const colorCount = buffer.get('BYTE', 'UNSIGNED');
                 itemConfig.replacedColors = new Array(colorCount);
+                itemConfig.replacedColors.fill([ -1, -1 ]);
 
                 for(let colorIndex = 0; colorIndex < colorCount; colorIndex++) {
                     itemConfig.replacedColors[colorIndex][0] = buffer.get('SHORT', 'UNSIGNED');
@@ -154,6 +158,7 @@ export class ItemStore {
             } else if(opcode === 41) {
                 const textureCount = buffer.get('BYTE', 'UNSIGNED');
                 itemConfig.replacedTextures = new Array(textureCount);
+                itemConfig.replacedTextures.fill([ -1, -1 ]);
 
                 for(let textureIndex = 0; textureIndex < textureCount; textureIndex++) {
                     itemConfig.replacedTextures[textureIndex][0] = buffer.get('SHORT', 'UNSIGNED');
@@ -205,9 +210,10 @@ export class ItemStore {
     }
 
     public decodeItemStore(): ItemConfig[] {
-        const itemArchive = this.configStore.getItemArchive();
+        const itemArchive = this.configStore.itemArchive;
 
         if(!itemArchive) {
+            logger.error(`Item archive not found.`);
             return null;
         }
 
@@ -218,10 +224,11 @@ export class ItemStore {
             const itemFile = itemArchive.getFile(itemId) || null;
 
             if(!itemFile) {
+                logger.error(`Item file not found.`);
                 return null;
             }
 
-            items[itemId] =  this.decodeItemFile(itemFile);
+            items[itemId] = this.decodeItemFile(itemFile);
         }
 
         return items;

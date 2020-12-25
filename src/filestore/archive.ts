@@ -18,6 +18,8 @@ export class Archive extends FileData {
      */
     public type: 'archive' | 'file' = 'archive';
 
+    private decoded: boolean = false;
+
     /**
      * Creates a new `Archive` object.
      * @param id The ID of the Archive within it's File Index.
@@ -63,9 +65,13 @@ export class Archive extends FileData {
      * Decodes the packed Archive files from the filestore on disk.
      */
     public decodeArchiveFiles(): void {
+        if(this.decoded) {
+            return;
+        }
+
         const archiveEntry = readIndexedDataChunk(this.fileId, this.index.indexId, this.filestoreChannels);
         const  { compression, version, buffer } = decompress(archiveEntry.dataFile);
-        const archiveSize = this.index.files.size;
+        const archiveSize = this.files.size;
 
         this.content = buffer;
 
@@ -106,6 +112,8 @@ export class Archive extends FileData {
                 buffer.readerIndex = (buffer.readerIndex + chunkSize);
             }
         }
+
+        this.decoded = true;
     }
 
 }

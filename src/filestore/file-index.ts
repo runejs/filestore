@@ -215,7 +215,8 @@ export class FileIndex {
         /* read the name hashes if present */
         if((this.settings & NAME_FLAG) !== 0) {
             for(const id of ids) {
-                this.files.get(id).nameHash = buffer.get('INT');
+                const nameHash = buffer.get('INT');
+                this.files.get(id).nameHash = nameHash;
             }
         }
 

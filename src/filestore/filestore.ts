@@ -2,9 +2,9 @@ import { FilestoreChannels, loadFilestore } from './data/filestore-loader';
 import { FileIndex, IndexId, indexIdMap } from './file-index';
 import { SpriteStore } from './stores/sprite-store';
 import { getFileNames } from './util/name-hash';
-import { MidiStore } from './stores/midi-store';
+import { MusicStore } from './stores/music-store';
 import { BinaryStore } from './stores/binary-store';
-import { OggStore } from './stores/ogg-store';
+import { JingleStore } from './stores/jingle-store';
 import { SoundStore } from './stores/sound-store';
 import { RegionStore } from './stores/region-store';
 import { ConfigStore } from './stores/config-store';
@@ -24,8 +24,8 @@ export class Filestore {
 
     public readonly binaryStore: BinaryStore;
     public readonly spriteStore: SpriteStore;
-    public readonly midiStore: MidiStore;
-    public readonly oggStore: OggStore;
+    public readonly midiStore: MusicStore;
+    public readonly oggStore: JingleStore;
     public readonly soundStore: SoundStore;
     public readonly regionStore: RegionStore;
     public readonly configStore: ConfigStore;
@@ -36,7 +36,7 @@ export class Filestore {
 
     public constructor(filestoreDir: string, configDir?: string) {
         this.filestoreDir = filestoreDir;
-        this.configDir = configDir;
+        this.configDir = configDir || filestoreDir;
         this.channels = loadFilestore(filestoreDir);
 
         if(configDir) {
@@ -44,8 +44,8 @@ export class Filestore {
         }
         this.binaryStore = new BinaryStore(this);
         this.spriteStore = new SpriteStore(this);
-        this.midiStore = new MidiStore(this);
-        this.oggStore = new OggStore(this);
+        this.midiStore = new MusicStore(this);
+        this.oggStore = new JingleStore(this);
         this.soundStore = new SoundStore(this);
         this.regionStore = new RegionStore(this);
         this.configStore = new ConfigStore(this);

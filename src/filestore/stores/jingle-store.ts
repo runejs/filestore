@@ -39,9 +39,9 @@ export class OggFile {
 
 
 /**
- * Controls OGG file storage.
+ * Controls short jingle (.ogg) file storage.
  */
-export class OggStore {
+export class JingleStore {
 
     private readonly fileStore: Filestore;
 
@@ -53,7 +53,7 @@ export class OggStore {
      * Writes all unpacked OGG files to the disk under `./unpacked/ogg/`
      */
     public async writeToDisk(): Promise<void> {
-        const files = this.decodeOggStore();
+        const files = this.decodeJingleStore();
         for(const ogg of files) {
             try {
                 await ogg.writeToDisk();
@@ -82,7 +82,7 @@ export class OggStore {
      * Decodes all OGG files within the filestore.
      * @returns The list of decoded OggFile objects from the OGG store.
      */
-    public decodeOggStore(): OggFile[] {
+    public decodeJingleStore(): OggFile[] {
         const oggArchiveIndex = this.fileStore.getIndex('ogg');
         const fileCount = oggArchiveIndex.files.size;
         const oggFiles: OggFile[] = new Array(fileCount);

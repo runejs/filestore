@@ -3,7 +3,11 @@ import { FileData } from '../../file-data';
 import { ByteBuffer, logger } from '@runejs/core';
 
 
+/**
+ * Contains game client need-to-know level information about a single game item.
+ */
 export class ItemConfig {
+
     gameId: number;
     name: string | null = null;
     stackable?: boolean;
@@ -51,9 +55,13 @@ export class ItemConfig {
         ambient?: number;
         contrast?: number;
     } = {};
+
 }
 
 
+/**
+ * Controls files within the Item Archive / configuration index.
+ */
 export class ItemStore {
 
     private readonly configStore: ConfigStore;
@@ -81,7 +89,7 @@ export class ItemStore {
     }
 
     public encodeItemFile(item: ItemConfig): ByteBuffer {
-        const buffer = new ByteBuffer();
+        const buffer = new ByteBuffer(5000);
 
         const putOpcode = (opcode: number): ByteBuffer => {
             buffer.put(opcode);
@@ -241,7 +249,7 @@ export class ItemStore {
 
         putOpcode(0);
 
-        return buffer;
+        return buffer.getSlice(0, buffer.writerIndex);
     }
 
     public decodeItemFile(itemFile: FileData): ItemConfig {

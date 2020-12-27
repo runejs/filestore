@@ -42,7 +42,7 @@ export class MidiFile {
 /**
  * Controls MIDI file storage.
  */
-export class MidiStore {
+export class MusicStore {
 
     private readonly fileStore: Filestore;
 
@@ -54,7 +54,7 @@ export class MidiStore {
      * Writes all unpacked MIDI files to the disk under `./unpacked/midi/`
      */
     public async writeToDisk(): Promise<void> {
-        const files = this.decodeMidiStore();
+        const files = this.decodeMusicStore();
         for(const midi of files) {
             try {
                 await midi.writeToDisk();
@@ -84,7 +84,7 @@ export class MidiStore {
      * Decodes all midi files within the filestore.
      * @returns The list of decoded MidiFile objects from the midi store.
      */
-    public decodeMidiStore(): MidiFile[] {
+    public decodeMusicStore(): MidiFile[] {
         const midiArchiveIndex = this.fileStore.getIndex('midi');
         const fileCount = midiArchiveIndex.files.size;
         const midiFiles: MidiFile[] = new Array(fileCount);

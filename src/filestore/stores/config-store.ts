@@ -4,11 +4,26 @@ import { Archive } from '../archive';
 import { FileIndex } from '../file-index';
 
 
+/**
+ * Contains various configuration related Archives.
+ */
 export class ConfigStore {
 
-    public readonly items: ItemStore;
+    /**
+     * The Item Archive, containing details about every game item.
+     */
     public readonly itemArchive: Archive;
+
+    /**
+     * A Store used to access the Item Archive, containing details about every game item.
+     */
+    public readonly items: ItemStore;
+
+    /**
+     * The configuration file/archive index.
+     */
     public readonly configIndex: FileIndex;
+
     private readonly fileStore: Filestore;
 
     public constructor(fileStore: Filestore) {

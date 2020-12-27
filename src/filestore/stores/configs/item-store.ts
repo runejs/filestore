@@ -1,6 +1,6 @@
 import { ConfigStore } from '../config-store';
 import { FileData } from '../../file-data';
-import { logger } from '@runejs/core';
+import { ByteBuffer, logger } from '@runejs/core';
 
 
 export class ItemConfig {
@@ -23,12 +23,13 @@ export class ItemConfig {
     model2d: {
         widgetModel?: number;
         zoom?: number;
-        xan?: number;
-        yan?: number;
-        zan?: number;
+        rotationX?: number;
+        rotationY?: number;
+        rotationZ?: number;
         offsetX?: number;
         offsetY?: number;
     } = {};
+
     model3d: {
         maleModels: [ number, number, number ];
         maleHeadModels: [ number, number ];
@@ -42,6 +43,7 @@ export class ItemConfig {
         femaleModels: [ -1, -1, -1 ],
         femaleHeadModels: [ -1, -1 ]
     };
+
     rendering: {
         resizeX?: number;
         resizeY?: number;
@@ -78,6 +80,170 @@ export class ItemStore {
         return this.decodeItemFile(itemFile);
     }
 
+    public encodeItemFile(item: ItemConfig): ByteBuffer {
+        const buffer = new ByteBuffer();
+
+        const putOpcode = (opcode: number): ByteBuffer => {
+            buffer.put(opcode);
+            return buffer;
+        };
+
+        if(item.model2d.widgetModel !== undefined) {
+            putOpcode(1)
+                .put(item.model2d.widgetModel, 'SHORT');
+        }
+
+        if(item.name) {
+            putOpcode(2)
+                .putString(item.name);
+        }
+
+        putOpcode(4)
+            .put(item.model2d.zoom, 'SHORT');
+        putOpcode(5)
+            .put(item.model2d.rotationX, 'SHORT');
+        putOpcode(6)
+            .put(item.model2d.rotationY, 'SHORT');
+        putOpcode(7)
+            .put(item.model2d.offsetX, 'SHORT');
+        putOpcode(8)
+            .put(item.model2d.offsetY, 'SHORT');
+
+        if(item.stackable) {
+            putOpcode(11);
+        }
+
+        putOpcode(12)
+            .put(item.value, 'INT');
+
+        if(item.members) {
+            putOpcode(16);
+        }
+
+        if(item.model3d.maleModels[0] !== -1 || item.model3d.maleModelOffset !== undefined) {
+            putOpcode(23)
+                .put(item.model3d.maleModels[0], 'SHORT')
+                .put(item.model3d.maleModelOffset);
+        }
+
+        if(item.model3d.maleModels[1] !== -1) {
+            putOpcode(24)
+                .put(item.model3d.maleModels[1], 'SHORT');
+        }
+
+        if(item.model3d.femaleModels[0] !== -1 || item.model3d.femaleModelOffset !== undefined) {
+            putOpcode(25)
+                .put(item.model3d.femaleModels[0], 'SHORT')
+                .put(item.model3d.femaleModelOffset);
+        }
+
+        if(item.model3d.femaleModels[1] !== -1) {
+            putOpcode(26)
+                .put(item.model3d.femaleModels[1], 'SHORT');
+        }
+
+        if(item.worldOptions && item.worldOptions.length !== 0) {
+            for(let i = 0; i < 5; i++) {
+                if(item.worldOptions[i]) {
+                    putOpcode(30 + i)
+                        .putString(item.worldOptions[i]);
+                }
+            }
+        }
+
+        if(item.widgetOptions && item.widgetOptions.length !== 0) {
+            for(let i = 0; i < 5; i++) {
+                if(item.widgetOptions[i]) {
+                    putOpcode(35 + i)
+                        .putString(item.widgetOptions[i]);
+                }
+            }
+        }
+
+        if(item.replacedColors && item.replacedColors.length !== 0) {
+            putOpcode(40)
+                .put(item.replacedColors.length);
+            for(const [ oldColor, newColor ] of item.replacedColors) {
+                buffer.put(oldColor, 'SHORT').put(newColor, 'SHORT');
+            }
+        }
+
+        if(item.replacedTextures && item.replacedTextures.length !== 0) {
+            putOpcode(41)
+                .put(item.replacedTextures.length);
+            for(const [ oldTexture, newTexture ] of item.replacedTextures) {
+                buffer.put(oldTexture, 'SHORT').put(newTexture, 'SHORT');
+            }
+        }
+
+        if(item.tradable) {
+            putOpcode(65);
+        }
+
+        if(item.model3d.maleModels[2] !== -1) {
+            putOpcode(78)
+                .put(item.model3d.maleModels[2], 'SHORT');
+        }
+
+        if(item.model3d.femaleModels[2] !== -1) {
+            putOpcode(79)
+                .put(item.model3d.femaleModels[2], 'SHORT');
+        }
+
+        if(item.model3d.maleHeadModels[0] !== -1) {
+            putOpcode(90)
+                .put(item.model3d.maleHeadModels[0], 'SHORT');
+        }
+
+        if(item.model3d.femaleHeadModels[0] !== -1) {
+            putOpcode(91)
+                .put(item.model3d.femaleHeadModels[0], 'SHORT');
+        }
+
+        putOpcode(95)
+            .put(item.model2d.rotationZ, 'SHORT');
+
+        if(item.bankNoteId) {
+            putOpcode(97)
+                .put(item.bankNoteId, 'SHORT');
+        }
+
+        if(item.bankNoteTemplate) {
+            putOpcode(98)
+                .put(item.bankNoteTemplate, 'SHORT');
+        }
+
+        if(item.stackableIds && item.stackableIds.length !== 0) {
+            for(let i = 0; i < 10; i++) {
+                putOpcode(100 + i)
+                    .put(item.stackableIds[i], 'SHORT')
+                    .put(item.stackableAmounts[i], 'SHORT');
+            }
+        }
+
+        putOpcode(110)
+            .put(item.rendering.resizeX, 'SHORT');
+
+        putOpcode(111)
+            .put(item.rendering.resizeY, 'SHORT');
+
+        putOpcode(112)
+            .put(item.rendering.resizeZ, 'SHORT');
+
+        putOpcode(113)
+            .put(item.rendering.ambient);
+
+        putOpcode(114)
+            .put(item.rendering.contrast);
+
+        putOpcode(115)
+            .put(item.teamId);
+
+        putOpcode(0);
+
+        return buffer;
+    }
+
     public decodeItemFile(itemFile: FileData): ItemConfig {
         const itemConfig = new ItemConfig();
 
@@ -97,9 +263,9 @@ export class ItemStore {
             } else if(opcode === 4) {
                 itemConfig.model2d.zoom = buffer.get('SHORT', 'UNSIGNED');
             } else if(opcode === 5) {
-                itemConfig.model2d.xan = buffer.get('SHORT', 'UNSIGNED');
+                itemConfig.model2d.rotationX = buffer.get('SHORT', 'UNSIGNED');
             } else if(opcode === 6) {
-                itemConfig.model2d.yan = buffer.get('SHORT', 'UNSIGNED');
+                itemConfig.model2d.rotationY = buffer.get('SHORT', 'UNSIGNED');
             } else if(opcode === 7) {
                 itemConfig.model2d.offsetX = buffer.get('SHORT', 'UNSIGNED');
                 if(itemConfig.model2d.offsetX > 32767) {
@@ -179,7 +345,7 @@ export class ItemStore {
             } else if(opcode == 93) {
                 itemConfig.model3d.femaleHeadModels[1] = buffer.get('SHORT', 'UNSIGNED');
             } else if(opcode == 95) {
-                itemConfig.model2d.zan = buffer.get('SHORT', 'UNSIGNED');
+                itemConfig.model2d.rotationZ = buffer.get('SHORT', 'UNSIGNED');
             } else if(opcode == 97) {
                 itemConfig.bankNoteId = (buffer.get('SHORT', 'UNSIGNED'));
             } else if(opcode == 98) {

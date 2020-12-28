@@ -281,10 +281,8 @@ export class SpritePack {
  */
 export class SpriteStore {
 
-    private readonly fileStore: Filestore;
 
-    public constructor(fileStore: Filestore) {
-        this.fileStore = fileStore;
+    public constructor(private fileStore: Filestore) {
     }
 
     public async writeToDisk(): Promise<void> {

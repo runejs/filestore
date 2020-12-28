@@ -9,10 +9,7 @@ import { FileData } from '../file-data';
  */
 export class BinaryStore {
 
-    private readonly fileStore: Filestore;
-
-    public constructor(fileStore: Filestore) {
-        this.fileStore = fileStore;
+    public constructor(private fileStore: Filestore) {
     }
 
     /**
@@ -22,7 +19,7 @@ export class BinaryStore {
     public async writeToDisk(binaryFile?: FileData): Promise<void> {
         if(!binaryFile) {
             // Write all files
-            const binaryFiles: FileData[] = this.decodeBinaryStore();
+            const binaryFiles: FileData[] = this.decodeBinaryFileStore();
             binaryFiles.forEach(file => this.writeToDisk(file));
         } else {
             // Write single file
@@ -46,7 +43,7 @@ export class BinaryStore {
      * @param nameOrId The name or ID of the binary file.
      * @returns The binary FileData object, or null if the file is not found.
      */
-    public getBinary(nameOrId: string | number): FileData | null {
+    public getBinaryFile(nameOrId: string | number): FileData | null {
         if(!nameOrId) {
             return null;
         }
@@ -59,7 +56,7 @@ export class BinaryStore {
      * Decodes all binary files within the binary store.
      * @returns The list of decoded files from the binary store.
      */
-    public decodeBinaryStore(): FileData[] {
+    public decodeBinaryFileStore(): FileData[] {
         const binaryIndex = this.fileStore.getIndex('binary');
         const binaryFileCount = binaryIndex.files.size;
         const binaryFiles: FileData[] = new Array(binaryFileCount);

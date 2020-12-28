@@ -5,10 +5,8 @@ import { Filestore } from '../filestore';
 export class WidgetStore {
 
     public readonly widgetFileIndex: FileIndex;
-    private readonly fileStore: Filestore;
 
-    public constructor(fileStore: Filestore) {
-        this.fileStore = fileStore;
+    public constructor(private fileStore: Filestore) {
         this.widgetFileIndex = fileStore.getIndex('widgets');
     }
 

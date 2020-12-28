@@ -43,10 +43,7 @@ export class OggFile {
  */
 export class JingleStore {
 
-    private readonly fileStore: Filestore;
-
-    public constructor(fileStore: Filestore) {
-        this.fileStore = fileStore;
+    public constructor(private fileStore: Filestore) {
     }
 
     /**

@@ -63,11 +63,8 @@ export class ItemConfig {
  * Controls files within the Item Archive / configuration index.
  */
 export class ItemStore {
-
-    private readonly configStore: ConfigStore;
-
-    public constructor(configStore: ConfigStore) {
-        this.configStore = configStore;
+    
+    public constructor(private configStore: ConfigStore) {
     }
 
     public getItem(itemId: number): ItemConfig | null {

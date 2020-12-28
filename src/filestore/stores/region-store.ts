@@ -43,12 +43,10 @@ export interface Region {
 
 export class RegionStore {
 
-    private readonly fileStore: Filestore;
     private readonly regionIndex: FileIndex;
 
-    public constructor(fileStore: Filestore) {
-        this.fileStore = fileStore;
-        this.regionIndex = fileStore.getIndex('regions');
+    public constructor(private fileStore: Filestore) {
+        this.regionIndex = this.fileStore.getIndex('regions');
     }
 
     public getRegion(regionX: number, regionY: number): Region | null {

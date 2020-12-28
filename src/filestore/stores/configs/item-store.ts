@@ -63,7 +63,7 @@ export class ItemConfig {
  * Controls files within the Item Archive / configuration index.
  */
 export class ItemStore {
-    
+
     public constructor(private configStore: ConfigStore) {
     }
 

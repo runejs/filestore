@@ -8,8 +8,7 @@ const money = filestore.configStore.items.getItem(995);
 
 money.tradable = false;
 
-const encoded = filestore.configStore.items.encodeItemFile(money);
 
 
 
-console.log(encoded);
+console.log(money);

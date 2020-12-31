@@ -11,9 +11,11 @@ const NAME_FLAG = 0x01;
 const WHIRLPOOL_FLAG = 0x02;
 
 export type IndexId = 'configs' | 'sprites' | 'music' | 'jingles' | 'sounds' | 'binary' |
-    'widgets' | 'regions' | 'models' | 'textures' | 'scripts';
+    'widgets' | 'regions' | 'models' | 'textures' | 'scripts' | 'frames' | 'skeletons';
 
 export const indexIdMap: { [key: string]: number } = {
+    'skeletons': 0,
+    'frames': 1,
     'configs': 2,
     'widgets': 3,
     'sounds': 4,

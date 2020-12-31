@@ -1,6 +1,7 @@
 import { ConfigStore } from '../config-store';
 import { FileData } from '../../file-data';
 import { ByteBuffer, logger } from '@runejs/core';
+import { Archive } from '../../archive';
 
 
 /**
@@ -60,15 +61,21 @@ export class ItemConfig {
 
 
 /**
- * Controls files within the Item Archive / configuration index.
+ * Controls files within the Item Archive of the configuration index.
  */
 export class ItemStore {
 
+    /**
+     * The Item Archive, containing details about every game item.
+     */
+    public readonly itemArchive: Archive;
+
     public constructor(private configStore: ConfigStore) {
+        this.itemArchive = this.configStore.getArchive('items');
     }
 
     public getItem(itemId: number): ItemConfig | null {
-        const itemArchive = this.configStore.itemArchive;
+        const itemArchive = this.itemArchive;
 
         if(!itemArchive) {
             logger.error(`Item archive not found.`);
@@ -381,7 +388,7 @@ export class ItemStore {
     }
 
     public decodeItemStore(): ItemConfig[] {
-        const itemArchive = this.configStore.itemArchive;
+        const itemArchive = this.itemArchive;
 
         if(!itemArchive) {
             logger.error(`Item archive not found.`);

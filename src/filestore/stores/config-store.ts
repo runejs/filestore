@@ -1,7 +1,16 @@
 import { Filestore } from '../filestore';
 import { ItemStore } from './configs/item-store';
-import { Archive } from '../archive';
 import { FileIndex } from '../file-index';
+import { Archive } from '../archive';
+
+
+export type ConfigId = 'objects' | 'npcs' | 'items';
+
+export const configIdMap: { [key: string]: number } = {
+    'objects': 6,
+    'npcs': 9,
+    'items': 10
+};
 
 
 /**
@@ -10,14 +19,9 @@ import { FileIndex } from '../file-index';
 export class ConfigStore {
 
     /**
-     * The Item Archive, containing details about every game item.
-     */
-    public readonly itemArchive: Archive;
-
-    /**
      * A Store used to access the Item Archive, containing details about every game item.
      */
-    public readonly items: ItemStore;
+    public readonly itemStore: ItemStore;
 
     /**
      * The configuration file/archive index.
@@ -26,8 +30,15 @@ export class ConfigStore {
 
     public constructor(private fileStore: Filestore) {
         this.configIndex = fileStore.getIndex('configs');
-        this.itemArchive = this.configIndex.getArchive(10);
-        this.items = new ItemStore(this);
+        this.itemStore = new ItemStore(this);
+    }
+
+    public getArchive(configId: ConfigId | number): Archive {
+        if(typeof configId !== 'number') {
+            configId = configIdMap[configId];
+        }
+
+        return this.configIndex.getArchive(configId);
     }
 
 }

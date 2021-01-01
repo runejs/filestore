@@ -2,8 +2,14 @@ import { FileIndex } from '../file-index';
 import { Filestore } from '../filestore';
 
 
+/**
+ * Controls game interface widget file format and storage.
+ */
 export class WidgetStore {
 
+    /**
+     * The main file index of the widget store.
+     */
     public readonly widgetFileIndex: FileIndex;
 
     public constructor(private fileStore: Filestore) {
@@ -11,15 +17,13 @@ export class WidgetStore {
     }
 
     public decodeWidget(): void {
-
+        // if isIf1 then call decodeSimpleWidget()
+        // else...
+        // decode if3 here
     }
 
-    public decodeStandardWidget(): void {
+    public decodeSimpleWidget(): void {
         // "if1"
-    }
-
-    public decodeScriptedWidget(): void {
-        // "if3"
     }
 
 }

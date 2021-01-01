@@ -25,6 +25,9 @@ export class ItemConfig {
     stackableAmounts?: number[];
     stackableIds?: number[];
 
+    /**
+     * 2d modelling information for this item
+     */
     model2d: {
         widgetModel?: number;
         zoom?: number;
@@ -35,6 +38,9 @@ export class ItemConfig {
         offsetY?: number;
     } = {};
 
+    /**
+     * 3d modelling information for this item
+     */
     model3d: {
         maleModels: [ number, number, number ];
         maleHeadModels: [ number, number ];
@@ -49,6 +55,9 @@ export class ItemConfig {
         femaleHeadModels: [ -1, -1 ]
     };
 
+    /**
+     * Additional rendering details
+     */
     rendering: {
         resizeX?: number;
         resizeY?: number;

@@ -8,6 +8,7 @@ import { JingleStore } from './stores/jingle-store';
 import { SoundStore } from './stores/sound-store';
 import { RegionStore } from './stores/region-store';
 import { ConfigStore } from './stores/config-store';
+import { ModelStore } from './stores/model-store';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -24,11 +25,12 @@ export class Filestore {
 
     public readonly binaryStore: BinaryStore;
     public readonly spriteStore: SpriteStore;
-    public readonly midiStore: MusicStore;
-    public readonly oggStore: JingleStore;
+    public readonly musicStore: MusicStore;
+    public readonly jingleStore: JingleStore;
     public readonly soundStore: SoundStore;
     public readonly regionStore: RegionStore;
     public readonly configStore: ConfigStore;
+    public readonly modelStore: ModelStore;
 
     private readonly channels: FilestoreChannels;
 
@@ -39,16 +41,16 @@ export class Filestore {
         this.configDir = configDir || filestoreDir;
         this.channels = loadFilestore(filestoreDir);
 
-        if(configDir) {
-            fileNames = getFileNames(configDir);
-        }
+        fileNames = getFileNames(configDir);
+
         this.binaryStore = new BinaryStore(this);
         this.spriteStore = new SpriteStore(this);
-        this.midiStore = new MusicStore(this);
-        this.oggStore = new JingleStore(this);
+        this.musicStore = new MusicStore(this);
+        this.jingleStore = new JingleStore(this);
         this.soundStore = new SoundStore(this);
         this.regionStore = new RegionStore(this);
         this.configStore = new ConfigStore(this);
+        this.modelStore = new ModelStore(this);
     }
 
     /**

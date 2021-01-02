@@ -3,7 +3,7 @@ import { Filestore } from '../filestore';
 import { ByteBuffer } from '@runejs/core';
 
 
-// old interface from rune-js/cache-parser
+// old interface from rune-js/cache-parser vvv
 export class Widget {
 
     parentId: number;
@@ -83,13 +83,29 @@ export abstract class WidgetBase {
 
     id: number;
     parentId: number;
+    type: number;
     format: number;
+    originalX: number;
+    originalY: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    menuType: number;
+    contentType: number;
+    opacity: number;
+    hidden: boolean;
+    hoveredSiblingId: number;
+    alternateOperators: number[];
+    alternateRhs: number[];
+    cs1: number[][];
 
 }
 
 export class ContainerWidget extends WidgetBase {
 
     type: number = 0;
+    scrollHeight: number;
 
 }
 
@@ -169,75 +185,86 @@ export class WidgetStore {
     public decodeWidgetFormat1(widgetId: number, buffer: ByteBuffer): Widget {
         buffer = new ByteBuffer(buffer);
 
-        /*
-        0 = container
-        1 = standard text
-        2 = item container 1
-        3 = button text
-        4 = clickable text
-        5 = sprite
-        6 = model
-        7 = item container 2
-        8 = tooltip
-         */
 
-        const widget = new Widget(widgetId);
+        const widgetType = buffer.get('BYTE');
 
-        widget.format = 1;
-        widget.type = buffer.get('BYTE', 'UNSIGNED');
-        widget.menuType = buffer.get('BYTE', 'UNSIGNED');
-        widget.contentType = buffer.get('SHORT', 'UNSIGNED');
-        widget.originalX = buffer.get('SHORT');
-        widget.originalY = buffer.get('SHORT');
-        widget.width = buffer.get('SHORT', 'UNSIGNED');
-        widget.height = buffer.get('SHORT', 'UNSIGNED');
-        widget.opacity = buffer.get('BYTE', 'UNSIGNED');
-        widget.parentId = buffer.get('SHORT', 'UNSIGNED');
-        widget.hoveredSiblingId = buffer.get('SHORT', 'UNSIGNED');
+        let w: WidgetBase;
 
-        widget.x = widget.originalX;
-        widget.y = widget.originalY;
-
-        if(widget.parentId === 0xFFFF) {
-            widget.parentId = -1;
+        if(widgetType === 0) {
+            w = new ContainerWidget();
+        } else if(widgetType === 1) {
+            w = new TextWidget();
+        } else if(widgetType === 2) {
+            w = new FancyItemWidget();
+        } else if(widgetType === 3) {
+            w = new ButtonWidget();
+        } else if(widgetType === 4) {
+            w = new LinkWidget();
+        } else if(widgetType === 5) {
+            w = new SpriteWidget();
+        } else if(widgetType === 6) {
+            w = new ModelWidget();
+        } else if(widgetType === 7) {
+            w = new SimpleItemWidget();
+        } else if(widgetType === 8) {
+            w = new TooltipWidget();
         }
 
-        if(widget.hoveredSiblingId === 0xFFFF) { // 0xFFFF === 65535
-            widget.hoveredSiblingId = -1;
+        w.format = 1;
+
+        w.menuType = buffer.get('BYTE', 'UNSIGNED');
+        w.contentType = buffer.get('SHORT', 'UNSIGNED');
+        w.originalX = buffer.get('SHORT');
+        w.originalY = buffer.get('SHORT');
+        w.width = buffer.get('SHORT', 'UNSIGNED');
+        w.height = buffer.get('SHORT', 'UNSIGNED');
+        w.opacity = buffer.get('BYTE', 'UNSIGNED');
+        w.parentId = buffer.get('SHORT', 'UNSIGNED');
+        w.hoveredSiblingId = buffer.get('SHORT', 'UNSIGNED');
+
+        w.x = w.originalX;
+        w.y = w.originalY;
+
+        if(w.parentId === 0xFFFF) {
+            w.parentId = -1;
+        }
+
+        if(w.hoveredSiblingId === 0xFFFF) { // 0xFFFF === 65535
+            w.hoveredSiblingId = -1;
         }
 
         const alternateCount = buffer.get('BYTE', 'UNSIGNED');
 
         if(alternateCount > 0) {
-            widget.alternateOperators = new Array(alternateCount);
-            widget.alternateRhs = new Array(alternateCount);
+            w.alternateOperators = new Array(alternateCount);
+            w.alternateRhs = new Array(alternateCount);
             for(let i = 0; alternateCount > i; i++) {
-                widget.alternateOperators[i] = buffer.get('BYTE', 'UNSIGNED');
-                widget.alternateRhs[i] = buffer.get('SHORT', 'UNSIGNED');
+                w.alternateOperators[i] = buffer.get('BYTE', 'UNSIGNED');
+                w.alternateRhs[i] = buffer.get('SHORT', 'UNSIGNED');
             }
         }
 
         const clientScriptCount = buffer.get('BYTE', 'UNSIGNED');
 
         if(clientScriptCount > 0) {
-            widget.cs1 = new Array(clientScriptCount);
+            w.cs1 = new Array(clientScriptCount);
 
             for(let csIndex = 0; csIndex < clientScriptCount; csIndex++) {
                 const k = buffer.get('SHORT', 'UNSIGNED');
-                widget.cs1[csIndex] = new Array(k);
+                w.cs1[csIndex] = new Array(k);
 
                 for(let j = 0; k > j; j++) {
-                    widget.cs1[csIndex][j] = buffer.get('SHORT', 'UNSIGNED');
-                    if(widget.cs1[csIndex][j] === 65535) {
-                        widget.cs1[csIndex][j] = -1;
+                    w.cs1[csIndex][j] = buffer.get('SHORT', 'UNSIGNED');
+                    if(w.cs1[csIndex][j] === 65535) {
+                        w.cs1[csIndex][j] = -1;
                     }
                 }
             }
         }
 
-        if(widget.type === 0) { // container
-            widget.scrollHeight = buffer.get('SHORT', 'UNSIGNED');
-            widget.hidden = buffer.get('BYTE', 'UNSIGNED') === 1;
+        if(w.type === 0) { // container
+            w.scrollHeight = buffer.get('SHORT', 'UNSIGNED');
+            w.hidden = buffer.get('BYTE', 'UNSIGNED') === 1;
         }
 
         if(widget.type === 1) { // wot

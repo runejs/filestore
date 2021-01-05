@@ -4,12 +4,42 @@ import { FileIndex } from '../file-index';
 import { Archive } from '../archive';
 
 
-export type ConfigId = 'objects' | 'npcs' | 'items';
+/**
+ * String representations of config file/archive ids.
+ */
+export type ConfigId =
+    'character' |
+    'objects' |
+    'npcs' |
+    'items' |
+    'animations' |
+    'graphics';
 
+/**
+ * A map of unique config keys to file/archive ids within the config store.
+ */
 export const configIdMap: { [key: string]: number } = {
+    'character': 3,
     'objects': 6,
     'npcs': 9,
-    'items': 10
+    'items': 10,
+    'animations': 12,
+    'graphics': 13
+};
+
+/**
+ * Finds the corresponding string config key for the given numeric id.
+ * @param config The numeric config file/archive id to find the name of.
+ */
+export const getConfigId = (config: number): ConfigId => {
+    const ids: string[] = Object.keys(configIdMap);
+    for(const id of ids) {
+        if(configIdMap[id] === config) {
+            return id as ConfigId;
+        }
+    }
+
+    return null;
 };
 
 

@@ -9,6 +9,7 @@ import { SoundStore } from './stores/sound-store';
 import { RegionStore } from './stores/region-store';
 import { ConfigStore } from './stores/config-store';
 import { ModelStore } from './stores/model-store';
+import { WidgetStore } from './stores/widget-store';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -31,6 +32,7 @@ export class Filestore {
     public readonly regionStore: RegionStore;
     public readonly configStore: ConfigStore;
     public readonly modelStore: ModelStore;
+    public readonly widgetStore: WidgetStore;
 
     private readonly channels: FilestoreChannels;
 
@@ -51,6 +53,7 @@ export class Filestore {
         this.regionStore = new RegionStore(this);
         this.configStore = new ConfigStore(this);
         this.modelStore = new ModelStore(this);
+        this.widgetStore = new WidgetStore(this);
     }
 
     /**

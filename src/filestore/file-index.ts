@@ -10,9 +10,15 @@ import { logger } from '@runejs/core';
 const NAME_FLAG = 0x01;
 const WHIRLPOOL_FLAG = 0x02;
 
+/**
+ * String representations of numeric index ids.
+ */
 export type IndexId = 'configs' | 'sprites' | 'music' | 'jingles' | 'sounds' | 'binary' |
     'widgets' | 'regions' | 'models' | 'textures' | 'scripts' | 'frames' | 'skeletons';
 
+/**
+ * A map of unique index keys to numeric ids.
+ */
 export const indexIdMap: { [key: string]: number } = {
     'skeletons': 0,
     'frames': 1,
@@ -28,6 +34,22 @@ export const indexIdMap: { [key: string]: number } = {
     'jingles': 11,
     'scripts': 12
 };
+
+/**
+ * Finds the corresponding string index key for the given numeric id.
+ * @param index The numeric index id to find the name of.
+ */
+export const getIndexId = (index: number): IndexId => {
+    const ids: string[] = Object.keys(indexIdMap);
+    for(const id of ids) {
+        if(indexIdMap[id] === index) {
+            return id as IndexId;
+        }
+    }
+
+    return null;
+};
+
 
 export class FileIndex {
 

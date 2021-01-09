@@ -124,19 +124,30 @@ export class SpritePack {
                         mkdirSync((`./unpacked/sprite-packs/${this.fileData.fileId}_${fileName}`));
                     }
 
-                    let spriteIndex: number = 0;
-                    for(const sprite of this._sprites) {
+                    for(let i = 0; i < this._sprites.length; i++) {
                         try {
+                            const sprite = this._sprites[i];
+
+                            let png: PNG;
                             if(!sprite) {
-                                spriteIndex++;
-                                return;
+                                png = new PNG({
+                                    width: 1,
+                                    height: 1,
+                                    fill: false,
+                                    bgColor: {
+                                        red: 0,
+                                        green: 0,
+                                        blue: 0
+                                    }
+                                });
+                            } else {
+                                png = sprite.toPng();
                             }
 
-                            const png = sprite.toPng();
                             png.pack();
 
                             const pngBuffer = PNG.sync.write(png);
-                            writeFileSync(`./unpacked/sprite-packs/${ this.fileData.fileId }_${ fileName }/${ spriteIndex++ }.png`, pngBuffer);
+                            writeFileSync(`./unpacked/sprite-packs/${ this.fileData.fileId }_${ fileName }/${ i }.png`, pngBuffer);
                         } catch(e) {
                             logger.error(`Error writing sprite to disk`, e);
                         }

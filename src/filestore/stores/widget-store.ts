@@ -5,82 +5,6 @@ import { FileData } from '../file-data';
 import { Archive } from '../archive';
 
 
-// old interface from rune-js/cache-parser vvv
-export class Widget {
-
-    parentId: number;
-    type: number;
-    format: number = 2;
-
-    originalX: number;
-    originalY: number;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-
-    menuType: number;
-    contentType: number;
-    opacity: number;
-    hidden: boolean;
-    scrollHeight: number;
-    hoveredSiblingId: number;
-    items: number[];
-    itemAmounts: number[];
-    itemSwapable: boolean;
-    isInventory: boolean;
-    itemUsable: boolean;
-    itemDeletesDraged: boolean;
-    itemSpritePadsX: number;
-    itemSpritePadsY: number;
-    imageX: number[];
-    imageY: number[];
-    images: number[];
-    options: string[];
-    filled: boolean;
-    textAlignmentX: number;
-    textAlignmentY: number;
-    lineHeight: number;
-    fontId: number;
-    textShadowed: boolean;
-    text: string;
-    alternateText: string;
-    textColor: number;
-    alternateTextColor: number;
-    hoveredTextColor: number;
-    alternateHoveredTextColor: number;
-    spriteId: number;
-    alternateSpriteId: number;
-    modelType: number;
-    modelId: number;
-    alternateModelType: number;
-    alternateModelId: number;
-    animation: number;
-    alternateAnimation: number;
-    modelZoom: number;
-    rotationX: number;
-    rotationY: number;
-    rotationZ: number;
-    offsetX2d: number;
-    offsetY2d: number;
-    orthogonal: boolean;
-    targetVerb: string;
-    spellName: string;
-    clickMask: number;
-    hintText: string;
-
-    alternateOperators: number[];
-    alternateRhs: number[];
-    cs1: number[][];
-
-    public constructor(public id: number) {
-    }
-
-}
-
-
-
-
 export abstract class WidgetBase {
     id: number;
     parentId: number;
@@ -180,8 +104,8 @@ export class SpriteWidget extends WidgetBase {
     spriteId: number;
     alternateSpriteId: number;
 
-    unknownInt2: number;
-    unknownBoolean2: boolean;
+    textureId: number;
+    tiled: boolean;
 }
 
 export class ModelWidget extends WidgetBase {
@@ -244,7 +168,7 @@ export class WidgetStore {
     public decodeWidget(id: number): WidgetBase {
         const file = this.widgetFileIndex.files.get(id);
         if(file.type === 'file') {
-            return this.decodeWidgetFile(id, file)
+            return this.decodeWidgetFile(id, file);
         } else if(file.type === 'archive') {
             const widgetParent = new ParentWidget(id);
             const archive: Archive = file as Archive;
@@ -338,8 +262,8 @@ export class WidgetStore {
 
         if(widget instanceof SpriteWidget) {
             widget.spriteId = buffer.get('INT');
-            widget.unknownInt2 = buffer.get('SHORT', 'UNSIGNED');
-            widget.unknownBoolean2 = buffer.get('BYTE', 'UNSIGNED') === 1;
+            widget.textureId = buffer.get('SHORT', 'UNSIGNED');
+            widget.tiled = buffer.get('BYTE', 'UNSIGNED') === 1;
             widget.opacity = buffer.get('BYTE', 'UNSIGNED');
         }
 

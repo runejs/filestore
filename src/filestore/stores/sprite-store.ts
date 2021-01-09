@@ -1,8 +1,8 @@
-import { ByteBuffer, logger } from '@runejs/core';
+import { logger } from '@runejs/core';
 import { Filestore, getFileName } from '../filestore';
-import { hash } from '../util/name-hash';
 import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'fs';
 import { PNG } from 'pngjs';
+import { FileData } from '../file-data';
 
 
 function toRgba(num: number): number[] {
@@ -105,43 +105,41 @@ export class Sprite {
  */
 export class SpritePack {
 
-    public readonly packId: number;
-    public readonly nameHash: number;
-    public readonly fileBuffer: ByteBuffer;
     private _sprites: Sprite[];
 
-    public constructor(packId: number, buffer: ByteBuffer, nameHash: number) {
-        this.packId = packId;
-        this.nameHash = nameHash;
-        this.fileBuffer = buffer;
+    public constructor(public readonly fileData: FileData) {
     }
 
     public async writeToDisk(): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
-                const fileName = getFileName(this.nameHash).replace(/ /g, '_');
+                const fileName = getFileName(this.fileData.nameHash).replace(/ /g, '_');
 
                 if(!existsSync('./unpacked/sprite-packs')) {
                     mkdirSync('./unpacked/sprite-packs');
                 }
 
                 if(this._sprites.length > 1) {
-                    if(!existsSync(`./unpacked/sprite-packs/${this.packId}_${fileName}`)) {
-                        mkdirSync((`./unpacked/sprite-packs/${this.packId}_${fileName}`));
+                    if(!existsSync(`./unpacked/sprite-packs/${this.fileData.fileId}_${fileName}`)) {
+                        mkdirSync((`./unpacked/sprite-packs/${this.fileData.fileId}_${fileName}`));
                     }
 
                     let spriteIndex: number = 0;
                     for(const sprite of this._sprites) {
-                        if(!sprite) {
-                            spriteIndex++;
-                            return;
+                        try {
+                            if(!sprite) {
+                                spriteIndex++;
+                                return;
+                            }
+
+                            const png = sprite.toPng();
+                            png.pack();
+
+                            const pngBuffer = PNG.sync.write(png);
+                            writeFileSync(`./unpacked/sprite-packs/${ this.fileData.fileId }_${ fileName }/${ spriteIndex++ }.png`, pngBuffer);
+                        } catch(e) {
+                            logger.error(`Error writing sprite to disk`, e);
                         }
-
-                        const png = sprite.toPng();
-                        png.pack();
-
-                        const pngBuffer = PNG.sync.write(png);
-                        writeFileSync(`./unpacked/sprite-packs/${this.packId}_${fileName}/${spriteIndex++}.png`, pngBuffer);
                     }
                 } else if(this._sprites.length === 1) {
                     const sprite = this._sprites[0];
@@ -153,7 +151,7 @@ export class SpritePack {
 
                         const pngBuffer = PNG.sync.write(png);
 
-                        writeFileSync(`./unpacked/sprite-packs/${this.packId}_${fileName}.png`, pngBuffer);
+                        writeFileSync(`./unpacked/sprite-packs/${this.fileData.fileId}_${fileName}.png`, pngBuffer);
                     }
                 }
                 resolve();
@@ -167,10 +165,10 @@ export class SpritePack {
      * Decodes the sprite pack file.
      */
     public decode(): SpritePack {
-        const buffer = this.fileBuffer;
+        const buffer = this.fileData.decompress();
 
         if(buffer.length === 0) {
-            throw new Error(`Empty file content for Sprite Pack ${this.packId}.`);
+            throw new Error(`Empty file content for Sprite Pack ${this.fileData.fileId}.`);
         } else {
             buffer.readerIndex = (buffer.length - 2);
             const spriteCount = buffer.get('SHORT', 'UNSIGNED');
@@ -273,6 +271,10 @@ export class SpritePack {
     public get sprites(): Sprite[] {
         return this._sprites;
     }
+
+    public get packId(): number {
+        return this.fileData?.fileId || -1;
+    }
 }
 
 
@@ -324,7 +326,7 @@ export class SpriteStore {
 
         const spritePackIndex = this.fileStore.getIndex('sprites');
         const fileData = spritePackIndex.getFile(nameOrId) || null;
-        return fileData ? new SpritePack(fileData.fileId, fileData.content, fileData.nameHash) : null;
+        return fileData ? new SpritePack(fileData) : null;
     }
 
     /**
@@ -344,7 +346,7 @@ export class SpriteStore {
                 continue;
             }
 
-            const spritePack = new SpritePack(spritePackId, fileData.content, fileData.nameHash);
+            const spritePack = new SpritePack(fileData);
             spritePack.decode();
             spritePacks[spritePackId] = spritePack;
         }

@@ -53,6 +53,7 @@ export class FileData {
     public type: 'archive' | 'file' = 'file';
 
     protected readonly filestoreChannels: FilestoreChannels;
+    private decompressed: boolean = false;
 
     /**
      * Creates a new `FileData` object.
@@ -68,11 +69,20 @@ export class FileData {
 
     /**
      * Reads the file's raw data from the main disk filestore and decompresses it.
+     * @returns The decompressed file data buffer.
      */
-    public decompress(): void {
+    public decompress(): ByteBuffer {
+        if(this.decompressed) {
+            this.content.readerIndex = 0;
+            this.content.writerIndex = 0;
+            return this.content;
+        }
+
+        this.decompressed = true;
         const archiveEntry = readIndexedDataChunk(this.fileId, this.index.indexId, this.filestoreChannels);
         const { buffer } = decompress(archiveEntry?.dataFile);
         this.content = buffer;
+        return this.content;
     }
 
 }

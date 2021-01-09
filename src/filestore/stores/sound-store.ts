@@ -1,6 +1,7 @@
 import { Filestore } from '../filestore';
-import { ByteBuffer, logger } from '@runejs/core';
+import { logger } from '@runejs/core';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { FileData } from '../file-data';
 
 
 /**
@@ -8,14 +9,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
  */
 export class SoundFile {
 
-    public fileId: number;
-    public nameHash: number;
-    public content: ByteBuffer;
-
-    public constructor(fileId: number, nameHash: number, content: ByteBuffer) {
-        this.fileId = fileId;
-        this.nameHash = nameHash;
-        this.content = content;
+    public constructor(public readonly fileData: FileData) {
     }
 
     /**
@@ -27,12 +21,17 @@ export class SoundFile {
                 if(!existsSync('./unpacked/sounds')) {
                     mkdirSync('./unpacked/sounds');
                 }
-                writeFileSync(`./unpacked/sounds/${this.fileId}.wav`, Buffer.from(this.content));
+                const data = this.fileData.decompress();
+                writeFileSync(`./unpacked/sounds/${this.fileId}.wav`, Buffer.from(data));
                 resolve();
             } catch(error) {
                 reject(error);
             }
         });
+    }
+
+    public get fileId(): number {
+        return this.fileData?.fileId || -1;
     }
 
 }
@@ -72,7 +71,7 @@ export class SoundStore {
 
         const soundArchiveIndex = this.fileStore.getIndex('sounds');
         const fileData = soundArchiveIndex.getFile(id);
-        return fileData ? new SoundFile(id, fileData.nameHash, fileData.content) : null;
+        return fileData ? new SoundFile(fileData) : null;
     }
 
     /**
@@ -93,7 +92,7 @@ export class SoundStore {
                     continue;
                 }
 
-                soundFiles[soundId] = new SoundFile(soundId, fileData.nameHash, fileData.content);
+                soundFiles[soundId] = new SoundFile(fileData);
             } catch(e) {
                 soundFiles[soundId] = null;
                 logger.error(`Error parsing sound ID ${soundId}.`);

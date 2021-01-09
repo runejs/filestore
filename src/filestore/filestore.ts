@@ -43,7 +43,7 @@ export class Filestore {
         this.configDir = configDir || filestoreDir;
         this.channels = loadFilestore(filestoreDir);
 
-        fileNames = getFileNames(configDir);
+        fileNames = getFileNames(this.configDir);
 
         this.binaryStore = new BinaryStore(this);
         this.spriteStore = new SpriteStore(this);

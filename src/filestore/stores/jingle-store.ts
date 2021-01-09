@@ -1,6 +1,7 @@
 import { Filestore } from '../filestore';
-import { ByteBuffer, logger } from '@runejs/core';
+import { logger } from '@runejs/core';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { FileData } from '../file-data';
 
 
 /**
@@ -8,14 +9,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
  */
 export class OggFile {
 
-    public fileId: number;
-    public nameHash: number;
-    public content: ByteBuffer;
-
-    public constructor(fileId: number, nameHash: number, content: ByteBuffer) {
-        this.fileId = fileId;
-        this.nameHash = nameHash;
-        this.content = content;
+    public constructor(public readonly fileData: FileData) {
     }
 
     /**
@@ -27,12 +21,17 @@ export class OggFile {
                 if(!existsSync('./unpacked/ogg')) {
                     mkdirSync('./unpacked/ogg');
                 }
-                writeFileSync(`./unpacked/ogg/${this.fileId}.ogg`, Buffer.from(this.content));
+                const data = this.fileData.decompress();
+                writeFileSync(`./unpacked/ogg/${this.fileId}.ogg`, Buffer.from(data));
                 resolve();
             } catch(error) {
                 reject(error);
             }
         });
+    }
+
+    public get fileId(): number {
+        return this.fileData?.fileId || -1;
     }
 
 }
@@ -72,7 +71,7 @@ export class JingleStore {
 
         const oggArchiveIndex = this.fileStore.getIndex('jingles');
         const fileData = oggArchiveIndex.getFile(id);
-        return fileData ? new OggFile(id, fileData.nameHash, fileData.content) : null;
+        return fileData ? new OggFile(fileData) : null;
     }
 
     /**
@@ -93,7 +92,7 @@ export class JingleStore {
                     continue;
                 }
 
-                oggFiles[oggId] = new OggFile(oggId, fileData.nameHash, fileData.content);
+                oggFiles[oggId] = new OggFile(fileData);
             } catch(e) {
                 oggFiles[oggId] = null;
                 logger.error(`Error parsing OGG ID ${oggId}.`);

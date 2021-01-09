@@ -1,6 +1,7 @@
 import { Filestore, getFileName } from '../filestore';
-import { ByteBuffer, logger } from '@runejs/core';
+import { logger } from '@runejs/core';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { FileData } from '../file-data';
 
 
 /**
@@ -8,14 +9,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
  */
 export class MidiFile {
 
-    public fileId: number;
-    public nameHash: number;
-    public content: ByteBuffer;
-
-    public constructor(fileId: number, nameHash: number, content: ByteBuffer) {
-        this.fileId = fileId;
-        this.nameHash = nameHash;
-        this.content = content;
+    public constructor(public readonly fileData: FileData) {
     }
 
     /**
@@ -24,16 +18,21 @@ export class MidiFile {
     public async writeToDisk(): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
-                const fileName = getFileName(this.nameHash).replace(/ /g, '_');
+                const fileName = getFileName(this.fileData.nameHash).replace(/ /g, '_');
                 if(!existsSync('./unpacked/midi')) {
                     mkdirSync('./unpacked/midi');
                 }
-                writeFileSync(`./unpacked/midi/${this.fileId}_${fileName}.mid`, Buffer.from(this.content));
+                const data = this.fileData.decompress();
+                writeFileSync(`./unpacked/midi/${this.fileId}_${fileName}.mid`, Buffer.from(data));
                 resolve();
             } catch(error) {
                 reject(error);
             }
         });
+    }
+
+    public get fileId(): number {
+        return this.fileData?.fileId || -1;
     }
 
 }
@@ -74,7 +73,7 @@ export class MusicStore {
         const midiArchiveIndex = this.fileStore.getIndex('music');
         const fileData = midiArchiveIndex.getFile(nameOrId);
 
-        return fileData ? new MidiFile(fileData.fileId, fileData.nameHash, fileData.content) : null;
+        return fileData ? new MidiFile(fileData) : null;
     }
 
     /**
@@ -95,7 +94,7 @@ export class MusicStore {
                     continue;
                 }
 
-                midiFiles[midiId] = new MidiFile(midiId, fileData.nameHash, fileData.content);
+                midiFiles[midiId] = new MidiFile(fileData);
             } catch(e) {
                 midiFiles[midiId] = null;
                 logger.error(`Error parsing midi ID ${midiId}.`);

@@ -19,7 +19,6 @@
     },
     "homepage": "https://github.com/rune-js/filestore#readme",
     "dependencies": {
-        "@andreekeberg/imagedata": "^1.0.2",
         "@runejs/core": "^1.0.1",
         "canvas": "^2.6.1",
         "node-properties-parser": "0.0.2",

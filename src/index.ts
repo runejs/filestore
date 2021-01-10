@@ -11,6 +11,7 @@ export * from './filestore/stores/configs/object-store';
 //filestore/stores
 export * from './filestore/stores/binary-store';
 export * from './filestore/stores/config-store';
+export * from './filestore/stores/font-store';
 export * from './filestore/stores/jingle-store';
 export * from './filestore/stores/model-store';
 export * from './filestore/stores/music-store';

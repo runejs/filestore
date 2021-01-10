@@ -10,6 +10,7 @@ import { RegionStore } from './stores/region-store';
 import { ConfigStore } from './stores/config-store';
 import { ModelStore } from './stores/model-store';
 import { WidgetStore } from './stores/widget-store';
+import { FontStore } from './stores/font-store';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -25,13 +26,14 @@ export class Filestore {
     public readonly configDir: string;
 
     public readonly binaryStore: BinaryStore;
-    public readonly spriteStore: SpriteStore;
-    public readonly musicStore: MusicStore;
-    public readonly jingleStore: JingleStore;
-    public readonly soundStore: SoundStore;
-    public readonly regionStore: RegionStore;
     public readonly configStore: ConfigStore;
+    public readonly fontStore: FontStore;
+    public readonly jingleStore: JingleStore;
     public readonly modelStore: ModelStore;
+    public readonly musicStore: MusicStore;
+    public readonly regionStore: RegionStore;
+    public readonly soundStore: SoundStore;
+    public readonly spriteStore: SpriteStore;
     public readonly widgetStore: WidgetStore;
 
     private readonly channels: FilestoreChannels;
@@ -46,14 +48,17 @@ export class Filestore {
         fileNames = getFileNames(this.configDir);
 
         this.binaryStore = new BinaryStore(this);
-        this.spriteStore = new SpriteStore(this);
-        this.musicStore = new MusicStore(this);
-        this.jingleStore = new JingleStore(this);
-        this.soundStore = new SoundStore(this);
-        this.regionStore = new RegionStore(this);
         this.configStore = new ConfigStore(this);
+        this.fontStore = new FontStore(this);
+        this.jingleStore = new JingleStore(this);
         this.modelStore = new ModelStore(this);
+        this.musicStore = new MusicStore(this);
+        this.regionStore = new RegionStore(this);
+        this.soundStore = new SoundStore(this);
+        this.spriteStore = new SpriteStore(this);
         this.widgetStore = new WidgetStore(this);
+
+        this.fontStore.loadFonts();
     }
 
     /**

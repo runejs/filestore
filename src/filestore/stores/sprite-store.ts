@@ -1,17 +1,16 @@
 import { logger } from '@runejs/core';
 import { Filestore, getFileName } from '../filestore';
+import { FileData } from '../file-data';
 import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'fs';
 import { PNG } from 'pngjs';
-import { FileData } from '../file-data';
 
 
-function toRgba(num: number): number[] {
+export function toRgb(num: number): number[] {
     num >>>= 0;
     const b = num & 0xFF,
         g = (num & 0xFF00) >>> 8,
-        r = (num & 0xFF0000) >>> 16,
-        a = ( (num & 0xFF000000) >>> 24 ) / 255;
-    return [ r, g, b, a ];
+        r = (num & 0xFF0000) >>> 16;
+    return [ r, g, b ];
 }
 
 /**
@@ -32,17 +31,8 @@ export class Sprite {
 
     public constructor(spriteId: number, width: number, height: number) {
         this.spriteId = spriteId;
-        this.maxWidth = width;
-        this.maxHeight = height;
-    }
-
-    /**
-     * Sets the sprite's size to it's maximum size.
-     */
-    public autoSize(): Sprite {
-        this.width = this.maxWidth;
-        this.height = this.maxHeight;
-        return this;
+        this.maxWidth = this.width = width;
+        this.maxHeight = this.height = height;
     }
 
     /**
@@ -83,18 +73,24 @@ export class Sprite {
         for(let x = 0; x < this.width; x++) {
             for(let y = 0; y < this.height; y++) {
                 const pixel = this.pixels[this.width * y + x];
-                const [ r, g, b ] = toRgba(pixel);
+                const [ r, g, b ] = toRgb(pixel);
                 const pngIndex = (this.width * y + x) << 2;
 
                 png.data[pngIndex] = r;
                 png.data[pngIndex + 1] = g;
                 png.data[pngIndex + 2] = b;
-
                 png.data[pngIndex + 3] = pixel >> 24;
             }
         }
 
         return png;
+    }
+
+    /**
+     * Converts the Sprite's pixels into a Uint8ClampedArray.
+     */
+    public getPixels(): Uint8ClampedArray {
+        return new Uint8ClampedArray(this.toPng().data);
     }
 
 }

@@ -45,8 +45,8 @@ export class ContainerWidget extends WidgetBase {
     type: number = 0;
     scrollHeight: number;
     scrollPosition: number;
-
     scrollWidth: number;
+    children?: WidgetBase[];
 }
 
 export class TextWidget extends WidgetBase {
@@ -231,6 +231,7 @@ export class WidgetStore {
         const widgetType = buffer.get('BYTE');
         const widget: WidgetBase = this.createWidget(widgetType);
 
+        widget.id = widgetId;
         widget.format = 2;
 
         widget.contentType = buffer.get('SHORT', 'UNSIGNED');
@@ -322,6 +323,7 @@ export class WidgetStore {
         const widgetType = buffer.get('BYTE');
         const widget: WidgetBase = this.createWidget(widgetType);
 
+        widget.id = widgetId;
         widget.format = 1;
 
         widget.menuType = buffer.get('BYTE', 'UNSIGNED');

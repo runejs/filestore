@@ -19,7 +19,7 @@
     },
     "homepage": "https://github.com/rune-js/filestore#readme",
     "dependencies": {
-        "@runejs/core": "^1.0.1",
+        "@runejs/core": "^1.1.0",
         "canvas": "^2.6.1",
         "node-properties-parser": "0.0.2",
         "pngjs": "^6.0.0",

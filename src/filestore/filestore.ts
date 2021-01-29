@@ -11,7 +11,7 @@ import { ConfigStore } from './stores/config-store';
 import { ModelStore } from './stores/model-store';
 import { WidgetStore } from './stores/widget-store';
 import { FontStore } from './stores/font-store';
-import {TextureStore} from "./stores/texture-store";
+import { TextureStore } from './stores/texture-store';
 
 
 export let fileNames: { [ key: string ]: string | null };

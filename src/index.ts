@@ -18,6 +18,7 @@ export * from './filestore/stores/music-store';
 export * from './filestore/stores/region-store';
 export * from './filestore/stores/sound-store';
 export * from './filestore/stores/sprite-store';
+export * from './filestore/stores/texture-store';
 export * from './filestore/stores/widget-store';
 
 //filestore/util

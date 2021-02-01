@@ -160,8 +160,8 @@ export class VertexNormal {
 
 export class ColorUtils {
 
-    private static UNKNOWN_COLOR_TABLE = ColorUtils.initUnknownColorTable();
-    private static HSB_TO_RGB = ColorUtils.initHsbToRgb(0.7, 0, 512);
+    private static readonly UNKNOWN_COLOR_TABLE = ColorUtils.initUnknownColorTable();
+    private static readonly HSB_TO_RGB = ColorUtils.initHsbToRgb(0.7, 0, 512);
 
     public static initUnknownColorTable(): Uint32Array {
         const table = new Uint32Array(128);

@@ -8,14 +8,16 @@ import {existsSync, mkdirSync, rmdirSync, writeFileSync} from "fs";
 
 export class Texture {
 
-    public static LOW_MEMORY_TEXTURE_SIZE = 64;
-    public static HIGH_MEMORY_TEXTURE_SIZE = 128;
+    public static readonly LOW_MEMORY_TEXTURE_SIZE = 64;
+    public static readonly HIGH_MEMORY_TEXTURE_SIZE = 128;
+    private static TEXTURE_SIZE = Texture.HIGH_MEMORY_TEXTURE_SIZE;
+    private static TEXTURE_INTENSITY = 0.7;
     private static pixelsBuffer: number[];
 
     id: number;
 
-    anInt2137: number;
-    aBoolean2143: boolean;
+    rgb: number;
+    opaque: boolean;
     spriteIds: number[];
     renderTypes: number[];
     anIntArray2138: number[];
@@ -25,10 +27,22 @@ export class Texture {
 
     pixels: number[];
 
-    public generatePixels(intensity: number, size: number, spriteStore: SpriteStore): boolean {
+    size: number;
+
+    public static setSize(size: number) {
+        this.TEXTURE_SIZE = size;
+    }
+
+    public static setIntensity(intensity: number) {
+        this.TEXTURE_INTENSITY = intensity;
+    }
+
+    public generatePixels(spriteStore: SpriteStore): boolean {
         if (this.pixels) {
             return true;
         }
+        const size = Texture.TEXTURE_SIZE;
+        this.size = size;
         const spritePacks = [];
         for (let i = 0; i < this.spriteIds.length; i++) {
             const spritePack = spriteStore.getSpritePack(this.spriteIds[i]);
@@ -58,7 +72,7 @@ export class Texture {
                 }
             }
             for (let j = 0; j < spritePalette.length; j++) {
-                spritePalette[j] = ColorUtils.method707(spritePalette[j], intensity);
+                spritePalette[j] = ColorUtils.method707(spritePalette[j], Texture.TEXTURE_INTENSITY);
             }
             let renderType;
             if (i == 0) {
@@ -162,14 +176,18 @@ export class Texture {
         }
     }
 
-    public async writeToDisk(size: number): Promise<void> {
+    public resetPixels() {
+        this.pixels = null;
+    }
+
+    public async writeToDisk(): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
                 const path = './unpacked/textures';
                 if (!existsSync(path)) {
                     mkdirSync(path);
                 }
-                const png = this.toPng(size);
+                const png = this.toPng();
                 png.pack();
                 const pngBuffer = PNG.sync.write(png);
                 writeFileSync(path + `/${this.id}.png`, pngBuffer);
@@ -183,9 +201,9 @@ export class Texture {
     /**
      * Converts the Texture into a base64 PNG image.
      */
-    public async toBase64(size: number): Promise<string> {
+    public async toBase64(): Promise<string> {
         return new Promise(async (resolve, reject) => {
-            const png = this.toPng(size);
+            const png = this.toPng();
 
             try {
                 png.pack();
@@ -208,7 +226,8 @@ export class Texture {
     /**
      * Converts the Texture into a PNG image and returns the resulting PNG object.
      */
-    public toPng(size: number): PNG {
+    public toPng(): PNG {
+        const size = this.size;
         const png = new PNG({
             width: size,
             height: size,
@@ -239,14 +258,14 @@ export class TextureStore {
     public constructor(private fileStore: Filestore) {
     }
 
-    public async writeToDisk(size: number): Promise<void> {
+    public async writeToDisk(): Promise<void> {
         rmdirSync('./unpacked/textures', {recursive: true});
         const ids = this.fileStore.getIndex('textures').getArchive(0).files.keys();
         for (const id of ids) {
             try {
                 const texture = this.getTexture(id);
-                texture.generatePixels(0.7, size, this.fileStore.spriteStore);
-                await texture.writeToDisk(size);
+                texture.generatePixels(this.fileStore.spriteStore);
+                await texture.writeToDisk();
             } catch (e) {
                 logger.error(`Error writing texture ${id} to disk.`);
                 logger.error(e);
@@ -267,8 +286,8 @@ export class TextureStore {
         const buffer = file.content
         const texture = new Texture();
         texture.id = id;
-        texture.anInt2137 = buffer.get('SHORT', 'UNSIGNED');
-        texture.aBoolean2143 = buffer.get('BYTE', 'UNSIGNED') == 1;
+        texture.rgb = buffer.get('SHORT', 'UNSIGNED');
+        texture.opaque = buffer.get('BYTE', 'UNSIGNED') == 1;
         const spritesCount = buffer.get('BYTE', 'UNSIGNED');
         if (spritesCount < 1 || spritesCount > 4) {
             throw new Error();
@@ -297,6 +316,52 @@ export class TextureStore {
         texture.speed = buffer.get('BYTE', 'UNSIGNED');
         texture.pixels = null;
         return texture;
+    }
+
+    public getTexturePixels(id: number): number[] | null {
+        const texture = this.getTexture(id);
+        if (texture == null) {
+            return null;
+        }
+        if (texture.pixels != null) {
+            return texture.pixels;
+        }
+        const generated = texture.generatePixels(this.fileStore.spriteStore);
+        if (!generated) {
+            return null;
+        }
+        if (texture.rgb == 0) {
+            texture.resetPixels();
+        } else {
+            //texture.anInt2137--; // TODO Find out why this?
+        }
+        return texture.pixels;
+    }
+
+    public getTextureRgb(id: number): number {
+        const texture = this.getTexture(id);
+        if (texture == null) {
+            return 0;
+        }
+        return texture.rgb;
+    }
+
+    public isTextureOpaque(id: number): boolean {
+        const texture = this.getTexture(id);
+        if (texture == null) {
+            return false;
+        }
+        return texture.opaque;
+    }
+
+    // this only works if textures are cached
+    public isTextureLowMemory(id: number): boolean {
+        const texture = this.getTexture(id);
+        if (texture == null) {
+            return false;
+        }
+        texture.generatePixels(this.fileStore.spriteStore);
+        return texture.size == Texture.LOW_MEMORY_TEXTURE_SIZE;
     }
 
 }

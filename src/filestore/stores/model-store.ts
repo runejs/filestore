@@ -305,6 +305,23 @@ export class ColorUtils {
         return (arg0 & 0xff80) + arg1;
     }
 
+    // custom shade function (i.e not from the client)
+    public static shade(rgb: number, shadowRgb: number): number {
+        let red = (rgb >> 16) / 256.0;
+        let green = (rgb >> 8 & 0xff) / 256.0;
+        let blue = (rgb & 0xff) / 256.0;
+        let shadowRed = (shadowRgb >> 16 & 0xff) / 255.0;
+        let shadowGreen = (shadowRgb >> 8 & 0xff) / 255.0;
+        let shadowBlue = (shadowRgb & 0xff) / 255.0;
+        red *= 1 - shadowRed;
+        green *= 1 - shadowGreen;
+        blue *= 1 - shadowBlue;
+        const newRed = red * 256.0;
+        const newGreen = green * 256.0;
+        const newBlue = blue * 256.0;
+        return (newRed << 16) + (newGreen << 8) + newBlue;
+    }
+
 }
 
 

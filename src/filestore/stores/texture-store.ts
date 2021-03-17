@@ -284,6 +284,7 @@ export class TextureStore {
             return null;
         }
         const buffer = file.content
+        buffer.readerIndex = 0;
         const texture = new Texture();
         texture.id = id;
         texture.rgb = buffer.get('SHORT', 'UNSIGNED');

@@ -345,6 +345,7 @@ export class ModelStore {
             return null;
         }
         const rsModel = new RsModel();
+        rsModel.id = id;
         const buffer = file.content;
         buffer.readerIndex = 0;
         let useFaceTypes = false;

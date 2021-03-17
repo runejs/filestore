@@ -476,15 +476,15 @@ export class ModelStore {
         for(let i = 0; i < rsModel.faceCount; i++) {
             rsModel.faceColors[i] = vertexDirectionOffsetBuffer.get('SHORT', 'UNSIGNED');
             if (hasFaceTypes == 1) {
-                let flag = xDataOffsetBuffer.get('BYTE', 'UNSIGNED');
-                if ((flag & 0x1) == 1) {
+                let mask = xDataOffsetBuffer.get('BYTE', 'UNSIGNED');
+                if ((mask & 0x1) == 1) {
                     rsModel.faceTypes[i] = 1;
                     useFaceTypes = true;
                 } else {
                     rsModel.faceTypes[i] = 0;
                 }
-                if ((flag & 0x2) == 2) {
-                    rsModel.faceTextureIndices[i] = flag >> 2;
+                if ((mask & 0x2) == 2) {
+                    rsModel.faceTextureIndices[i] = mask >> 2;
                     rsModel.faceTextures[i] = rsModel.faceColors[i];
                     rsModel.faceColors[i] = 127;
                     if (rsModel.faceTextures[i] != -1) {

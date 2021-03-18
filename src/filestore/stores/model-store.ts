@@ -21,7 +21,9 @@ export class RsModel {
     texturedFaceIndicesB: Uint16Array;
     texturedFaceIndicesC: Uint16Array;
     vertexSkins: number[];
-    faceTypes: Uint8Array;
+    faceTypes: Uint32Array;
+    faceTextureIndices: Uint8Array;
+    faceTextures: Uint8Array;
     facePriorities: Uint8Array;
     facePriority: number;
     faceAlphas: Uint8Array;
@@ -343,8 +345,11 @@ export class ModelStore {
             return null;
         }
         const rsModel = new RsModel();
+        rsModel.id = id;
         const buffer = file.content;
         buffer.readerIndex = 0;
+        let useFaceTypes = false;
+        let useFaceTextures = false;
         let vertexDirectionOffsetBuffer = new ByteBuffer(buffer);
         let xDataOffsetBuffer = new ByteBuffer(buffer);
         let yDataOffsetBuffer = new ByteBuffer(buffer);
@@ -416,7 +421,9 @@ export class ModelStore {
             rsModel.vertexSkins = new Array(rsModel.texturedFaceCount);
         }
         if (hasFaceTypes == 1) {
-            rsModel.faceTypes = new Uint8Array(rsModel.faceCount);
+            rsModel.faceTypes = new Uint32Array(rsModel.faceCount);
+            rsModel.faceTextureIndices = new Uint8Array(rsModel.faceCount);
+            rsModel.faceTextures = new Uint8Array(rsModel.faceCount);
         }
         if (modelPriority == 255) {
             rsModel.facePriorities = new Uint8Array(rsModel.faceCount);
@@ -470,7 +477,24 @@ export class ModelStore {
         for(let i = 0; i < rsModel.faceCount; i++) {
             rsModel.faceColors[i] = vertexDirectionOffsetBuffer.get('SHORT', 'UNSIGNED');
             if (hasFaceTypes == 1) {
-                rsModel.faceTypes[i] = xDataOffsetBuffer.get('BYTE', 'UNSIGNED');
+                let mask = xDataOffsetBuffer.get('BYTE', 'UNSIGNED');
+                if ((mask & 0x1) == 1) {
+                    rsModel.faceTypes[i] = 1;
+                    useFaceTypes = true;
+                } else {
+                    rsModel.faceTypes[i] = 0;
+                }
+                if ((mask & 0x2) == 2) {
+                    rsModel.faceTextureIndices[i] = mask >> 2;
+                    rsModel.faceTextures[i] = rsModel.faceColors[i];
+                    rsModel.faceColors[i] = 127;
+                    if (rsModel.faceTextures[i] != -1) {
+                        useFaceTextures = true;
+                    }
+                } else {
+                    rsModel.faceTextureIndices[i] = -1;
+                    rsModel.faceTextures[i] = -1;
+                }
             }
             if (modelPriority == 255) {
                 rsModel.facePriorities[i] = yDataOffsetBuffer.get('BYTE', 'UNSIGNED');
@@ -535,6 +559,30 @@ export class ModelStore {
             rsModel.texturedFaceIndicesA[i] = vertexDirectionOffsetBuffer.get('SHORT', 'UNSIGNED');
             rsModel.texturedFaceIndicesB[i] = vertexDirectionOffsetBuffer.get('SHORT', 'UNSIGNED');
             rsModel.texturedFaceIndicesC[i] = vertexDirectionOffsetBuffer.get('SHORT', 'UNSIGNED');
+        }
+        if (rsModel.faceTextureIndices != null) {
+            let useFaceTextureIndices = false;
+            for (let face = 0; face < rsModel.faceCount; face++) {
+                let texture = rsModel.faceTextureIndices[face] & 0xff;
+                if (texture != 255) {
+                    if ((rsModel.texturedFaceIndicesA[texture] & 0xffff) == rsModel.faceIndicesA[face] &&
+                        (rsModel.texturedFaceIndicesB[texture] & 0xffff) == rsModel.faceIndicesB[face] &&
+                        (rsModel.texturedFaceIndicesC[texture] & 0xffff) == rsModel.faceIndicesC[face]) {
+                        rsModel.faceTextureIndices[face] = -1;
+                    } else {
+                        useFaceTextureIndices = true;
+                    }
+                }
+            }
+            if (!useFaceTextureIndices) {
+                rsModel.faceTextureIndices = null;
+            }
+        }
+        if (!useFaceTextures) {
+            rsModel.faceTextures = null;
+        }
+        if (!useFaceTypes) {
+            rsModel.faceTypes = null;
         }
         return rsModel;
     }

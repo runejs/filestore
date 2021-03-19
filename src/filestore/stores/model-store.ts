@@ -22,8 +22,8 @@ export class RsModel {
     texturedFaceIndicesC: Uint16Array;
     vertexSkins: number[];
     faceTypes: Uint32Array;
-    texturedFaceTypeIndices: Uint8Array;
-    faceTextures: Uint8Array;
+    texturedFaceTypeIndices: Int8Array;
+    faceTextures: Int8Array;
     facePriorities: Uint8Array;
     facePriority: number;
     faceAlphas: Uint8Array;
@@ -527,8 +527,8 @@ export class ModelStore {
         }
         if (hasFaceTypes == 1) {
             rsModel.faceTypes = new Uint32Array(rsModel.faceCount);
-            rsModel.texturedFaceTypeIndices = new Uint8Array(rsModel.faceCount);
-            rsModel.faceTextures = new Uint8Array(rsModel.faceCount);
+            rsModel.texturedFaceTypeIndices = new Int8Array(rsModel.faceCount);
+            rsModel.faceTextures = new Int8Array(rsModel.faceCount);
         }
         if (modelPriority == 255) {
             rsModel.facePriorities = new Uint8Array(rsModel.faceCount);

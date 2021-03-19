@@ -16,19 +16,23 @@ export class RsModel {
     faceIndicesA: Uint16Array;
     faceIndicesB: Uint16Array;
     faceIndicesC: Uint16Array;
-    faceMappings: Uint8Array;
+    texturedFaceTypes: Uint8Array;
     texturedFaceIndicesA: Uint16Array;
     texturedFaceIndicesB: Uint16Array;
     texturedFaceIndicesC: Uint16Array;
     vertexSkins: number[];
     faceTypes: Uint32Array;
-    faceTextureIndices: Uint8Array;
-    faceTextures: Uint8Array;
+    texturedFaceTypeIndices: Int8Array;
+    faceTextures: Int8Array;
     facePriorities: Uint8Array;
     facePriority: number;
     faceAlphas: Uint8Array;
     faceSkins: number[];
     faceColors: Uint32Array;
+
+    // rendering
+    faceTextureU: number[][];
+    faceTextureV: number[][];
 
     // meta
     faceColorsX: Uint32Array;
@@ -42,6 +46,107 @@ export class RsModel {
         this.texturedFaceCount = 0;
         this.vertexCount = 0;
         this.facePriority = 0;
+    }
+
+    public computeTextureUVs() {
+        if (this.faceTextureU) {
+            return;
+        }
+        this.faceTextureU = new Array<Array<number>>(this.faceCount);
+        this.faceTextureV = new Array<Array<number>>(this.faceCount);
+
+        for (let i = 0; i < this.faceCount; i++) {
+            let texturedFaceTypeIndex;
+            if (this.texturedFaceTypeIndices == null) {
+                texturedFaceTypeIndex = -1;
+            } else {
+                texturedFaceTypeIndex = this.texturedFaceTypeIndices[i];
+            }
+
+            let textureId;
+            if (this.faceTextures == null) {
+                textureId = -1;
+            } else {
+                textureId = this.faceTextures[i] & 0xFFFF;
+            }
+
+            if (textureId !== -1) {
+                const u = new Array<number>(3);
+                const v = new Array<number>(3);
+
+                if (texturedFaceTypeIndex === -1) {
+                    u[0] = 0.0;
+                    v[0] = 1.0;
+
+                    u[1] = 1.0;
+                    v[1] = 1.0;
+
+                    u[2] = 0.0;
+                    v[2] = 0.0;
+                } else {
+                    texturedFaceTypeIndex &= 0xFF;
+
+                    let texturedFaceType = 0;
+                    if (this.texturedFaceTypes != null) {
+                        texturedFaceType = this.texturedFaceTypes[texturedFaceTypeIndex];
+                    }
+
+                    if (texturedFaceType === 0) {
+                        const faceIndexA = this.faceIndicesA[i];
+                        const faceIndexB = this.faceIndicesB[i];
+                        const faceIndexC = this.faceIndicesC[i];
+
+                        const texturedFaceIndexA = this.texturedFaceIndicesA[texturedFaceTypeIndex];
+                        const texturedFaceIndexB = this.texturedFaceIndicesB[texturedFaceTypeIndex];
+                        const texturedFaceIndexC = this.texturedFaceIndicesC[texturedFaceTypeIndex];
+
+                        const vertexX = this.verticesX[texturedFaceIndexA];
+                        const vertexY = this.verticesY[texturedFaceIndexA];
+                        const vertexZ = this.verticesZ[texturedFaceIndexA];
+
+                        const f_882_ = this.verticesX[texturedFaceIndexB] - vertexX;
+                        const f_883_ = this.verticesY[texturedFaceIndexB] - vertexY;
+                        const f_884_ = this.verticesZ[texturedFaceIndexB] - vertexZ;
+                        const f_885_ = this.verticesX[texturedFaceIndexC] - vertexX;
+                        const f_886_ = this.verticesY[texturedFaceIndexC] - vertexY;
+                        const f_887_ = this.verticesZ[texturedFaceIndexC] - vertexZ;
+                        const f_888_ = this.verticesX[faceIndexA] - vertexX;
+                        const f_889_ = this.verticesY[faceIndexA] - vertexY;
+                        const f_890_ = this.verticesZ[faceIndexA] - vertexZ;
+                        const f_891_ = this.verticesX[faceIndexB] - vertexX;
+                        const f_892_ = this.verticesY[faceIndexB] - vertexY;
+                        const f_893_ = this.verticesZ[faceIndexB] - vertexZ;
+                        const f_894_ = this.verticesX[faceIndexC] - vertexX;
+                        const f_895_ = this.verticesY[faceIndexC] - vertexY;
+                        const f_896_ = this.verticesZ[faceIndexC] - vertexZ;
+
+                        const f_897_ = f_883_ * f_887_ - f_884_ * f_886_;
+                        const f_898_ = f_884_ * f_885_ - f_882_ * f_887_;
+                        const f_899_ = f_882_ * f_886_ - f_883_ * f_885_;
+                        let f_900_ = f_886_ * f_899_ - f_887_ * f_898_;
+                        let f_901_ = f_887_ * f_897_ - f_885_ * f_899_;
+                        let f_902_ = f_885_ * f_898_ - f_886_ * f_897_;
+                        let f_903_ = 1.0 / (f_900_ * f_882_ + f_901_ * f_883_ + f_902_ * f_884_);
+
+                        u[0] = (f_900_ * f_888_ + f_901_ * f_889_ + f_902_ * f_890_) * f_903_;
+                        u[1] = (f_900_ * f_891_ + f_901_ * f_892_ + f_902_ * f_893_) * f_903_;
+                        u[2] = (f_900_ * f_894_ + f_901_ * f_895_ + f_902_ * f_896_) * f_903_;
+
+                        f_900_ = f_883_ * f_899_ - f_884_ * f_898_;
+                        f_901_ = f_884_ * f_897_ - f_882_ * f_899_;
+                        f_902_ = f_882_ * f_898_ - f_883_ * f_897_;
+                        f_903_ = 1.0 / (f_900_ * f_885_ + f_901_ * f_886_ + f_902_ * f_887_);
+
+                        v[0] = (f_900_ * f_888_ + f_901_ * f_889_ + f_902_ * f_890_) * f_903_;
+                        v[1] = (f_900_ * f_891_ + f_901_ * f_892_ + f_902_ * f_893_) * f_903_;
+                        v[2] = (f_900_ * f_894_ + f_901_ * f_895_ + f_902_ * f_896_) * f_903_;
+                    }
+                }
+
+                this.faceTextureU[i] = u;
+                this.faceTextureV[i] = v;
+            }
+        }
     }
 
     public applyLighting(ambient: number, contrast: number, arg2: number, arg3: number, arg4: number, applyShading: boolean) {
@@ -412,7 +517,7 @@ export class ModelStore {
         rsModel.faceIndicesB = new Uint16Array(rsModel.faceCount);
         rsModel.faceIndicesC = new Uint16Array(rsModel.faceCount);
         if (rsModel.texturedFaceCount > 0) {
-            rsModel.faceMappings = new Uint8Array(rsModel.texturedFaceCount);
+            rsModel.texturedFaceTypes = new Uint8Array(rsModel.texturedFaceCount);
             rsModel.texturedFaceIndicesA = new Uint16Array(rsModel.texturedFaceCount);
             rsModel.texturedFaceIndicesB = new Uint16Array(rsModel.texturedFaceCount);
             rsModel.texturedFaceIndicesC = new Uint16Array(rsModel.texturedFaceCount);
@@ -422,8 +527,8 @@ export class ModelStore {
         }
         if (hasFaceTypes == 1) {
             rsModel.faceTypes = new Uint32Array(rsModel.faceCount);
-            rsModel.faceTextureIndices = new Uint8Array(rsModel.faceCount);
-            rsModel.faceTextures = new Uint8Array(rsModel.faceCount);
+            rsModel.texturedFaceTypeIndices = new Int8Array(rsModel.faceCount);
+            rsModel.faceTextures = new Int8Array(rsModel.faceCount);
         }
         if (modelPriority == 255) {
             rsModel.facePriorities = new Uint8Array(rsModel.faceCount);
@@ -485,14 +590,14 @@ export class ModelStore {
                     rsModel.faceTypes[i] = 0;
                 }
                 if ((mask & 0x2) == 2) {
-                    rsModel.faceTextureIndices[i] = mask >> 2;
+                    rsModel.texturedFaceTypeIndices[i] = mask >> 2;
                     rsModel.faceTextures[i] = rsModel.faceColors[i];
                     rsModel.faceColors[i] = 127;
                     if (rsModel.faceTextures[i] != -1) {
                         useFaceTextures = true;
                     }
                 } else {
-                    rsModel.faceTextureIndices[i] = -1;
+                    rsModel.texturedFaceTypeIndices[i] = -1;
                     rsModel.faceTextures[i] = -1;
                 }
             }
@@ -560,22 +665,22 @@ export class ModelStore {
             rsModel.texturedFaceIndicesB[i] = vertexDirectionOffsetBuffer.get('SHORT', 'UNSIGNED');
             rsModel.texturedFaceIndicesC[i] = vertexDirectionOffsetBuffer.get('SHORT', 'UNSIGNED');
         }
-        if (rsModel.faceTextureIndices != null) {
-            let useFaceTextureIndices = false;
+        if (rsModel.texturedFaceTypeIndices != null) {
+            let useTexturedFaceTypeIndices = false;
             for (let face = 0; face < rsModel.faceCount; face++) {
-                let texture = rsModel.faceTextureIndices[face] & 0xff;
-                if (texture != 255) {
-                    if ((rsModel.texturedFaceIndicesA[texture] & 0xffff) == rsModel.faceIndicesA[face] &&
-                        (rsModel.texturedFaceIndicesB[texture] & 0xffff) == rsModel.faceIndicesB[face] &&
-                        (rsModel.texturedFaceIndicesC[texture] & 0xffff) == rsModel.faceIndicesC[face]) {
-                        rsModel.faceTextureIndices[face] = -1;
+                let texturedFaceTypeIndex = rsModel.texturedFaceTypeIndices[face] & 0xff;
+                if (texturedFaceTypeIndex != 255) {
+                    if ((rsModel.texturedFaceIndicesA[texturedFaceTypeIndex] & 0xffff) == rsModel.faceIndicesA[face] &&
+                        (rsModel.texturedFaceIndicesB[texturedFaceTypeIndex] & 0xffff) == rsModel.faceIndicesB[face] &&
+                        (rsModel.texturedFaceIndicesC[texturedFaceTypeIndex] & 0xffff) == rsModel.faceIndicesC[face]) {
+                        rsModel.texturedFaceTypeIndices[face] = -1;
                     } else {
-                        useFaceTextureIndices = true;
+                        useTexturedFaceTypeIndices = true;
                     }
                 }
             }
-            if (!useFaceTextureIndices) {
-                rsModel.faceTextureIndices = null;
+            if (!useTexturedFaceTypeIndices) {
+                rsModel.texturedFaceTypeIndices = null;
             }
         }
         if (!useFaceTextures) {

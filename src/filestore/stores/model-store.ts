@@ -48,7 +48,7 @@ export class RsModel {
         this.facePriority = 0;
     }
 
-    public computeTextureUVs(): Array<Array<Array<number>>> {
+    public computeTextureUVs() {
         if (this.faceTextureU) {
             return;
         }

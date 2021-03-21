@@ -41,10 +41,10 @@ export class Sprite {
             let pixelCount = 0;
             for (let y = 0; y < this.height; y++) {
                 for (let x = 0; x < this.width; x++) {
-                    resizedPixels[x + this.offsetX + (y + this.offsetY) * this.maxWidth] = this.pixels[pixelCount++];
+                    resizedPixels[x + this.offsetX + (y + this.offsetY) * this.maxWidth] = this.pixelIdx[pixelCount++];
                 }
             }
-            this.pixels = resizedPixels;
+            this.pixelIdx = resizedPixels;
             this.width = this.maxWidth;
             this.height = this.maxHeight;
             this.offsetX = 0;

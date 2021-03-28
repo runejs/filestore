@@ -2,7 +2,6 @@ import { Filestore } from '../filestore';
 import { SpritePack, SpriteStore, Sprite, toRgb } from './sprite-store';
 import { logger } from '@runejs/core';
 import { createCanvas, createImageData } from 'canvas';
-import { FileData } from '../file-data';
 
 
 /**

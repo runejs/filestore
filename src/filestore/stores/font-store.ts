@@ -11,14 +11,20 @@ export enum FontName {
     p11_full = 'p11_full',
     p12_full = 'p12_full',
     b12_full = 'b12_full',
-    q8_full = 'q8_full'
+    q8_full = 'q8_full',
+
+    // Lunar alphabets only work with capital letters from A-Z
+    lunar_alphabet = 'lunar_alphabet',
+    lunar_alphabet_lrg = 'lunar_alphabet_lrg',
 }
 
 export const fontNames: FontName[] = [
     FontName.p11_full,
     FontName.p12_full,
     FontName.b12_full,
-    FontName.q8_full
+    FontName.q8_full,
+    FontName.lunar_alphabet,
+    FontName.lunar_alphabet_lrg
 ];
 
 

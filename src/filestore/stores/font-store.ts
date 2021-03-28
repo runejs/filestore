@@ -182,7 +182,6 @@ export class FontStore {
      * Fetches a font by its file name
      */
     public getFontByName(fontName: FontName): Font {
-        console.log(this.fonts.get(fontName));
         return this.fonts.get(fontName);
     }
 

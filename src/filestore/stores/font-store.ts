@@ -7,8 +7,24 @@ import { createCanvas, createImageData } from 'canvas';
 /**
  * A list of game font file names.
  */
-export const fontNames = [
-    'p11_full', 'p12_full', 'b12_full', 'q8_full'
+export enum FontName {
+    p11_full = 'p11_full',
+    p12_full = 'p12_full',
+    b12_full = 'b12_full',
+    q8_full = 'q8_full',
+
+    // Lunar alphabets only work with capital letters from A-Z
+    lunar_alphabet = 'lunar_alphabet',
+    lunar_alphabet_lrg = 'lunar_alphabet_lrg',
+}
+
+export const fontNames: FontName[] = [
+    FontName.p11_full,
+    FontName.p12_full,
+    FontName.b12_full,
+    FontName.q8_full,
+    FontName.lunar_alphabet,
+    FontName.lunar_alphabet_lrg
 ];
 
 
@@ -151,9 +167,10 @@ export class FontStore {
     /**
      * A map of loaded game fonts by name.
      */
-    public readonly fonts: { [key: string]: Font } = {};
+    public readonly fonts: Map<FontName, Font>;
 
     public constructor(private readonly filestore: Filestore) {
+        this.fonts = new Map<FontName, Font>();
     }
 
     /**
@@ -161,10 +178,23 @@ export class FontStore {
      */
     public loadFonts(): FontStore {
         for(const fontName of fontNames) {
-            this.fonts[fontName] = new Font(fontName, this.filestore.spriteStore);
+            this.fonts.set(fontName, new Font(fontName, this.filestore.spriteStore));
         }
 
         return this;
     }
 
+    /**
+     * Fetches a font by its file name
+     */
+    public getFontByName(fontName: FontName): Font {
+        return this.fonts.get(fontName);
+    }
+
+    /**
+     * Fetches a font by its ID
+     */
+    public getFontById(spriteId: number): Font {
+        return Array.from(this.fonts.values()).find(e => e.spritePack.packId === spriteId);
+    }
 }

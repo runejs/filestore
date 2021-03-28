@@ -51,19 +51,21 @@ export class Font {
         const stringWidth = this.getStringWidth(string);
         const stringHeight = this.getStringHeight(string);
         const characters = string.split('');
-        const characterImages: ImageData[] = characters.map(character =>
-            createImageData(this.getCharPixels(character, textColor),
-            this.getCharWidth(character), this.getCharHeight(character)));
 
         const canvas = createCanvas(stringWidth, stringHeight);
         const context = canvas.getContext('2d');
 
         let x: number = 0;
-        for(const img of characterImages) {
-            const height = img.height;
-            const diff = stringHeight - height;
-            context.putImageData(img, x, diff);
-            x += img.width;
+        for (const char of characters) {
+            const charPixels = this.getCharPixels(char, textColor);
+            const charWidth = this.getCharWidth(char);
+            const charHeight = this.getCharHeight(char);
+            const charSprite = this.getSprite(char);
+            const imageData = createImageData(charPixels, charWidth, charHeight);
+
+            const y = charSprite.offsetY - 2;
+            context.putImageData(imageData, x, y);
+            x += charSprite.width;
         }
 
         return canvas.toDataURL('image/png');

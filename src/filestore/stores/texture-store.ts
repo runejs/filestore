@@ -236,14 +236,14 @@ export class Texture {
 
         for (let x = 0; x < size; x++) {
             for (let y = 0; y < size; y++) {
-                const pixel = this.pixels[size * y + x];
+                let pixel = this.pixels[size * y + x];
                 const [r, g, b] = toRgb(pixel);
                 const pngIndex = (size * y + x) << 2;
 
                 png.data[pngIndex] = r;
                 png.data[pngIndex + 1] = g;
                 png.data[pngIndex + 2] = b;
-                png.data[pngIndex + 3] = 255;
+                png.data[pngIndex + 3] = pixel == 0 ? 0 : 255;
             }
         }
 

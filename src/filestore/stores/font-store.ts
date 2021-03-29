@@ -52,8 +52,8 @@ export class Font {
         const stringHeight = this.getStringHeight(string);
         const characters = string.split('');
 
-        // TODO find proper stringHeight according to overflowing letters, OR just leave it at 10 for now
-        const canvas = createCanvas(stringWidth, stringHeight + 10);
+        // TODO find proper stringHeight according to overflowing letters, OR just leave it at 6 for now
+        const canvas = createCanvas(stringWidth, stringHeight + 6);
         const context = canvas.getContext('2d');
 
         let x: number = 0;

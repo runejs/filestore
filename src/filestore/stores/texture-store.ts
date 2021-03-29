@@ -236,7 +236,7 @@ export class Texture {
 
         for (let x = 0; x < size; x++) {
             for (let y = 0; y < size; y++) {
-                let pixel = this.pixels[size * y + x];
+                const pixel = this.pixels[size * y + x];
                 const [r, g, b] = toRgb(pixel);
                 const pngIndex = (size * y + x) << 2;
 

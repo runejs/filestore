@@ -51,19 +51,21 @@ export class Font {
         const stringWidth = this.getStringWidth(string);
         const stringHeight = this.getStringHeight(string);
         const characters = string.split('');
-        const characterImages: ImageData[] = characters.map(character =>
-            createImageData(this.getCharPixels(character, textColor),
-            this.getCharWidth(character), this.getCharHeight(character)));
 
         const canvas = createCanvas(stringWidth, stringHeight);
         const context = canvas.getContext('2d');
 
         let x: number = 0;
-        for(const img of characterImages) {
-            const height = img.height;
-            const diff = stringHeight - height;
-            context.putImageData(img, x, diff);
-            x += img.width;
+        for (const char of characters) {
+            const charPixels = this.getCharPixels(char, textColor);
+            const charWidth = this.getCharWidth(char);
+            const charHeight = this.getCharHeight(char);
+            const charSprite = this.getSprite(char);
+            const imageData = createImageData(charPixels, charWidth, charHeight);
+
+            const y = charSprite.offsetY;
+            context.putImageData(imageData, x, y);
+            x += charSprite.width;
         }
 
         return canvas.toDataURL('image/png');
@@ -106,12 +108,35 @@ export class Font {
     }
 
     /**
-     * Finds and returns the height of the tallest character glyph within the specified string.
+     * Finds and returns the height of the the specified string.
      * @param string The string to find the height of.
      */
     public getStringHeight(string: string): number {
-        const heights = string.split('').map(stringChar => this.getCharHeight(stringChar));
-        return Math.max(...heights);
+        // We set the default font height to uppercase A for reference
+        let height = this.getCharHeight('A');
+
+        if (height === 0) {
+            throw new Error('Default height couldn\'t be defined!');
+        }
+
+        for (const char of string.split('')) {
+            const sprite = this.getSprite(char);
+            if (!sprite) {
+                continue;
+            }
+
+            // Character is above the standard line of text, for example ' characters
+            if (sprite.offsetY < 0) {
+                height = height + Math.abs(sprite.offsetY);
+                continue;
+            }
+
+            // Add the offset to the char height to check for overflowing characters like g, y, j, etc
+            const charHeight = sprite.height + sprite.offsetY;
+            height = Math.max(height, charHeight);
+        }
+
+        return height;
     }
 
     /**

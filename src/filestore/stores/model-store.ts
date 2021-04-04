@@ -554,15 +554,27 @@ export class ModelStore {
             const mask = vertexDirectionOffsetBuffer.get('BYTE', 'UNSIGNED');
             let xOffset = 0;
             if ((mask & 0x1) != 0) {
-                xOffset = xDataOffsetBuffer.get('SMART', 'UNSIGNED');
+                try {
+                    xOffset = xDataOffsetBuffer.get('SMART', 'UNSIGNED');
+                } catch {
+                    console.warn('Tried to read out of range xOffset for object', id);
+                }
             }
             let yOffset = 0;
             if ((mask & 0x2) != 0) {
-                yOffset = yDataOffsetBuffer.get('SMART', 'UNSIGNED');
+                try {
+                    yOffset = yDataOffsetBuffer.get('SMART', 'UNSIGNED');
+                } catch {
+                    console.warn('Tried to read out of range yOffset for object', id);
+                }
             }
             let zOffset = 0;
             if ((mask & 0x4) != 0) {
-                zOffset = zDataOffsetBuffer.get('SMART', 'UNSIGNED');
+                try {
+                    zOffset = zDataOffsetBuffer.get('SMART', 'UNSIGNED');
+                } catch {
+                    console.warn('Tried to read out of range zOffset for object', id);
+                }
             }
             rsModel.verticesX[i] = baseOffsetX + xOffset;
             rsModel.verticesY[i] = baseOffsetY + yOffset;

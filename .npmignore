@@ -4,3 +4,4 @@ src
 packed
 config
 unpacked
+dist/run.*

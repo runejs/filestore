@@ -550,7 +550,7 @@ export class ModelStore {
         let baseOffsetX = 0;
         let baseOffsetY = 0;
         let baseOffsetZ = 0;
-        for(let i = 0; i < rsModel.faceCount; i++) {
+        for(let i = 0; i < rsModel.vertexCount; i++) {
             const mask = vertexDirectionOffsetBuffer.get('BYTE', 'UNSIGNED');
             let xOffset = 0;
             if ((mask & 0x1) != 0) {

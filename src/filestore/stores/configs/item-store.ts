@@ -26,7 +26,7 @@ export class ItemConfig {
     stackableIds?: number[];
 
     /**
-     * 2d modelling information for this item
+     * 2d modelling information for this item.
      */
     model2d: {
         widgetModel?: number;
@@ -39,7 +39,7 @@ export class ItemConfig {
     } = {};
 
     /**
-     * 3d modelling information for this item
+     * 3d modelling information for this item.
      */
     model3d: {
         maleModels: [ number, number, number ];
@@ -56,7 +56,7 @@ export class ItemConfig {
     };
 
     /**
-     * Additional rendering details
+     * Additional rendering details.
      */
     rendering: {
         resizeX?: number;
@@ -83,6 +83,10 @@ export class ItemStore {
         this.itemArchive = this.configStore.getArchive('items');
     }
 
+    /**
+     * Fetches the ItemConfig object for the specified item game id.
+     * @param itemId The game id of the item to find.
+     */
     public getItem(itemId: number): ItemConfig | null {
         const itemArchive = this.itemArchive;
 
@@ -265,6 +269,10 @@ export class ItemStore {
         return buffer.getSlice(0, buffer.writerIndex);
     }
 
+    /**
+     * Parses a raw item data file into a readable ItemConfig object.
+     * @param itemFile The raw file-store item data.
+     */
     public decodeItemFile(itemFile: FileData): ItemConfig {
         const itemConfig = new ItemConfig();
 
@@ -396,29 +404,31 @@ export class ItemStore {
         return itemConfig;
     }
 
+    /**
+     * Decodes every item file within the item archive and returns
+     * the resulting ItemConfig array.
+     */
     public decodeItemStore(): ItemConfig[] {
-        const itemArchive = this.itemArchive;
-
-        if(!itemArchive) {
+        if(!this.itemArchive) {
             logger.error(`Item archive not found.`);
             return null;
         }
 
-        const itemCount = itemArchive.files.size;
-        const items: ItemConfig[] = new Array(itemCount);
+        const itemCount = this.itemArchive.files.size;
+        const itemList: ItemConfig[] = new Array(itemCount);
 
         for(let itemId = 0; itemId < itemCount; itemId++) {
-            const itemFile = itemArchive.getFile(itemId) || null;
+            const itemFile = this.itemArchive.getFile(itemId) || null;
 
             if(!itemFile) {
                 logger.error(`Item file not found.`);
                 return null;
             }
 
-            items[itemId] = this.decodeItemFile(itemFile);
+            itemList[itemId] = this.decodeItemFile(itemFile);
         }
 
-        return items;
+        return itemList;
     }
 
 }

@@ -135,7 +135,7 @@ export class NpcStore {
                 npcConfig.animations.turnLeft = buffer.get('SHORT', 'UNSIGNED');
             } else if(opcode >= 30 && opcode < 35) {
                 if(!npcConfig.options) {
-                    npcConfig.options = new Array(10).fill(null);
+                    npcConfig.options = new Array(5).fill(null);
                 }
                 npcConfig.options[opcode - 30] = buffer.getString();
                 if(npcConfig.options[opcode - 30] === 'Hidden') {

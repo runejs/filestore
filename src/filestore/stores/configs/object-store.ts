@@ -154,10 +154,9 @@ export class ObjectStore {
                 if(!objectConfig.options) {
                     objectConfig.options = new Array(5).fill(null);
                 }
-                objectConfig.options[opcode - 30] = buffer.getString();
-                if(objectConfig.options[opcode + -30] === 'Hidden') {
-                    objectConfig.options[(opcode + -30)] = null;
-                }
+
+                const option = buffer.getString();
+                objectConfig.options[opcode - 30] = option.toLowerCase() === 'hidden' ? null : option;
             } else if(opcode == 40) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 for(let index = 0; index < length; index++) {

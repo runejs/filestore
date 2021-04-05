@@ -2,6 +2,8 @@ import { Filestore } from '../filestore';
 import { ItemStore } from './configs/item-store';
 import { FileIndex } from '../file-index';
 import { Archive } from '../archive';
+import { ObjectStore } from './configs/object-store';
+import { NpcStore } from './configs/npc-store';
 
 
 /**
@@ -54,6 +56,16 @@ export class ConfigStore {
     public readonly itemStore: ItemStore;
 
     /**
+     * A Store used to access the Npc Archive, containing details about every game npc.
+     */
+    public readonly npcStore: NpcStore;
+
+    /**
+     * A Store used to access the Object Archive, containing details about every game object.
+     */
+    public readonly objectStore: ObjectStore;
+
+    /**
      * The configuration file/archive index.
      */
     public readonly configIndex: FileIndex;
@@ -61,6 +73,8 @@ export class ConfigStore {
     public constructor(private fileStore: Filestore) {
         this.configIndex = fileStore.getIndex('configs');
         this.itemStore = new ItemStore(this);
+        this.npcStore = new NpcStore(this);
+        this.objectStore = new ObjectStore(this);
     }
 
     public getArchive(configId: ConfigId | number): Archive {

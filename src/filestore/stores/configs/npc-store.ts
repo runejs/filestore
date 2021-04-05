@@ -137,10 +137,9 @@ export class NpcStore {
                 if(!npcConfig.options) {
                     npcConfig.options = new Array(5).fill(null);
                 }
-                npcConfig.options[opcode - 30] = buffer.getString();
-                if(npcConfig.options[opcode - 30] === 'Hidden') {
-                    npcConfig.options[-30 + opcode] = null;
-                }
+
+                const option = buffer.getString();
+                npcConfig.options[opcode - 30] = option.toLowerCase() === 'hidden' ? null : option;
             } else if(opcode == 40) {
                 // Model color replacement
                 const length = buffer.get('BYTE', 'UNSIGNED');

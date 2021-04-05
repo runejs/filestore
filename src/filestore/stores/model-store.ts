@@ -150,7 +150,7 @@ export class RsModel {
     }
 
     public applyLighting(ambient: number, contrast: number, arg2: number, arg3: number, arg4: number, applyShading: boolean) {
-        const i = Math.sqrt(arg2 * arg2 + arg3 * arg3 + arg4 * arg4);
+        const i = ~~Math.sqrt(arg2 * arg2 + arg3 * arg3 + arg4 * arg4);
         const i_50_ = contrast * i >> 8;
         if (this.faceColorsX == null) {
             this.faceColorsX = new Uint32Array(this.faceCount);
@@ -158,8 +158,8 @@ export class RsModel {
             this.faceColorsZ = new Uint32Array(this.faceCount);
         }
         if (this.vertexNormals == null) {
-            this.vertexNormals = new Array<VertexNormal>(this.vertexCount);
-            this.vertexNormals.fill(new VertexNormal());
+            const initializeVertexNormals = Array.apply(null, Array(this.vertexCount));
+            this.vertexNormals = initializeVertexNormals.map(() => new VertexNormal());
         }
         for (let i_52_ = 0; i_52_ < this.faceCount; i_52_++) {
             const faceA = this.faceIndicesA[i_52_];
@@ -180,13 +180,13 @@ export class RsModel {
                 i_62_ >>= 1;
                 i_63_ >>= 1;
             }
-            let i_65_ = Math.sqrt(i_62_ * i_62_ + i_63_ * i_63_ + i_64_ * i_64_);
+            let i_65_ = ~~Math.sqrt(i_62_ * i_62_ + i_63_ * i_63_ + i_64_ * i_64_);
             if (i_65_ <= 0) {
                 i_65_ = 1;
             }
-            i_62_ = i_62_ * 256 / i_65_;
-            i_63_ = i_63_ * 256 / i_65_;
-            i_64_ = i_64_ * 256 / i_65_;
+            i_62_ = ~~(i_62_ * 256 / i_65_);
+            i_63_ = ~~(i_63_ * 256 / i_65_);
+            i_64_ = ~~(i_64_ * 256 / i_65_);
             if (this.faceTypes == null || (this.faceTypes[i_52_] & 0x1) == 0) {
                 let class46 = this.vertexNormals[faceA];
                 class46.x += i_62_;
@@ -232,25 +232,25 @@ export class RsModel {
             if (this.faceTypes == null) {
                 const faceColor = this.faceColors[i];
                 let normal = this.vertexNormals[faceA];
-                let i_76_ = arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude);
+                let i_76_ = ~~(arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude));
                 this.faceColorsX[i] = ColorUtils.method816(faceColor, i_76_, 0);
                 normal = this.vertexNormals[faceB];
-                i_76_ = arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude);
+                i_76_ = ~~(arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude));
                 this.faceColorsY[i] = ColorUtils.method816(faceColor, i_76_, 0);
                 normal = this.vertexNormals[faceC];
-                i_76_ = arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude);
+                i_76_ = ~~(arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude));
                 this.faceColorsZ[i] = ColorUtils.method816(faceColor, i_76_, 0);
             } else if ((this.faceTypes[i] & 0x1) == 0) {
                 const faceColor = this.faceColors[i];
                 const faceType = this.faceTypes[i];
                 let normal = this.vertexNormals[faceA];
-                let i_79_ = arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude);
+                let i_79_ = ~~(arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude));
                 this.faceColorsX[i] = ColorUtils.method816(faceColor, i_79_, faceType);
                 normal = this.vertexNormals[faceB];
-                i_79_ = arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude);
+                i_79_ = ~~(arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude));
                 this.faceColorsY[i] = ColorUtils.method816(faceColor, i_79_, faceType);
                 normal = this.vertexNormals[faceC];
-                i_79_ = arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude);
+                i_79_ = ~~(arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude));
                 this.faceColorsZ[i] = ColorUtils.method816(faceColor, i_79_, faceType);
             }
         }
@@ -263,6 +263,13 @@ export class VertexNormal {
     y: number;
     z: number;
     magnitude: number;
+
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
+        this.magnitude = 0;
+    }
 }
 
 export class ColorUtils {

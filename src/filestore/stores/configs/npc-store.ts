@@ -110,7 +110,80 @@ export class NpcStore {
                 break;
             }
 
-            // @TODO decode the file
+            if(opcode == 1) {
+                const length = buffer.get('BYTE', 'UNSIGNED');
+                npcConfig.model.models = new Array(length);
+                for(let idx = 0; idx < length; ++idx) {
+                    npcConfig.model.models[idx] = buffer.get('SHORT', 'UNSIGNED');
+                }
+            } else if(opcode == 2) {
+                npcConfig.name = buffer.getString();
+            } else if(opcode == 12) {
+                npcConfig.rendering.boundary = buffer.get('BYTE', 'UNSIGNED');
+            } else if(opcode == 13) {
+                npcConfig.animations.stand = buffer.get('SHORT', 'UNSIGNED');
+            } else if(opcode == 14) {
+                npcConfig.animations.walk = buffer.get('SHORT', 'UNSIGNED');
+            } else if(opcode == 15) {
+                buffer.get('SHORT', 'UNSIGNED'); // junk
+            } else if(opcode == 16) {
+                buffer.get('SHORT', 'UNSIGNED'); // junk
+            } else if(opcode == 17) {
+                npcConfig.animations.walk = buffer.get('SHORT', 'UNSIGNED');
+                npcConfig.animations.turnAround = buffer.get('SHORT', 'UNSIGNED');
+                npcConfig.animations.turnRight = buffer.get('SHORT', 'UNSIGNED');
+                npcConfig.animations.turnLeft = buffer.get('SHORT', 'UNSIGNED');
+            } else if(opcode >= 30 && opcode < 35) {
+                if(!npcConfig.options) {
+                    npcConfig.options = new Array(10).fill(null);
+                }
+                npcConfig.options[opcode - 30] = buffer.getString();
+                if(npcConfig.options[opcode - 30] === 'Hidden') {
+                    npcConfig.options[-30 + opcode] = null;
+                }
+            } else if(opcode == 40) {
+                // Model color replacement
+                const length = buffer.get('BYTE', 'UNSIGNED');
+                for(let i = 0; i < length; i++) {
+                    buffer.get('SHORT', 'UNSIGNED');
+                    buffer.get('SHORT', 'UNSIGNED');
+                }
+            } else if(opcode == 60) {
+                const length = buffer.get('BYTE', 'UNSIGNED');
+                npcConfig.model.headModels = new Array(length);
+                for(let i = 0; length > i; i++) {
+                    npcConfig.model.headModels[i] = buffer.get('SHORT', 'UNSIGNED');
+                }
+            } else if(opcode == 93) {
+                npcConfig.minimapVisible = false;
+            } else if(opcode == 95) {
+                npcConfig.combatLevel = buffer.get('SHORT', 'UNSIGNED');
+            } else if(opcode == 97) {
+                npcConfig.rendering.sizeX = buffer.get('SHORT', 'UNSIGNED');
+            } else if(opcode == 98) {
+                npcConfig.rendering.sizeY = buffer.get('SHORT', 'UNSIGNED');
+            } else if(opcode == 99) {
+                npcConfig.rendering.renderPriority = true;
+            } else if(opcode == 100) {
+                const ambient = buffer.get('BYTE');
+            } else if(opcode == 101) {
+                const contrast = (buffer.get('BYTE')) * 5;
+            } else if(opcode == 102) {
+                npcConfig.headIcon = (buffer.get('SHORT', 'UNSIGNED'));
+            } else if(opcode == 103) {
+                npcConfig.turnDegrees = (buffer.get('SHORT', 'UNSIGNED'));
+            } else if(opcode == 106) {
+                let varBitId = buffer.get('SHORT', 'UNSIGNED');
+                let settingId = buffer.get('SHORT', 'UNSIGNED');
+                if(varBitId == 65535) varBitId = -1;
+                if(settingId == 65535) settingId = -1;
+                const childCount = buffer.get('BYTE', 'UNSIGNED');
+                for(let i = 0; childCount >= i; i++) {
+                    buffer.get('SHORT', 'UNSIGNED'); // child id
+                }
+            } else if(opcode == 107) {
+                npcConfig.clickable = false;
+            }
         }
 
         return npcConfig;

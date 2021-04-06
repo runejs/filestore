@@ -401,6 +401,7 @@ export class ItemStore {
             }
         }
 
+        itemFile.content.readerIndex = 0;
         return itemConfig;
     }
 

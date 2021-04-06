@@ -1,7 +1,7 @@
 import { Archive } from '../../archive';
 import { ConfigStore } from '../config-store';
 import { FileData } from '../../file-data';
-import { logger } from '@runejs/core';
+import { ByteBuffer, logger } from '@runejs/core';
 
 
 /**
@@ -185,6 +185,7 @@ export class NpcStore {
             }
         }
 
+        npcFile.content.readerIndex = 0;
         return npcConfig;
     }
 

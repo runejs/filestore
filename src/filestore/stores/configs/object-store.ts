@@ -212,6 +212,7 @@ export class ObjectStore {
             }
         }
 
+        objectFile.content.readerIndex = 0;
         return objectConfig;
     }
 

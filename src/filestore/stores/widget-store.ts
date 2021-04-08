@@ -172,6 +172,7 @@ export class WidgetStore {
         } else if(file.type === 'archive') {
             const widgetParent = new ParentWidget(id);
             const archive: Archive = file as Archive;
+            archive.decodeArchiveFiles();
             const widgetChildFiles: FileData[] = Array.from(archive.files.values());
             widgetParent.children = new Array(widgetChildFiles.length);
             for(let i = 0; i < widgetChildFiles.length; i++) {

@@ -1,9 +1,7 @@
 import { Filestore } from './filestore/filestore';
-import { hash } from './filestore/util/name-hash';
-import {writeFileSync} from "fs";
-import {PNG} from "pngjs";
+import { logger } from '@runejs/core';
 
 
-const fileStore = new Filestore('C:\\Users\\displ\\Desktop\\meh', './config');
-const region = fileStore.regionStore.getLandscapeFile(50, 44);
-console.log(region.landscapeObjects.length);
+const filestore = new Filestore('./packed', './config');
+logger.info(JSON.stringify(filestore.configStore.npcStore.getNpc(2)));
+logger.info(JSON.stringify(filestore.configStore.npcStore.getNpc(2)));

@@ -5,16 +5,9 @@ const parser = require('node-properties-parser');
 
 
 export function hash(name: string): number {
-    let hash: number = 0;
-
+    let hash = 0;
     for(let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-
-    const overflow = hash - 2147483647;
-
-    if(overflow > 0) {
-        hash = overflow - 2147483648 - 1;
+        hash = Math.imul(31, hash) + name.charCodeAt(i) | 0;
     }
 
     return hash;

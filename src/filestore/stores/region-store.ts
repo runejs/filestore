@@ -106,8 +106,10 @@ export class RegionStore {
 
                 objectPositionInfo += objectPositionInfoOffset - 1;
 
-                const x = (objectPositionInfo >> 6 & 0x3f);
-                const y = (objectPositionInfo & 0x3f);
+                const worldX = (regionX & 0xff) * 64;
+                const worldY = regionY * 64;
+                const x = (objectPositionInfo >> 6 & 0x3f) + worldX;
+                const y = (objectPositionInfo & 0x3f) + worldY;
                 const level = objectPositionInfo >> 12 & 0x3;
                 const objectMetadata = landscapeFile.content.get('BYTE', 'UNSIGNED');
                 const type = objectMetadata >> 2;

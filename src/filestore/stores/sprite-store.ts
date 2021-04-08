@@ -35,6 +35,23 @@ export class Sprite {
         this.maxHeight = this.height = height;
     }
 
+    public resizeToLibSize() {
+        if (this.width != this.maxWidth || this.height != this.maxHeight) {
+            const resizedPixels = new Array(this.maxWidth * this.maxHeight);
+            let pixelCount = 0;
+            for (let y = 0; y < this.height; y++) {
+                for (let x = 0; x < this.width; x++) {
+                    resizedPixels[x + this.offsetX + (y + this.offsetY) * this.maxWidth] = this.pixelIdx[pixelCount++];
+                }
+            }
+            this.pixelIdx = resizedPixels;
+            this.width = this.maxWidth;
+            this.height = this.maxHeight;
+            this.offsetX = 0;
+            this.offsetY = 0;
+        }
+    }
+
     /**
      * First converts the Sprite into a base64 PNG image.
      */

@@ -7,8 +7,24 @@ import { createCanvas, createImageData } from 'canvas';
 /**
  * A list of game font file names.
  */
-export const fontNames = [
-    'p11_full', 'p12_full', 'b12_full', 'q8_full'
+export enum FontName {
+    p11_full = 'p11_full',
+    p12_full = 'p12_full',
+    b12_full = 'b12_full',
+    q8_full = 'q8_full',
+
+    // Lunar alphabets only work with capital letters from A-Z
+    lunar_alphabet = 'lunar_alphabet',
+    lunar_alphabet_lrg = 'lunar_alphabet_lrg',
+}
+
+export const fontNames: FontName[] = [
+    FontName.p11_full,
+    FontName.p12_full,
+    FontName.b12_full,
+    FontName.q8_full,
+    FontName.lunar_alphabet,
+    FontName.lunar_alphabet_lrg
 ];
 
 
@@ -35,19 +51,21 @@ export class Font {
         const stringWidth = this.getStringWidth(string);
         const stringHeight = this.getStringHeight(string);
         const characters = string.split('');
-        const characterImages: ImageData[] = characters.map(character =>
-            createImageData(this.getCharPixels(character, textColor),
-            this.getCharWidth(character), this.getCharHeight(character)));
 
         const canvas = createCanvas(stringWidth, stringHeight);
         const context = canvas.getContext('2d');
 
         let x: number = 0;
-        for(const img of characterImages) {
-            const height = img.height;
-            const diff = stringHeight - height;
-            context.putImageData(img, x, diff);
-            x += img.width;
+        for (const char of characters) {
+            const charPixels = this.getCharPixels(char, textColor);
+            const charWidth = this.getCharWidth(char);
+            const charHeight = this.getCharHeight(char);
+            const charSprite = this.getSprite(char);
+            const imageData = createImageData(charPixels, charWidth, charHeight);
+
+            const y = charSprite.offsetY;
+            context.putImageData(imageData, x, y);
+            x += charSprite.width;
         }
 
         return canvas.toDataURL('image/png');
@@ -90,12 +108,35 @@ export class Font {
     }
 
     /**
-     * Finds and returns the height of the tallest character glyph within the specified string.
+     * Finds and returns the height of the the specified string.
      * @param string The string to find the height of.
      */
     public getStringHeight(string: string): number {
-        const heights = string.split('').map(stringChar => this.getCharHeight(stringChar));
-        return Math.max(...heights);
+        // We set the default font height to uppercase A for reference
+        let height = this.getCharHeight('A');
+
+        if (height === 0) {
+            throw new Error('Default height couldn\'t be defined!');
+        }
+
+        for (const char of string.split('')) {
+            const sprite = this.getSprite(char);
+            if (!sprite) {
+                continue;
+            }
+
+            // Character is above the standard line of text, for example ' characters
+            if (sprite.offsetY < 0) {
+                height = height + Math.abs(sprite.offsetY);
+                continue;
+            }
+
+            // Add the offset to the char height to check for overflowing characters like g, y, j, etc
+            const charHeight = sprite.height + sprite.offsetY;
+            height = Math.max(height, charHeight);
+        }
+
+        return height;
     }
 
     /**
@@ -151,9 +192,10 @@ export class FontStore {
     /**
      * A map of loaded game fonts by name.
      */
-    public readonly fonts: { [key: string]: Font } = {};
+    public readonly fonts: Map<FontName, Font>;
 
     public constructor(private readonly filestore: Filestore) {
+        this.fonts = new Map<FontName, Font>();
     }
 
     /**
@@ -161,10 +203,23 @@ export class FontStore {
      */
     public loadFonts(): FontStore {
         for(const fontName of fontNames) {
-            this.fonts[fontName] = new Font(fontName, this.filestore.spriteStore);
+            this.fonts.set(fontName, new Font(fontName, this.filestore.spriteStore));
         }
 
         return this;
     }
 
+    /**
+     * Fetches a font by its file name
+     */
+    public getFontByName(fontName: FontName): Font {
+        return this.fonts.get(fontName);
+    }
+
+    /**
+     * Fetches a font by its ID
+     */
+    public getFontById(spriteId: number): Font {
+        return Array.from(this.fonts.values()).find(e => e.spritePack.packId === spriteId);
+    }
 }

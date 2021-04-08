@@ -138,7 +138,6 @@ export class FileIndex {
         try {
             fileData.decompress(keys);
         } catch (e) {
-            logger.error(e);
             logger.warn(`Unable to decompress file ${fileIdOrName} in index ${this.indexId} with keys ${keys}`);
             return null;
         }

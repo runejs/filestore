@@ -112,10 +112,11 @@ export class FileIndex {
     /**
      * Fetches a single file from this index.
      * @param fileIdOrName The ID or name of the file to fetch.
+     * @param keys The XTEA keys.
      * @returns The requested FileData object, or null if no matching file was found.
      */
-    public getFile(fileIdOrName: number | string): FileData | null;
-    public getFile(fileIdOrName: number | string): FileData | null {
+    public getFile(fileIdOrName: number | string, keys?: number[]): FileData | null;
+    public getFile(fileIdOrName: number | string, keys?: number[]): FileData | null {
         let fileData: FileData;
 
         if(typeof fileIdOrName === 'string') {
@@ -134,7 +135,12 @@ export class FileIndex {
             throw new Error(`Requested item ${fileIdOrName} in index ${this.indexId} is of type Archive, not FileData.`);
         }
 
-        fileData.decompress();
+        try {
+            fileData.decompress(keys);
+        } catch (e) {
+            logger.warn(`Unable to decompress file ${fileIdOrName} in index ${this.indexId} with keys ${keys}`);
+            return null;
+        }
 
         return fileData;
     }

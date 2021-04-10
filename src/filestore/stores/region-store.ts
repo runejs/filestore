@@ -1,7 +1,9 @@
 import { Filestore } from '../filestore';
 import { FileIndex } from '../file-index';
 import { logger } from '@runejs/core';
+import {hash} from "../util/name-hash";
 
+let fs = require('fs');
 
 export const maxRegions = 32768;
 
@@ -44,9 +46,20 @@ export interface Region {
 export class RegionStore {
 
     private readonly regionIndex: FileIndex;
+    private readonly xteas = {};
 
     public constructor(private fileStore: Filestore) {
         this.regionIndex = this.fileStore.getIndex('regions');
+        const array = JSON.parse(fs.readFileSync('./config/map-keys.json', 'utf8'));
+        for(let i = 0; i < array.length; i++) {
+            const object = array[i];
+            this.xteas[object.name_hash] = object;
+        }
+    }
+
+    public getMapKeys(regionX: number, regionY: number): number[] {
+        const fileNameHash = hash(`l${regionX}_${regionY}`);
+        return this.xteas[fileNameHash]?.key || [0, 0, 0, 0];
     }
 
     public getRegion(regionX: number, regionY: number): Region | null {
@@ -61,7 +74,9 @@ export class RegionStore {
     }
 
     public getLandscapeFile(regionX: number, regionY: number): LandscapeFile | null {
-        const landscapeFile = this.regionIndex.getFile(`l${regionX}_${regionY}`);
+        const keys = this.getMapKeys(regionX, regionY);
+
+        const landscapeFile = this.regionIndex.getFile(`l${regionX}_${regionY}`, keys);
         if(!landscapeFile) {
             logger.warn(`Landscape file not found for region ${regionX},${regionY}`);
             return null;

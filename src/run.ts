@@ -2,6 +2,6 @@ import { Filestore } from './filestore/filestore';
 import { logger } from '@runejs/core';
 
 
-const filestore = new Filestore('./packed', './config');
-logger.info(JSON.stringify(filestore.configStore.npcStore.getNpc(2)));
-logger.info(JSON.stringify(filestore.configStore.npcStore.getNpc(2)));
+const fileStore = new Filestore('./packed', './config');
+const region = fileStore.regionStore.getLandscapeFile(50, 44);
+console.log(region.landscapeObjects.length);

@@ -69,9 +69,10 @@ export class FileData {
 
     /**
      * Reads the file's raw data from the main disk filestore and decompresses it.
+     * @param keys The XTEA keys.
      * @returns The decompressed file data buffer.
      */
-    public decompress(): ByteBuffer {
+    public decompress(keys?: number[]): ByteBuffer {
         if(this.decompressed) {
             this.content.readerIndex = 0;
             this.content.writerIndex = 0;
@@ -80,7 +81,7 @@ export class FileData {
 
         this.decompressed = true;
         const archiveEntry = readIndexedDataChunk(this.fileId, this.index.indexId, this.filestoreChannels);
-        const { buffer } = decompress(archiveEntry?.dataFile);
+        const { buffer } = decompress(archiveEntry?.dataFile, keys);
         this.content = buffer;
         return this.content;
     }

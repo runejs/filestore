@@ -7,6 +7,12 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
     if(!buffer || buffer.length === 0) {
         return { compression: -1, buffer: null, version: -1 };
     }
+    if (keys && keys.length == 4 && (keys[0] != 0 || keys[1] != 0 || keys[2] != 0 || keys[3] != 0)) {
+        buffer.readerIndex = 5;
+        const decryptedData = this.decryptXtea(buffer, keys, buffer.length - 5);
+        decryptedData.copy(buffer, 5, 0);
+        buffer.readerIndex = 0;
+    }
 
     const compression = buffer.get('BYTE', 'UNSIGNED');
     const length = buffer.get('INT');
@@ -27,10 +33,13 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
     } else {
         // Compressed file
         const uncompressedLength = buffer.get('INT');
+        if (uncompressedLength < 0) {
+            throw new Error(`Invalid uncompressed length`);
+        }
 
-        const compressed = new ByteBuffer(length);
-        buffer.copy(compressed, 0, buffer.readerIndex, buffer.readerIndex + length);
-        const decryptedData = this.decryptXtea(compressed, keys, length);
+        const decryptedData = new ByteBuffer(uncompressedLength);
+        buffer.copy(decryptedData, 0, buffer.readerIndex);
+
         buffer.readerIndex = (buffer.readerIndex + length);
 
         let decompressed: ByteBuffer;
@@ -69,9 +78,13 @@ export function decryptXtea(input: ByteBuffer, keys: number[], length: number): 
         let sum = 0x9E3779B9 * 32;
 
         for(let i = 0; i < 32; i++) {
-            v1 -= (((v0 << 4) ^ (v0 >>> 5)) + v0) ^ (sum + keys[(sum >>> 11) & 3]);
+            v1 -= ((toInt(v0 << 4) ^ toInt(v0 >>> 5)) + v0) ^ (sum + keys[(sum >>> 11) & 3]);
+            v1 = toInt(v1);
+
             sum -= 0x9E3779B9;
-            v0 -= (((v1 << 4) ^ (v1 >>> 5)) + v1) ^ (sum + keys[sum & 3]);
+
+            v0 -= ((toInt(v1 << 4) ^ toInt(v1 >>> 5)) + v1) ^ (sum + keys[sum & 3]);
+            v0 = toInt(v0);
         }
 
         output.put(v0, 'INT');
@@ -80,6 +93,10 @@ export function decryptXtea(input: ByteBuffer, keys: number[], length: number): 
 
     input.copy(output, output.writerIndex, input.readerIndex);
     return output;
+}
+
+function toInt(value): number {
+    return value | 0;
 }
 
 export function decompressBzip(data: ByteBuffer): ByteBuffer {

@@ -1,17 +1,11 @@
-import { FilestoreChannels, loadFilestore } from './data/filestore-loader';
+import { FilestoreChannels, loadFilestore } from './data';
 import { FileIndex, IndexId, indexIdMap } from './file-index';
-import { SpriteStore } from './stores/sprite-store';
-import { getFileNames } from './util/name-hash';
-import { MusicStore } from './stores/music-store';
-import { BinaryStore } from './stores/binary-store';
-import { JingleStore } from './stores/jingle-store';
-import { SoundStore } from './stores/sound-store';
-import { RegionStore } from './stores/region-store';
-import { ConfigStore } from './stores/config-store';
-import { ModelStore } from './stores/model-store';
-import { WidgetStore } from './stores/widget-store';
-import { FontStore } from './stores/font-store';
-import { TextureStore } from './stores/texture-store';
+import { getFileNames } from './util';
+import {
+    SpriteStore, MusicStore, BinaryStore, JingleStore, SoundStore,
+    RegionStore, ConfigStore, ModelStore, WidgetStore, FontStore,
+    TextureStore, ItemStore, NpcStore, ObjectStore
+} from './stores';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -81,6 +75,18 @@ export class Filestore {
         } else {
             return this.indexes.get(indexId);
         }
+    }
+
+    public get itemStore(): ItemStore {
+        return this.configStore?.itemStore;
+    }
+
+    public get npcStore(): NpcStore {
+        return this.configStore?.npcStore;
+    }
+
+    public get objectStore(): ObjectStore {
+        return this.configStore?.objectStore;
     }
 
 }

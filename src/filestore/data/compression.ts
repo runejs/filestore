@@ -7,15 +7,20 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
     if(!buffer || buffer.length === 0) {
         return { compression: -1, buffer: null, version: -1 };
     }
-    if (keys && keys.length == 4 && (keys[0] != 0 || keys[1] != 0 || keys[2] != 0 || keys[3] != 0)) {
-        buffer.readerIndex = 5;
-        const decryptedData = this.decryptXtea(buffer, keys, buffer.length - 7);
-        decryptedData.copy(buffer, 5, 0);
-        buffer.readerIndex = 0;
-    }
 
     const compression = buffer.get('BYTE', 'UNSIGNED');
     const length = buffer.get('INT');
+
+    if (keys && keys.length == 4 && (keys[0] != 0 || keys[1] != 0 || keys[2] != 0 || keys[3] != 0)) {
+        const readerIndex = buffer.readerIndex;
+        let lengthOffset = readerIndex;
+        if (buffer.length - (length + readerIndex + 4) >= 2) {
+            lengthOffset += 2;
+        }
+        const decryptedData = this.decryptXtea(buffer, keys, buffer.length - lengthOffset);
+        decryptedData.copy(buffer, readerIndex, 0);
+        buffer.readerIndex = readerIndex;
+    }
 
     if(compression == 0) {
         // Uncompressed file

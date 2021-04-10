@@ -1,8 +1,9 @@
 import { logger } from '@runejs/core';
-import { Filestore, getFileName } from '../filestore';
-import { FileData } from '../file-data';
 import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'fs';
 import { PNG } from 'pngjs';
+
+import { Filestore, getFileName } from '../filestore';
+import { FileData } from '../file-data';
 
 
 export function toRgb(num: number): number[] {

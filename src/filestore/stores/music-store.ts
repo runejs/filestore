@@ -1,6 +1,7 @@
-import { Filestore, getFileName } from '../filestore';
 import { logger } from '@runejs/core';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
+
+import { Filestore, getFileName } from '../filestore';
 import { FileData } from '../file-data';
 
 

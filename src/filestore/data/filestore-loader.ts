@@ -1,6 +1,6 @@
+import { ByteBuffer } from '@runejs/core';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { ByteBuffer } from '@runejs/core';
 
 
 export interface FilestoreChannels {

@@ -9,7 +9,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
     }
     if (keys && keys.length == 4 && (keys[0] != 0 || keys[1] != 0 || keys[2] != 0 || keys[3] != 0)) {
         buffer.readerIndex = 5;
-        const decryptedData = this.decryptXtea(buffer, keys, buffer.length - 5);
+        const decryptedData = this.decryptXtea(buffer, keys, buffer.length - 7);
         decryptedData.copy(buffer, 5, 0);
         buffer.readerIndex = 0;
     }

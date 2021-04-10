@@ -60,12 +60,17 @@ export class RegionStore {
 
     private readonly regionIndex: FileIndex;
 
-    public constructor(private fileStore: Filestore) {
+    public constructor(private fileStore: Filestore, xteas?: { [p: number]: XteaDefinition }) {
         this.regionIndex = this.fileStore.getIndex('regions');
-        const array = JSON.parse(readFileSync(path.join(this.fileStore.configDir, 'map-keys.json'), 'utf8'));
-        for(let i = 0; i < array.length; i++) {
-            const object: XteaDefinition = array[i];
-            this.xteas[object.name_hash] = object;
+        if(xteas) {
+            this.xteas = xteas;
+            return
+        } else {
+            const array = JSON.parse(readFileSync(path.join(this.fileStore.configDir, 'map-keys.json'), 'utf8'));
+            for(let i = 0; i < array.length; i++) {
+                const object: XteaDefinition = array[i];
+                this.xteas[object.name_hash] = object;
+            }
         }
     }
 

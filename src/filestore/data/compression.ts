@@ -7,22 +7,27 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
     if(!buffer || buffer.length === 0) {
         return { compression: -1, buffer: null, version: -1 };
     }
-    if (keys && keys.length == 4 && (keys[0] != 0 || keys[1] != 0 || keys[2] != 0 || keys[3] != 0)) {
-        buffer.readerIndex = 5;
-        const decryptedData = this.decryptXtea(buffer, keys, buffer.length - 5);
-        decryptedData.copy(buffer, 5, 0);
-        buffer.readerIndex = 0;
-    }
 
     const compression = buffer.get('BYTE', 'UNSIGNED');
-    const length = buffer.get('INT');
+    const compressedLength = buffer.get('INT');
+
+    if (keys && keys.length == 4 && (keys[0] != 0 || keys[1] != 0 || keys[2] != 0 || keys[3] != 0)) {
+        const readerIndex = buffer.readerIndex;
+        let lengthOffset = readerIndex;
+        if (buffer.length - (compressedLength + readerIndex + 4) >= 2) {
+            lengthOffset += 2;
+        }
+        const decryptedData = this.decryptXtea(buffer, keys, buffer.length - lengthOffset);
+        decryptedData.copy(buffer, readerIndex, 0);
+        buffer.readerIndex = readerIndex;
+    }
 
     if(compression == 0) {
         // Uncompressed file
-        const data = new ByteBuffer(length);
-        buffer.copy(data, 0, buffer.readerIndex, length);
-        const decryptedData = this.decryptXtea(data, keys, length);
-        buffer.readerIndex = (buffer.readerIndex + length);
+        const data = new ByteBuffer(compressedLength);
+        buffer.copy(data, 0, buffer.readerIndex, compressedLength);
+        const decryptedData = this.decryptXtea(data, keys, compressedLength);
+        buffer.readerIndex = (buffer.readerIndex + compressedLength);
 
         let version = -1;
         if(buffer.readable >= 2) {
@@ -40,7 +45,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
         const decryptedData = new ByteBuffer(uncompressedLength);
         buffer.copy(decryptedData, 0, buffer.readerIndex);
 
-        buffer.readerIndex = (buffer.readerIndex + length);
+        buffer.readerIndex = (buffer.readerIndex + compressedLength);
 
         let decompressed: ByteBuffer;
         if(compression === 1) { // BZIP2

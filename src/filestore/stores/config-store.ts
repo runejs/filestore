@@ -1,9 +1,7 @@
 import { Filestore } from '../filestore';
-import { ItemStore } from './configs/item-store';
 import { FileIndex } from '../file-index';
 import { Archive } from '../archive';
-import { ObjectStore } from './configs/object-store';
-import { NpcStore } from './configs/npc-store';
+import { NpcStore, ObjectStore, ItemStore } from './configs';
 
 
 /**

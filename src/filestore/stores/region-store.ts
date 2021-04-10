@@ -1,9 +1,11 @@
+import { logger } from '@runejs/core';
+import { readFileSync } from 'fs';
+import path from 'path';
+
 import { Filestore } from '../filestore';
 import { FileIndex } from '../file-index';
-import { logger } from '@runejs/core';
-import {hash} from "../util/name-hash";
+import { hash } from '../util';
 
-let fs = require('fs');
 
 export const maxRegions = 32768;
 
@@ -43,16 +45,26 @@ export interface Region {
     landscapeFile: LandscapeFile | null;
 }
 
+export interface XteaDefinition {
+    archive: number;
+    group: number;
+    name_hash: number;
+    name: string;
+    mapsquare: number;
+    key: number[];
+}
+
 export class RegionStore {
 
+    public readonly xteas: { [key: number]: XteaDefinition } = {};
+
     private readonly regionIndex: FileIndex;
-    private readonly xteas = {};
 
     public constructor(private fileStore: Filestore) {
         this.regionIndex = this.fileStore.getIndex('regions');
-        const array = JSON.parse(fs.readFileSync('./config/map-keys.json', 'utf8'));
+        const array = JSON.parse(readFileSync(path.join(this.fileStore.configDir, 'map-keys.json'), 'utf8'));
         for(let i = 0; i < array.length; i++) {
-            const object = array[i];
+            const object: XteaDefinition = array[i];
             this.xteas[object.name_hash] = object;
         }
     }

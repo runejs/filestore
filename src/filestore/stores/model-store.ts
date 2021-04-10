@@ -1,6 +1,7 @@
+import { ByteBuffer, logger } from '@runejs/core';
+
 import { Filestore } from '../filestore';
 import { FileIndex } from '../file-index';
-import { ByteBuffer, logger } from "@runejs/core";
 
 
 export class RsModel {

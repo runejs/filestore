@@ -1,10 +1,9 @@
-import { readIndexedDataChunk } from './data/chunk';
+import { logger } from '@runejs/core';
+
 import { Archive } from './archive';
 import { FileData } from './file-data';
-import { FilestoreChannels } from './data/filestore-loader';
-import { decompress } from './data/compression';
-import { hash } from './util/name-hash';
-import { logger } from '@runejs/core';
+import { FilestoreChannels, readIndexedDataChunk, decompress } from './data';
+import { hash } from './util';
 
 
 const NAME_FLAG = 0x01;

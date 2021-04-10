@@ -1,8 +1,7 @@
 import { ByteBuffer } from '@runejs/core';
-import { readIndexedDataChunk } from './data/chunk';
-import { decompress } from './data/compression';
+
+import { decompress, readIndexedDataChunk, FilestoreChannels } from './data';
 import { FileIndex } from './file-index';
-import { FilestoreChannels } from './data/filestore-loader';
 
 
 export class FileData {

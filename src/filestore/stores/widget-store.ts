@@ -1,6 +1,7 @@
+import { ByteBuffer } from '@runejs/core';
+
 import { FileIndex } from '../file-index';
 import { Filestore } from '../filestore';
-import { ByteBuffer } from '@runejs/core';
 import { FileData } from '../file-data';
 import { Archive } from '../archive';
 

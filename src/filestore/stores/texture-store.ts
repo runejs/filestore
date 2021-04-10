@@ -1,9 +1,10 @@
-import { Filestore } from '../filestore';
 import { logger } from '@runejs/core';
-import { SpriteStore, toRgb } from './sprite-store';
-import { ColorUtils } from './model-store';
 import { PNG } from 'pngjs';
 import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'fs';
+
+import { Filestore } from '../filestore';
+import { SpriteStore, toRgb } from './sprite-store';
+import { ColorUtils } from './model-store';
 
 
 export class Texture {

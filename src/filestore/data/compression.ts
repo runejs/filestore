@@ -42,10 +42,10 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
             throw new Error(`Invalid uncompressed length`);
         }
 
-        const decryptedData = new ByteBuffer(uncompressedLength);
+        let decryptedData = new ByteBuffer(
+            compression == 1 ? uncompressedLength : (buffer.length - buffer.readerIndex + 2)
+        );
         buffer.copy(decryptedData, 0, buffer.readerIndex);
-
-        buffer.readerIndex = (buffer.readerIndex + compressedLength);
 
         let decompressed: ByteBuffer;
         if(compression === 1) { // BZIP2
@@ -55,6 +55,8 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
         } else {
             throw new Error(`Invalid compression type`);
         }
+
+        buffer.readerIndex = buffer.readerIndex + compressedLength;
 
         if(decompressed.length !== uncompressedLength) {
             throw new Error(`Length mismatch`);

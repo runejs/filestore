@@ -4,7 +4,7 @@ import { getFileNames } from './util';
 import {
     SpriteStore, MusicStore, BinaryStore, JingleStore, SoundStore,
     RegionStore, ConfigStore, ModelStore, WidgetStore, FontStore,
-    TextureStore, ItemStore, NpcStore, ObjectStore
+    TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition
 } from './stores';
 
 
@@ -36,9 +36,15 @@ export class Filestore {
 
     private readonly indexes = new Map<number, FileIndex>();
 
-    public constructor(filestoreDir: string, configDir?: string) {
+    public constructor(
+            filestoreDir: string,
+            options?: {
+                configDir?: string,
+                xteas?: { [key: number]: XteaDefinition }
+            }
+        ) {
         this.filestoreDir = filestoreDir;
-        this.configDir = configDir || filestoreDir;
+        this.configDir = options?.configDir || filestoreDir;
         this.channels = loadFilestore(filestoreDir);
 
         fileNames = getFileNames(this.configDir);
@@ -49,7 +55,7 @@ export class Filestore {
         this.jingleStore = new JingleStore(this);
         this.modelStore = new ModelStore(this);
         this.musicStore = new MusicStore(this);
-        this.regionStore = new RegionStore(this);
+        this.regionStore = new RegionStore(this, options?.xteas);
         this.soundStore = new SoundStore(this);
         this.spriteStore = new SpriteStore(this);
         this.widgetStore = new WidgetStore(this);

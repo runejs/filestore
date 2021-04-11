@@ -1,4 +1,5 @@
-import { ByteBuffer, logger } from '@runejs/core';
+import { logger } from '@runejs/core';
+import { ByteBuffer } from '@runejs/core/buffer';
 
 import { Archive } from '../../archive';
 import { ConfigStore } from '../config-store';

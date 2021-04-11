@@ -1,4 +1,4 @@
-import { ByteBuffer } from '@runejs/core';
+import { ByteBuffer } from '@runejs/core/buffer';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 

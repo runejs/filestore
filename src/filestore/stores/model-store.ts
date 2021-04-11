@@ -1,4 +1,5 @@
-import { ByteBuffer, logger } from '@runejs/core';
+import { logger } from '@runejs/core';
+import { ByteBuffer } from '@runejs/core/buffer';
 
 import { Filestore } from '../filestore';
 import { FileIndex } from '../file-index';
@@ -565,7 +566,7 @@ export class ModelStore {
                 try {
                     xOffset = xDataOffsetBuffer.get('SMART', 'UNSIGNED');
                 } catch {
-                    console.warn('Tried to read out of range xOffset for object', id);
+                    logger.warn('Tried to read out of range xOffset for object', id);
                 }
             }
             let yOffset = 0;
@@ -573,7 +574,7 @@ export class ModelStore {
                 try {
                     yOffset = yDataOffsetBuffer.get('SMART', 'UNSIGNED');
                 } catch {
-                    console.warn('Tried to read out of range yOffset for object', id);
+                    logger.warn('Tried to read out of range yOffset for object', id);
                 }
             }
             let zOffset = 0;
@@ -581,7 +582,7 @@ export class ModelStore {
                 try {
                     zOffset = zDataOffsetBuffer.get('SMART', 'UNSIGNED');
                 } catch {
-                    console.warn('Tried to read out of range zOffset for object', id);
+                    logger.warn('Tried to read out of range zOffset for object', id);
                 }
             }
             rsModel.verticesX[i] = baseOffsetX + xOffset;

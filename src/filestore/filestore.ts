@@ -32,9 +32,9 @@ export class Filestore {
     public readonly widgetStore: WidgetStore;
     public readonly textureStore: TextureStore;
 
-    private readonly channels: FilestoreChannels;
+    public readonly channels: FilestoreChannels;
 
-    private readonly indexes = new Map<number, FileIndex>();
+    public readonly indexes = new Map<number, FileIndex>();
 
     public constructor(
             filestoreDir: string,

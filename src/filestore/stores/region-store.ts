@@ -51,7 +51,7 @@ export interface XteaDefinition {
     name_hash: number;
     name: string;
     mapsquare: number;
-    key: number[];
+    key: [number,number,number,number];
 }
 
 export class RegionStore {

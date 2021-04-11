@@ -2,7 +2,10 @@ import { XteaDefinition } from '../stores';
 import { loadConfigurationFiles } from '@runejs/core/fs';
 
 
-export class XTEARegion implements XteaDefinition {
+export type XteaRegionMap = { [key: number]: XteaRegion };
+
+
+export class XteaRegion implements XteaDefinition {
     public mapsquare: number;
     public key: [number,number,number,number];
     public archive: number;
@@ -27,18 +30,19 @@ export class XTEARegion implements XteaDefinition {
     }
 }
 
-export function translateXTEARegionConfig(config: XteaDefinition): XTEARegion {
-    return new XTEARegion(config.mapsquare, config.key, config.archive, config.group, config.name, config.name_hash);
-}
 
-export async function loadXTEARegionConfigurations(path: string): Promise<{ [key: number]: XTEARegion }> {
-    const regions = {};
+export const createXteaRegion = (config: XteaDefinition): XteaRegion =>
+    new XteaRegion(config.mapsquare, config.key, config.archive, config.group, config.name, config.name_hash);
+
+
+export const loadXteaRegionFiles = async (path: string): Promise<XteaRegionMap> => {
+    const regions: XteaRegionMap = {};
     const files = await loadConfigurationFiles(path);
     for(const file of files) {
-        for (const region of file) {
-            const xteaRegion = translateXTEARegionConfig(region)
+        for(const region of file) {
+            const xteaRegion = createXteaRegion(region)
             regions[xteaRegion.mapsquare] =  xteaRegion;
         }
     }
     return regions;
-}
+};

@@ -1,4 +1,4 @@
-import { ByteBuffer } from '@runejs/core';
+import { ByteBuffer } from '@runejs/core/buffer';
 
 import { FilestoreChannels } from './filestore-loader';
 

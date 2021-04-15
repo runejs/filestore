@@ -66,7 +66,7 @@ export class ConfigStore {
     public readonly objectStore: ObjectStore;
 
     /**
-     * A Store used to access the Object Archive, containing details about every game object.
+     * A Store used to access the Varbit Archive, containing details about every game varbit.
      */
     public readonly varbitStore: VarbitStore;
 

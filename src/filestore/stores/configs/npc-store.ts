@@ -31,6 +31,10 @@ export class NpcConfig {
     headIcon: number = -1;
     clickable: boolean = true;
     turnDegrees: number = 32;
+    varbitId: number = -1;
+    settingId: number = -1;
+    parentId?: number;
+    childrenIds?: number[];
 
     /**
      * 3d modelling information for this npc.
@@ -55,7 +59,6 @@ export class NpcConfig {
         sizeY: 128,
         renderPriority: false
     };
-
 }
 
 
@@ -68,6 +71,7 @@ export class NpcStore {
      * The NPC Archive, containing details about every game NPC.
      */
     public readonly npcArchive: Archive;
+    private readonly children: Map<number, number[]> = new Map();
 
     public constructor(private configStore: ConfigStore) {
         this.npcArchive = this.configStore.getArchive('npcs');
@@ -173,13 +177,21 @@ export class NpcStore {
             } else if(opcode == 103) {
                 npcConfig.turnDegrees = (buffer.get('SHORT', 'UNSIGNED'));
             } else if(opcode == 106) {
-                let varBitId = buffer.get('SHORT', 'UNSIGNED');
-                let settingId = buffer.get('SHORT', 'UNSIGNED');
-                if(varBitId == 65535) varBitId = -1;
-                if(settingId == 65535) settingId = -1;
+                npcConfig.varbitId = buffer.get('SHORT', 'UNSIGNED');
+                npcConfig.settingId = buffer.get('SHORT', 'UNSIGNED');
+                if(npcConfig.varbitId == 65535) {
+                    npcConfig.varbitId = -1;
+                }
+                if(npcConfig.settingId == 65535) {
+                    npcConfig.settingId = -1;
+                }
+                npcConfig.childrenIds = [];
                 const childCount = buffer.get('BYTE', 'UNSIGNED');
                 for(let i = 0; childCount >= i; i++) {
-                    buffer.get('SHORT', 'UNSIGNED'); // child id
+                    npcConfig.childrenIds[i] = buffer.get('SHORT', 'UNSIGNED');
+                    if(npcConfig.childrenIds[i] === 0xFFFF) {
+                        npcConfig.childrenIds[i] = -1;
+                    }
                 }
             } else if(opcode == 107) {
                 npcConfig.clickable = false;
@@ -212,6 +224,21 @@ export class NpcStore {
             }
 
             npcList[npcId] = this.decodeNpcFile(npcFile);
+
+            if (npcList[npcId].childrenIds) {
+                this.children.set(npcList[npcId].gameId, npcList[npcId].childrenIds);
+            }
+        }
+
+        for (let childrenEntry of this.children.entries()) {
+            const parentId = childrenEntry[0];
+            const childrenIds = childrenEntry[1];
+
+            for (let childId of childrenIds) {
+                if (npcList[childId]) {
+                    npcList[childId].parentId = parentId;
+                }
+            }
         }
 
         return npcList;

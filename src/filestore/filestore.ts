@@ -4,9 +4,9 @@ import { getFileNames } from './util';
 import {
     SpriteStore, MusicStore, BinaryStore, JingleStore, SoundStore,
     RegionStore, ConfigStore, ModelStore, WidgetStore, FontStore,
-    TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition
+    TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition,
+    VarbitStore
 } from './stores';
-import {VarbitStore} from "./stores/configs/varbit-store";
 
 
 export let fileNames: { [ key: string ]: string | null };

@@ -1,5 +1,4 @@
 import { logger } from '@runejs/core';
-
 import { Archive } from '../../archive';
 import { ConfigStore } from '../config-store';
 import { FileData } from '../../file-data';

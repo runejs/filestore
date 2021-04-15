@@ -1,8 +1,7 @@
 import { Filestore } from '../filestore';
 import { FileIndex } from '../file-index';
 import { Archive } from '../archive';
-import { NpcStore, ObjectStore, ItemStore } from './configs';
-import {VarbitStore} from "./configs/varbit-store";
+import { NpcStore, ObjectStore, ItemStore, VarbitStore } from './configs';
 
 
 /**

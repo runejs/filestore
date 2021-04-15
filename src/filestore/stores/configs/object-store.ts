@@ -17,7 +17,11 @@ export class ObjectConfig {
     nonWalkable: boolean = true;
     hasOptions: boolean = false;
     options: string[];
-    aBoolean2528: boolean;
+    walkable: boolean;
+    configChangeDest?: number[];
+    configId: number = -1;
+    varbitId: number = -1;
+    supportsItems: boolean = false;
 
     /**
      * 3d modelling information for this object.
@@ -31,6 +35,20 @@ export class ObjectConfig {
      * Additional rendering details.
      */
     rendering: {
+        objectModels?: number[];
+        objectModelTypes?: number[];
+        ambient: number;
+        contrast: number;
+        recolorToReplace?: number[];
+        recolorToFind?: number[];
+        rotated: boolean;
+        castsShadow: boolean;
+        modelSizeX: number;
+        modelSizeY: number;
+        modelSizeHeight: number;
+        mapSceneID: number;
+        obstructsGround: boolean;
+        hollow: boolean;
         adjustToTerrain: boolean;
         nonFlatShading: boolean;
         animationId: number;
@@ -49,8 +67,20 @@ export class ObjectConfig {
         nonFlatShading: false,
         animationId: -1,
         sizeX: 1,
-        sizeY: 1
+        sizeY: 1,
+        hollow: false,
+        obstructsGround: false,
+        mapSceneID: -1,
+        modelSizeY: 128,
+        modelSizeHeight: 128,
+        modelSizeX: 128,
+        castsShadow: true,
+        rotated: false,
+        contrast: 0,
+        ambient: 0
     };
+    icon?: number;
+    wall: boolean = false;
 
 }
 
@@ -110,9 +140,15 @@ export class ObjectStore {
             if(opcode == 1) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 if(length > 0) {
-                    for(let index = 0; length > index; index++) {
-                        buffer.get('SHORT', 'UNSIGNED'); // model id
-                        buffer.get('BYTE', 'UNSIGNED'); // model type
+                    if(objectConfig.rendering.objectModels == null) {
+                        objectConfig.rendering.objectModels = [];
+                        objectConfig.rendering.objectModelTypes = [];
+                        for(let index = 0; length > index; index++) {
+                            objectConfig.rendering.objectModels[index] = buffer.get('SHORT', 'UNSIGNED'); // model id
+                            objectConfig.rendering.objectModelTypes[index] = buffer.get('BYTE', 'UNSIGNED'); // model type
+                        }
+                    } else {
+                        buffer.readerIndex += length * 3;
                     }
                 }
             } else if(opcode == 2) {
@@ -120,8 +156,14 @@ export class ObjectStore {
             } else if(opcode == 5) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 if(length > 0) {
-                    for(let index = 0; length > index; index++) {
-                        buffer.get('SHORT', 'UNSIGNED'); // model id
+                    if(objectConfig.rendering.objectModels == null) {
+                        objectConfig.rendering.objectModels = [];
+                        objectConfig.rendering.objectModelTypes = null;
+                        for(let index = 0; length > index; index++) {
+                            objectConfig.rendering.objectModels[index] = buffer.get('SHORT', 'UNSIGNED'); // model id
+                        }
+                    } else {
+                        buffer.readerIndex += length * 2;
                     }
                 }
             } else if(opcode == 14) {
@@ -131,7 +173,7 @@ export class ObjectStore {
             } else if(opcode == 17) {
                 objectConfig.solid = false;
             } else if(opcode == 18) {
-                objectConfig.aBoolean2528 = false;
+                objectConfig.walkable = false;
             } else if(opcode == 19) {
                 objectConfig.hasOptions = buffer.get('BYTE', 'UNSIGNED') === 1;
             } else if(opcode == 21) {
@@ -139,7 +181,7 @@ export class ObjectStore {
             } else if(opcode == 22) {
                 objectConfig.rendering.nonFlatShading = true;
             } else if(opcode == 23) {
-                // def.unknownBoolean = true;
+                objectConfig.wall = true;
             } else if(opcode == 24) {
                 objectConfig.rendering.animationId = buffer.get('SHORT', 'UNSIGNED');
                 if(objectConfig.rendering.animationId == 0xFFFF) {
@@ -148,9 +190,9 @@ export class ObjectStore {
             } else if(opcode == 28) {
                 buffer.get('BYTE', 'UNSIGNED');
             } else if(opcode == 29) {
-                const ambient = buffer.get('BYTE');
+                objectConfig.rendering.ambient = buffer.get('BYTE');
             } else if(opcode == 39) {
-                const contrast = 5 * buffer.get('BYTE');
+                objectConfig.rendering.contrast = 5 * buffer.get('BYTE');
             } else if(opcode >= 30 && opcode < 35) {
                 if(!objectConfig.options) {
                     objectConfig.options = new Array(5).fill(null);
@@ -160,24 +202,26 @@ export class ObjectStore {
                 objectConfig.options[opcode - 30] = option.toLowerCase() === 'hidden' ? null : option;
             } else if(opcode == 40) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
+                objectConfig.rendering.recolorToFind = [];
+                objectConfig.rendering.recolorToReplace = [];
                 for(let index = 0; index < length; index++) {
-                    (buffer.get('SHORT', 'UNSIGNED')); // old color
-                    (buffer.get('SHORT', 'UNSIGNED')); // new color
+                    objectConfig.rendering.recolorToFind[index] = (buffer.get('SHORT', 'UNSIGNED')); // old color
+                    objectConfig.rendering.recolorToReplace[index] = (buffer.get('SHORT', 'UNSIGNED')); // new color
                 }
             } else if(opcode == 60) {
-                (buffer.get('SHORT', 'UNSIGNED')); // ??
+                objectConfig.icon = (buffer.get('SHORT', 'UNSIGNED')); // ??
             } else if(opcode == 62) {
-                // aBoolean2553 = true;
+                objectConfig.rendering.rotated = true;
             } else if(opcode == 64) {
-                // aBoolean2541 = false;
+                objectConfig.rendering.castsShadow = false;
             } else if(opcode == 65) {
-                (buffer.get('SHORT', 'UNSIGNED')); // modelSizeX
+                objectConfig.rendering.modelSizeX = (buffer.get('SHORT', 'UNSIGNED')); // modelSizeX
             } else if(opcode == 66) {
-                (buffer.get('SHORT', 'UNSIGNED')); // modelSizeHeight
+                objectConfig.rendering.modelSizeHeight = (buffer.get('SHORT', 'UNSIGNED')); // modelSizeHeight
             } else if(opcode == 67) {
-                (buffer.get('SHORT', 'UNSIGNED')); // modelSizeY
+                objectConfig.rendering.modelSizeY = (buffer.get('SHORT', 'UNSIGNED')); // modelSizeY
             } else if(opcode == 68) {
-                (buffer.get('SHORT', 'UNSIGNED')); // mapSceneID
+                objectConfig.rendering.mapSceneID = (buffer.get('SHORT', 'UNSIGNED')); // mapSceneID
             } else if(opcode == 69) {
                 objectConfig.rendering.face = buffer.get('BYTE', 'UNSIGNED');
             } else if(opcode == 70) {
@@ -187,17 +231,28 @@ export class ObjectStore {
             } else if(opcode == 72) {
                 objectConfig.rendering.translateLevel = (buffer.get('SHORT'));
             } else if(opcode == 73) {
-                // unknown = true;
+                objectConfig.rendering.obstructsGround = true;
             } else if(opcode == 74) {
-                // isSolid = true;
+                objectConfig.rendering.hollow = true;
             } else if(opcode == 75) {
-                buffer.get('BYTE', 'UNSIGNED'); // anInt2533
+                objectConfig.supportsItems = buffer.get('BYTE', 'UNSIGNED') === 1; // anInt2533
             } else if(opcode == 77) {
-                buffer.get('SHORT', 'UNSIGNED'); // varbit id
-                buffer.get('SHORT', 'UNSIGNED'); // settings id
+                objectConfig.varbitId = buffer.get('SHORT', 'UNSIGNED'); // varbit id
+                if(objectConfig.varbitId == 0xffff) {
+                    objectConfig.varbitId = -1;
+                }
+                objectConfig.configId = buffer.get('SHORT', 'UNSIGNED'); // settings id
+                if(objectConfig.configId == 0xFFFF) {
+                    objectConfig.configId = -1;
+                }
                 const length = buffer.get('BYTE', 'UNSIGNED');
+                objectConfig.configChangeDest = [];
                 for(let index = 0; index <= length; ++index) {
-                    buffer.get('SHORT', 'UNSIGNED');
+                    objectConfig.configChangeDest[index] = buffer.get('SHORT', 'UNSIGNED');
+                    if(0xFFFF == objectConfig.configChangeDest[index]) {
+                        objectConfig.configChangeDest[index] = -1;
+                    }
+
                 }
             } else if(opcode == 78) {
                 buffer.get('SHORT', 'UNSIGNED'); // anInt2513

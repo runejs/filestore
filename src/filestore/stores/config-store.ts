@@ -2,6 +2,7 @@ import { Filestore } from '../filestore';
 import { FileIndex } from '../file-index';
 import { Archive } from '../archive';
 import { NpcStore, ObjectStore, ItemStore } from './configs';
+import {VarbitStore} from "./configs/varbit-store";
 
 
 /**
@@ -13,7 +14,8 @@ export type ConfigId =
     'npcs' |
     'items' |
     'animations' |
-    'graphics';
+    'graphics' |
+    'varbits';
 
 /**
  * A map of unique config keys to file/archive ids within the config store.
@@ -24,7 +26,8 @@ export const configIdMap: { [key: string]: number } = {
     'npcs': 9,
     'items': 10,
     'animations': 12,
-    'graphics': 13
+    'graphics': 13,
+    'varbits': 14
 };
 
 /**
@@ -64,6 +67,11 @@ export class ConfigStore {
     public readonly objectStore: ObjectStore;
 
     /**
+     * A Store used to access the Object Archive, containing details about every game object.
+     */
+    public readonly varbitStore: VarbitStore;
+
+    /**
      * The configuration file/archive index.
      */
     public readonly configIndex: FileIndex;
@@ -73,6 +81,7 @@ export class ConfigStore {
         this.itemStore = new ItemStore(this);
         this.npcStore = new NpcStore(this);
         this.objectStore = new ObjectStore(this);
+        this.varbitStore = new VarbitStore(this);
     }
 
     public getArchive(configId: ConfigId | number): Archive {

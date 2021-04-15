@@ -6,6 +6,7 @@ import {
     RegionStore, ConfigStore, ModelStore, WidgetStore, FontStore,
     TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition
 } from './stores';
+import {VarbitStore} from "./stores/configs/varbit-store";
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -85,6 +86,10 @@ export class Filestore {
 
     public get itemStore(): ItemStore {
         return this.configStore?.itemStore;
+    }
+
+    public get varbitStore(): VarbitStore {
+        return this.configStore?.varbitStore;
     }
 
     public get npcStore(): NpcStore {

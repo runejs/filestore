@@ -4,7 +4,8 @@ import { getFileNames } from './util';
 import {
     SpriteStore, MusicStore, BinaryStore, JingleStore, SoundStore,
     RegionStore, ConfigStore, ModelStore, WidgetStore, FontStore,
-    TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition
+    TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition,
+    VarbitStore
 } from './stores';
 
 
@@ -85,6 +86,10 @@ export class Filestore {
 
     public get itemStore(): ItemStore {
         return this.configStore?.itemStore;
+    }
+
+    public get varbitStore(): VarbitStore {
+        return this.configStore?.varbitStore;
     }
 
     public get npcStore(): NpcStore {

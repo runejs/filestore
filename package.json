@@ -1,12 +1,13 @@
 {
     "name": "@runejs/filestore",
-    "version": "0.12.4",
+    "version": "0.13.0",
     "description": "Tools for managing the RuneJS filestore.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
         "build": "tsc",
-        "start": "ts-node src/run.ts"
+        "start": "ts-node src/run.ts",
+        "package": "rimraf dist && npm i && npm run build && npm publish --dry-run"
     },
     "repository": {
         "type": "git",
@@ -29,6 +30,7 @@
     "devDependencies": {
         "@types/node": "^14.14.37",
         "@types/pngjs": "^3.4.2",
+        "rimraf": "^3.0.2",
         "ts-node": "^9.1.1",
         "tslib": "^2.1.0"
     }

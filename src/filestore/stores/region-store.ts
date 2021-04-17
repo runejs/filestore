@@ -4,7 +4,6 @@ import path from 'path';
 
 import { Filestore } from '../filestore';
 import { FileIndex } from '../file-index';
-import { hash } from '../util';
 
 
 export const maxRegions = 32768;
@@ -64,19 +63,17 @@ export class RegionStore {
         this.regionIndex = this.fileStore.getIndex('regions');
         if(xteas) {
             this.xteas = xteas;
-            return
         } else {
             const array = JSON.parse(readFileSync(path.join(this.fileStore.configDir, 'map-keys.json'), 'utf8'));
             for(let i = 0; i < array.length; i++) {
                 const object: XteaDefinition = array[i];
-                this.xteas[object.name_hash] = object;
+                this.xteas[object.name] = object;
             }
         }
     }
 
     public getMapKeys(regionX: number, regionY: number): number[] {
-        const fileNameHash = hash(`l${regionX}_${regionY}`);
-        return this.xteas[fileNameHash]?.key || [0, 0, 0, 0];
+        return this.xteas[`l${regionX}_${regionY}`]?.key || [0, 0, 0, 0];
     }
 
     public getRegion(regionX: number, regionY: number): Region | null {

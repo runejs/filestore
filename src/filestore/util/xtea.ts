@@ -41,7 +41,7 @@ export const loadXteaRegionFiles = async (path: string): Promise<XteaRegionMap> 
     for(const file of files) {
         for(const region of file) {
             const xteaRegion = createXteaRegion(region)
-            regions[xteaRegion.mapsquare] =  xteaRegion;
+            regions[xteaRegion.name] =  xteaRegion;
         }
     }
     return regions;

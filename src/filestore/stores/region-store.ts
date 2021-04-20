@@ -53,6 +53,9 @@ export interface XteaDefinition {
     key: [number,number,number,number];
 }
 
+
+export type TileArray = (Uint8Array[])[];
+
 export class RegionStore {
 
     public readonly xteas: { [key: number]: XteaDefinition } = {};
@@ -148,26 +151,34 @@ export class RegionStore {
         }
 
         const tileHeights: number[][][] = new Array(4);
-        const tileSettings: Uint8Array[][] = new Array(4);
-        const tileOverlayIds: Uint8Array[][] = new Array(4);
-        const tileOverlayPaths: Uint8Array[][] = new Array(4);
-        const tileOverlayOrientations: Uint8Array[][] = new Array(4);
-        const tileUnderlayIds: Uint8Array[][] = new Array(4);
-
-        const arrays = [ tileHeights, tileSettings, tileOverlayIds, tileOverlayPaths,
-            tileOverlayOrientations, tileUnderlayIds ];
-        arrays.forEach(tileArray => {
-            tileArray.fill(new Array(64));
-            tileArray.forEach(xArr => {
-                xArr.fill(new Array(64));
-            });
-        });
+        const tileSettings: TileArray = new Array(4);
+        const tileOverlayIds: TileArray = new Array(4);
+        const tileOverlayPaths: TileArray = new Array(4);
+        const tileOverlayOrientations: TileArray = new Array(4);
+        const tileUnderlayIds: TileArray = new Array(4);
 
         const buffer = mapFile.content;
+        buffer.readerIndex = 0;
 
         for(let level = 0; level < 4; level++) {
+            tileHeights[level] = new Array(64);
+            tileSettings[level] = new Array(64);
+            tileOverlayIds[level] = new Array(64);
+            tileOverlayPaths[level] = new Array(64);
+            tileOverlayOrientations[level] = new Array(64);
+            tileUnderlayIds[level] = new Array(64);
+
             for(let x = 0; x < 64; x++) {
+                tileHeights[level][x] = new Array(64);
+                tileSettings[level][x] = new Uint8Array(64);
+                tileOverlayIds[level][x] = new Uint8Array(64);
+                tileOverlayPaths[level][x] = new Uint8Array(64);
+                tileOverlayOrientations[level][x] = new Uint8Array(64);
+                tileUnderlayIds[level][x] = new Uint8Array(64);
+
                 for(let y = 0; y < 64; y++) {
+                    tileSettings[level][x][y] = 0;
+
                     while(true) {
                         const opcode = buffer.get('BYTE', 'UNSIGNED');
 

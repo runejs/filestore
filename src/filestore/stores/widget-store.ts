@@ -4,50 +4,76 @@ import { FileIndex } from '../file-index';
 import { Filestore } from '../filestore';
 import { FileData } from '../file-data';
 import { Archive } from '../archive';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { logger } from '@runejs/core';
 
 
 export abstract class WidgetBase {
-    id: number;
-    parentId: number;
-    type: number;
-    format: number;
-    originalX: number;
-    originalY: number;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    menuType: number;
-    contentType: number;
-    opacity: number;
-    hidden: boolean;
-    targetVerb: string;
-    spellName: string;
-    clickMask: number;
-    hintText: string;
-    hoveredSiblingId: number;
-    alternateOperators: number[];
-    alternateRhs: number[];
-    cs1: number[][];
 
-    hasListeners: boolean;
+    public id: number;
+    public parentId: number;
+    public type: number;
+    public format: number;
+    public originalX: number;
+    public originalY: number;
+    public x: number;
+    public y: number;
+    public width: number;
+    public height: number;
+    public menuType: number;
+    public contentType: number;
+    public opacity: number;
+    public hidden: boolean;
+    public targetVerb: string;
+    public spellName: string;
+    public clickMask: number;
+    public hintText: string;
+    public hoveredSiblingId: number;
+    public alternateOperators: number[];
+    public alternateRhs: number[];
+    public cs1: number[][];
+    public hasListeners: boolean;
+
+    /**
+     * Writes this unpacked widget file to the disk under `./unpacked/widgets/{widgetId}_widget.json`
+     */
+    public async writeToDisk(): Promise<void> {
+        return new Promise((resolve, reject) => {
+            try {
+                if(!existsSync('./unpacked/widgets')) {
+                    mkdirSync('./unpacked/widgets');
+                }
+
+                const { id } = this;
+
+                writeFileSync(`./unpacked/widgets/${id}.json`, JSON.stringify(this, null, 4));
+
+                resolve();
+            } catch(error) {
+                reject(error);
+            }
+        });
+    }
+
 }
 
 export class ParentWidget extends WidgetBase {
-    children: WidgetBase[];
 
-    constructor(id: number) {
+    public children: WidgetBase[];
+
+    public constructor(id: number) {
         super();
         this.id = id;
     }
+
 }
 
 export class ContainerWidget extends WidgetBase {
-    type: number = 0;
-    scrollHeight: number;
-    scrollPosition: number;
-    scrollWidth: number;
-    children?: WidgetBase[];
+    public type: number = 0;
+    public scrollHeight: number;
+    public scrollPosition: number;
+    public scrollWidth: number;
+    public children?: WidgetBase[];
 }
 
 export class TextWidget extends WidgetBase {
@@ -166,6 +192,24 @@ export class WidgetStore {
         this.widgetFileIndex = fileStore.getIndex('widgets');
     }
 
+    /**
+     * Writes all unpacked widget files to the disk under `./unpacked/widgets/`
+     */
+    public async writeToDisk(): Promise<void> {
+        const widgets = this.decodeWidgetStore();
+        for(const widget of widgets) {
+            try {
+                await widget.writeToDisk();
+            } catch(e) {
+                logger.error(e);
+            }
+        }
+    }
+
+    /**
+     * Decodes the specified widget file.
+     * @param id The numeric ID of the widget file to decode.
+     */
     public decodeWidget(id: number): WidgetBase {
         const file = this.widgetFileIndex.files.get(id);
         if(file.type === 'file') {
@@ -184,6 +228,11 @@ export class WidgetStore {
         }
     }
 
+    /**
+     * Decodes the specified widget file, first determining if it is in the new or older widget format.
+     * @param id The numeric ID of the widget file to decode.
+     * @param widgetFile The file data of the widget file to decode.
+     */
     public decodeWidgetFile(id: number, widgetFile: FileData | Archive): WidgetBase {
         if(!widgetFile.content) {
             widgetFile.decompress();
@@ -195,6 +244,25 @@ export class WidgetStore {
         } else {
             return this.decodeWidgetFormat1(id, content);
         }
+    }
+
+    /**
+     * Decodes all widget files within the filestore.
+     * @returns The list of decoded WidgetBase objects from the widget store.
+     */
+    public decodeWidgetStore(): WidgetBase[] {
+        const widgetCount = this.widgetFileIndex.files.size;
+        const widgets: WidgetBase[] = new Array(widgetCount);
+        for(let widgetId = 0; widgetId < widgetCount; widgetId++) {
+            try {
+                widgets[widgetId] = this.decodeWidget(widgetId);
+            } catch(error) {
+                logger.error(`Error decoding widget ${widgetId}:`);
+                logger.error(error);
+            }
+        }
+
+        return widgets;
     }
 
     public createWidget(widgetType: number): WidgetBase {

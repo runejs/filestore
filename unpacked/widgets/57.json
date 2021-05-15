@@ -1,0 +1,40 @@
+{
+    "type": 4,
+    "id": 57,
+    "format": 1,
+    "menuType": 0,
+    "contentType": 0,
+    "originalX": 17,
+    "originalY": 51,
+    "width": 480,
+    "height": 14,
+    "opacity": 0,
+    "parentId": -1,
+    "hoveredSiblingId": -1,
+    "x": 17,
+    "y": 51,
+    "alternateOperators": [
+        3
+    ],
+    "alternateRhs": [
+        0
+    ],
+    "cs1": [
+        [
+            5,
+            380,
+            0
+        ]
+    ],
+    "textAlignmentX": 1,
+    "textAlignmentY": 0,
+    "lineHeight": 0,
+    "fontId": 496,
+    "textShadowed": false,
+    "text": "Waiting for players to join the other team.",
+    "alternateText": "Time until next game starts: %1",
+    "textColor": 16777215,
+    "alternateTextColor": 16777215,
+    "hoveredTextColor": 0,
+    "alternateHoveredTextColor": 0
+}

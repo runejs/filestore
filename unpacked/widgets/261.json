@@ -1,0 +1,1491 @@
+{
+    "id": 261,
+    "children": [
+        {
+            "type": 5,
+            "id": 0,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 75,
+            "originalY": 206,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 75,
+            "y": 206,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    173,
+                    0
+                ]
+            ],
+            "spriteId": 761,
+            "alternateSpriteId": 762,
+            "hintText": "Toggle Run"
+        },
+        {
+            "type": 5,
+            "id": 1,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 75,
+            "originalY": 152,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 75,
+            "y": 152,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                0
+            ],
+            "cs1": [
+                [
+                    5,
+                    171,
+                    0
+                ]
+            ],
+            "spriteId": 761,
+            "alternateSpriteId": 762,
+            "hintText": "Toggle Chat Effects"
+        },
+        {
+            "type": 5,
+            "id": 2,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 131,
+            "originalY": 152,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 131,
+            "y": 152,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    287,
+                    0
+                ]
+            ],
+            "spriteId": 761,
+            "alternateSpriteId": 762,
+            "hintText": "Toggle Split Private Chat"
+        },
+        {
+            "type": 5,
+            "id": 3,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 19,
+            "originalY": 152,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 19,
+            "y": 152,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                0
+            ],
+            "cs1": [
+                [
+                    5,
+                    170,
+                    0
+                ]
+            ],
+            "spriteId": 761,
+            "alternateSpriteId": 762,
+            "hintText": "Toggle number of Mouse Buttons"
+        },
+        {
+            "type": 5,
+            "id": 4,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 19,
+            "originalY": 206,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 19,
+            "y": 206,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    427,
+                    0
+                ]
+            ],
+            "spriteId": 761,
+            "alternateSpriteId": 762,
+            "hintText": "Toggle Accept Aid"
+        },
+        {
+            "type": 5,
+            "id": 5,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 131,
+            "originalY": 206,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 131,
+            "y": 206,
+            "spriteId": 761,
+            "alternateSpriteId": 762,
+            "hintText": "Open House Options"
+        },
+        {
+            "type": 5,
+            "id": 6,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 9,
+            "originalY": 8,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 9,
+            "y": 8,
+            "spriteId": 659,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 7,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 49,
+            "originalY": 16,
+            "width": 32,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 49,
+            "y": 16,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    166,
+                    0
+                ]
+            ],
+            "spriteId": 679,
+            "alternateSpriteId": 683,
+            "hintText": "Adjust Screen Brightness"
+        },
+        {
+            "type": 5,
+            "id": 8,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 81,
+            "originalY": 16,
+            "width": 32,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 81,
+            "y": 16,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                2
+            ],
+            "cs1": [
+                [
+                    5,
+                    166,
+                    0
+                ]
+            ],
+            "spriteId": 680,
+            "alternateSpriteId": 684,
+            "hintText": "Adjust Screen Brightness"
+        },
+        {
+            "type": 5,
+            "id": 9,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 113,
+            "originalY": 16,
+            "width": 32,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 113,
+            "y": 16,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                3
+            ],
+            "cs1": [
+                [
+                    5,
+                    166,
+                    0
+                ]
+            ],
+            "spriteId": 681,
+            "alternateSpriteId": 685,
+            "hintText": "Adjust Screen Brightness"
+        },
+        {
+            "type": 5,
+            "id": 10,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 145,
+            "originalY": 16,
+            "width": 32,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 145,
+            "y": 16,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                4
+            ],
+            "cs1": [
+                [
+                    5,
+                    166,
+                    0
+                ]
+            ],
+            "spriteId": 682,
+            "alternateSpriteId": 686,
+            "hintText": "Adjust Screen Brightness"
+        },
+        {
+            "type": 5,
+            "id": 11,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 49,
+            "originalY": 53,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 49,
+            "y": 53,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                4
+            ],
+            "cs1": [
+                [
+                    5,
+                    168,
+                    0
+                ]
+            ],
+            "spriteId": 692,
+            "alternateSpriteId": 687,
+            "hintText": "Adjust Music Volume"
+        },
+        {
+            "type": 5,
+            "id": 12,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 75,
+            "originalY": 53,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 75,
+            "y": 53,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                3
+            ],
+            "cs1": [
+                [
+                    5,
+                    168,
+                    0
+                ]
+            ],
+            "spriteId": 693,
+            "alternateSpriteId": 688,
+            "hintText": "Adjust Music Volume"
+        },
+        {
+            "type": 5,
+            "id": 13,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 101,
+            "originalY": 53,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 101,
+            "y": 53,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                2
+            ],
+            "cs1": [
+                [
+                    5,
+                    168,
+                    0
+                ]
+            ],
+            "spriteId": 694,
+            "alternateSpriteId": 689,
+            "hintText": "Adjust Music Volume"
+        },
+        {
+            "type": 5,
+            "id": 14,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 127,
+            "originalY": 53,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 127,
+            "y": 53,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    168,
+                    0
+                ]
+            ],
+            "spriteId": 695,
+            "alternateSpriteId": 690,
+            "hintText": "Adjust Music Volume"
+        },
+        {
+            "type": 5,
+            "id": 15,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 153,
+            "originalY": 53,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 153,
+            "y": 53,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                0
+            ],
+            "cs1": [
+                [
+                    5,
+                    168,
+                    0
+                ]
+            ],
+            "spriteId": 696,
+            "alternateSpriteId": 691,
+            "hintText": "Adjust Music Volume"
+        },
+        {
+            "type": 5,
+            "id": 16,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 49,
+            "originalY": 89,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 49,
+            "y": 89,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                4
+            ],
+            "cs1": [
+                [
+                    5,
+                    169,
+                    0
+                ]
+            ],
+            "spriteId": 692,
+            "alternateSpriteId": 687,
+            "hintText": "Adjust Sound Effect Volume"
+        },
+        {
+            "type": 5,
+            "id": 17,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 75,
+            "originalY": 89,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 75,
+            "y": 89,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                3
+            ],
+            "cs1": [
+                [
+                    5,
+                    169,
+                    0
+                ]
+            ],
+            "spriteId": 693,
+            "alternateSpriteId": 688,
+            "hintText": "Adjust Sound Effect Volume"
+        },
+        {
+            "type": 5,
+            "id": 18,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 101,
+            "originalY": 89,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 101,
+            "y": 89,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                2
+            ],
+            "cs1": [
+                [
+                    5,
+                    169,
+                    0
+                ]
+            ],
+            "spriteId": 694,
+            "alternateSpriteId": 689,
+            "hintText": "Adjust Sound Effect Volume"
+        },
+        {
+            "type": 5,
+            "id": 19,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 127,
+            "originalY": 89,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 127,
+            "y": 89,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    169,
+                    0
+                ]
+            ],
+            "spriteId": 695,
+            "alternateSpriteId": 690,
+            "hintText": "Adjust Sound Effect Volume"
+        },
+        {
+            "type": 5,
+            "id": 20,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 153,
+            "originalY": 89,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 153,
+            "y": 89,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                0
+            ],
+            "cs1": [
+                [
+                    5,
+                    169,
+                    0
+                ]
+            ],
+            "spriteId": 696,
+            "alternateSpriteId": 691,
+            "hintText": "Adjust Sound Effect Volume"
+        },
+        {
+            "type": 5,
+            "id": 21,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 136,
+            "originalY": 155,
+            "width": 32,
+            "height": 33,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 136,
+            "y": 155,
+            "spriteId": 664,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 22,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 78,
+            "originalY": 156,
+            "width": 32,
+            "height": 33,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 78,
+            "y": 156,
+            "spriteId": 662,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 23,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 23,
+            "originalY": 158,
+            "width": 32,
+            "height": 33,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 23,
+            "y": 158,
+            "spriteId": 663,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 24,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 23,
+            "originalY": 211,
+            "width": 32,
+            "height": 33,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 23,
+            "y": 211,
+            "spriteId": 665,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 25,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 9,
+            "originalY": 45,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 9,
+            "y": 45,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                4
+            ],
+            "cs1": [
+                [
+                    5,
+                    168,
+                    0
+                ]
+            ],
+            "spriteId": 660,
+            "alternateSpriteId": 666
+        },
+        {
+            "type": 5,
+            "id": 26,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 9,
+            "originalY": 81,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 9,
+            "y": 81,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                4
+            ],
+            "cs1": [
+                [
+                    5,
+                    169,
+                    0
+                ]
+            ],
+            "spriteId": 661,
+            "alternateSpriteId": 667
+        },
+        {
+            "type": 4,
+            "id": 27,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 74,
+            "originalY": 227,
+            "width": 42,
+            "height": 18,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 74,
+            "y": 227,
+            "cs1": [
+                [
+                    11,
+                    0
+                ]
+            ],
+            "textAlignmentX": 1,
+            "textAlignmentY": 1,
+            "lineHeight": 0,
+            "fontId": 495,
+            "textShadowed": true,
+            "text": "%1%",
+            "alternateText": "",
+            "textColor": 16750592,
+            "alternateTextColor": 0,
+            "hoveredTextColor": 0,
+            "alternateHoveredTextColor": 0
+        },
+        {
+            "type": 5,
+            "id": 28,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 86,
+            "originalY": 210,
+            "width": 27,
+            "height": 34,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 86,
+            "y": 210,
+            "spriteId": 677,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 29,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 49,
+            "originalY": 126,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 49,
+            "y": 126,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                4
+            ],
+            "cs1": [
+                [
+                    5,
+                    872,
+                    0
+                ]
+            ],
+            "spriteId": 692,
+            "alternateSpriteId": 687,
+            "hintText": "Adjust Area Sound Effect Volume"
+        },
+        {
+            "type": 5,
+            "id": 30,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 75,
+            "originalY": 126,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 75,
+            "y": 126,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                3
+            ],
+            "cs1": [
+                [
+                    5,
+                    872,
+                    0
+                ]
+            ],
+            "spriteId": 693,
+            "alternateSpriteId": 688,
+            "hintText": "Adjust Area Sound Effect Volume"
+        },
+        {
+            "type": 5,
+            "id": 31,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 101,
+            "originalY": 126,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 101,
+            "y": 126,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                2
+            ],
+            "cs1": [
+                [
+                    5,
+                    872,
+                    0
+                ]
+            ],
+            "spriteId": 694,
+            "alternateSpriteId": 689,
+            "hintText": "Adjust Area Sound Effect Volume"
+        },
+        {
+            "type": 5,
+            "id": 32,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 127,
+            "originalY": 126,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 127,
+            "y": 126,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    872,
+                    0
+                ]
+            ],
+            "spriteId": 695,
+            "alternateSpriteId": 690,
+            "hintText": "Adjust Area Sound Effect Volume"
+        },
+        {
+            "type": 5,
+            "id": 33,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 153,
+            "originalY": 126,
+            "width": 26,
+            "height": 16,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 153,
+            "y": 126,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                0
+            ],
+            "cs1": [
+                [
+                    5,
+                    872,
+                    0
+                ]
+            ],
+            "spriteId": 696,
+            "alternateSpriteId": 691,
+            "hintText": "Adjust Area Sound Effect Volume"
+        },
+        {
+            "type": 5,
+            "id": 34,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 9,
+            "originalY": 118,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 9,
+            "y": 118,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                4
+            ],
+            "cs1": [
+                [
+                    5,
+                    872,
+                    0
+                ]
+            ],
+            "spriteId": 673,
+            "alternateSpriteId": 674
+        },
+        {
+            "type": 5,
+            "id": 35,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 136,
+            "originalY": 211,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 136,
+            "y": 211,
+            "spriteId": 676,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 8,
+            "id": 36,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 9,
+            "originalY": 8,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 9,
+            "y": 8,
+            "text": "Adjust Screen Brightness"
+        },
+        {
+            "type": 8,
+            "id": 37,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 9,
+            "originalY": 45,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 9,
+            "y": 45,
+            "text": "Adjust Music Volume"
+        },
+        {
+            "type": 8,
+            "id": 38,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 9,
+            "originalY": 81,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 9,
+            "y": 81,
+            "text": "Adjust Sound Effect Volume"
+        },
+        {
+            "type": 8,
+            "id": 39,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 9,
+            "originalY": 117,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 9,
+            "y": 117,
+            "text": "Adjust Area Sound Volume"
+        },
+        {
+            "type": 8,
+            "id": 40,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 59,
+            "originalY": 58,
+            "width": 41,
+            "height": 40,
+            "opacity": 0,
+            "parentId": 51,
+            "hoveredSiblingId": -1,
+            "x": 59,
+            "y": 58,
+            "cs1": [
+                [
+                    11,
+                    0
+                ]
+            ],
+            "text": "Run (on) Energy %1%"
+        },
+        {
+            "type": 8,
+            "id": 41,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 59,
+            "originalY": 3,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": 53,
+            "hoveredSiblingId": -1,
+            "x": 59,
+            "y": 3,
+            "text": "Chat Effects\\n(currently on)"
+        },
+        {
+            "type": 8,
+            "id": 42,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 115,
+            "originalY": 3,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": 55,
+            "hoveredSiblingId": -1,
+            "x": 115,
+            "y": 3,
+            "text": "Split Private Chat\\n(currently on)"
+        },
+        {
+            "type": 8,
+            "id": 43,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 2,
+            "originalY": 2,
+            "width": 41,
+            "height": 41,
+            "opacity": 0,
+            "parentId": 57,
+            "hoveredSiblingId": -1,
+            "x": 2,
+            "y": 2,
+            "text": "Mouse buttons\\n(currently 2)"
+        },
+        {
+            "type": 8,
+            "id": 44,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 2,
+            "originalY": 57,
+            "width": 39,
+            "height": 40,
+            "opacity": 0,
+            "parentId": 59,
+            "hoveredSiblingId": -1,
+            "x": 2,
+            "y": 57,
+            "text": "Accept Aid (currently on)"
+        },
+        {
+            "type": 8,
+            "id": 45,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 131,
+            "originalY": 206,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 131,
+            "y": 206,
+            "text": "House Options"
+        },
+        {
+            "type": 8,
+            "id": 46,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 58,
+            "originalY": 56,
+            "width": 41,
+            "height": 40,
+            "opacity": 0,
+            "parentId": 52,
+            "hoveredSiblingId": -1,
+            "x": 58,
+            "y": 56,
+            "cs1": [
+                [
+                    11,
+                    0
+                ]
+            ],
+            "text": "Run (off) Energy %1%"
+        },
+        {
+            "type": 8,
+            "id": 47,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 59,
+            "originalY": 3,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": 54,
+            "hoveredSiblingId": -1,
+            "x": 59,
+            "y": 3,
+            "text": "Chat Effects\\n(currently off)"
+        },
+        {
+            "type": 8,
+            "id": 48,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 115,
+            "originalY": 3,
+            "width": 40,
+            "height": 40,
+            "opacity": 0,
+            "parentId": 56,
+            "hoveredSiblingId": -1,
+            "x": 115,
+            "y": 3,
+            "text": "Split Private Chat\\n(currently off)"
+        },
+        {
+            "type": 8,
+            "id": 49,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 1,
+            "originalY": 3,
+            "width": 41,
+            "height": 41,
+            "opacity": 0,
+            "parentId": 58,
+            "hoveredSiblingId": -1,
+            "x": 1,
+            "y": 3,
+            "text": "Mouse buttons\\n(currently 1)"
+        },
+        {
+            "type": 8,
+            "id": 50,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 3,
+            "originalY": 57,
+            "width": 39,
+            "height": 40,
+            "opacity": 0,
+            "parentId": 60,
+            "hoveredSiblingId": -1,
+            "x": 3,
+            "y": 57,
+            "text": "Accept Aid (currently off)"
+        },
+        {
+            "type": 0,
+            "id": 51,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 16,
+            "originalY": 149,
+            "width": 155,
+            "height": 100,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 16,
+            "y": 149,
+            "scrollHeight": 0,
+            "hidden": false
+        },
+        {
+            "type": 0,
+            "id": 52,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 16,
+            "originalY": 149,
+            "width": 155,
+            "height": 100,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 16,
+            "y": 149,
+            "scrollHeight": 0,
+            "hidden": true
+        },
+        {
+            "type": 0,
+            "id": 53,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 16,
+            "originalY": 149,
+            "width": 155,
+            "height": 100,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 16,
+            "y": 149,
+            "scrollHeight": 0,
+            "hidden": false
+        },
+        {
+            "type": 0,
+            "id": 54,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 16,
+            "originalY": 149,
+            "width": 155,
+            "height": 100,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 16,
+            "y": 149,
+            "scrollHeight": 0,
+            "hidden": true
+        },
+        {
+            "type": 0,
+            "id": 55,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 16,
+            "originalY": 149,
+            "width": 155,
+            "height": 100,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 16,
+            "y": 149,
+            "scrollHeight": 0,
+            "hidden": false
+        },
+        {
+            "type": 0,
+            "id": 56,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 16,
+            "originalY": 149,
+            "width": 155,
+            "height": 100,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 16,
+            "y": 149,
+            "scrollHeight": 0,
+            "hidden": true
+        },
+        {
+            "type": 0,
+            "id": 57,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 16,
+            "originalY": 149,
+            "width": 155,
+            "height": 100,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 16,
+            "y": 149,
+            "scrollHeight": 0,
+            "hidden": false
+        },
+        {
+            "type": 0,
+            "id": 58,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 16,
+            "originalY": 149,
+            "width": 150,
+            "height": 100,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 16,
+            "y": 149,
+            "scrollHeight": 0,
+            "hidden": true
+        },
+        {
+            "type": 0,
+            "id": 59,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 16,
+            "originalY": 149,
+            "width": 155,
+            "height": 100,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 16,
+            "y": 149,
+            "scrollHeight": 0,
+            "hidden": false
+        },
+        {
+            "type": 0,
+            "id": 60,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 16,
+            "originalY": 149,
+            "width": 155,
+            "height": 100,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 16,
+            "y": 149,
+            "scrollHeight": 0,
+            "hidden": true
+        }
+    ]
+}

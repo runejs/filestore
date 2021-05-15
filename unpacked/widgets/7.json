@@ -1,0 +1,53 @@
+{
+    "id": 7,
+    "children": [
+        {
+            "type": 3,
+            "id": 0,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 0,
+            "originalY": 0,
+            "width": 512,
+            "height": 334,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 0,
+            "y": 0,
+            "filled": true,
+            "textColor": 0,
+            "alternateTextColor": 0,
+            "hoveredTextColor": 0,
+            "alternateHoveredTextColor": 0
+        },
+        {
+            "type": 4,
+            "id": 1,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 3,
+            "originalY": 58,
+            "width": 505,
+            "height": 82,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 3,
+            "y": 58,
+            "textAlignmentX": 1,
+            "textAlignmentY": 0,
+            "lineHeight": 0,
+            "fontId": 496,
+            "textShadowed": true,
+            "text": "Text",
+            "alternateText": "",
+            "textColor": 16777215,
+            "alternateTextColor": 0,
+            "hoveredTextColor": 0,
+            "alternateHoveredTextColor": 0
+        }
+    ]
+}

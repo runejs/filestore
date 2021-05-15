@@ -1,0 +1,1260 @@
+{
+    "id": 134,
+    "children": [
+        {
+            "type": 3,
+            "id": 0,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": -2,
+            "originalY": -12,
+            "width": 520,
+            "height": 480,
+            "opacity": 196,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": -2,
+            "y": -12,
+            "filled": true,
+            "textColor": 0,
+            "alternateTextColor": 0,
+            "hoveredTextColor": 0,
+            "alternateHoveredTextColor": 0
+        },
+        {
+            "type": 6,
+            "id": 1,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 241,
+            "originalY": 146,
+            "width": 35,
+            "height": 35,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 241,
+            "y": 146,
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 15271,
+            "alternateModelId": -1,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 511,
+            "rotationX": 523,
+            "rotationY": 1033
+        },
+        {
+            "type": 4,
+            "id": 2,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 76,
+            "originalY": 70,
+            "width": 349,
+            "height": 36,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 76,
+            "y": 70,
+            "textAlignmentX": 1,
+            "textAlignmentY": 1,
+            "lineHeight": 0,
+            "fontId": 496,
+            "textShadowed": true,
+            "text": "Choose the stat you wish to be advanced!",
+            "alternateText": "",
+            "textColor": 10066329,
+            "alternateTextColor": 0,
+            "hoveredTextColor": 0,
+            "alternateHoveredTextColor": 0
+        },
+        {
+            "type": 5,
+            "id": 3,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 182,
+            "originalY": 126,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 182,
+            "y": 126,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Attack"
+        },
+        {
+            "type": 5,
+            "id": 4,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 214,
+            "originalY": 126,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 214,
+            "y": 126,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                2
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Strength"
+        },
+        {
+            "type": 5,
+            "id": 5,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 246,
+            "originalY": 126,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 246,
+            "y": 126,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                3
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Ranged"
+        },
+        {
+            "type": 5,
+            "id": 6,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 278,
+            "originalY": 126,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 278,
+            "y": 126,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                4
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Magic"
+        },
+        {
+            "type": 5,
+            "id": 7,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 310,
+            "originalY": 126,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 310,
+            "y": 126,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                5
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Defence"
+        },
+        {
+            "type": 5,
+            "id": 8,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 167,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 167,
+            "y": 156,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                6
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Hitpoints"
+        },
+        {
+            "type": 5,
+            "id": 9,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 199,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 199,
+            "y": 156,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                7
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Prayer"
+        },
+        {
+            "type": 5,
+            "id": 10,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 231,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 231,
+            "y": 156,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                8
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Agility"
+        },
+        {
+            "type": 5,
+            "id": 11,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 263,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 263,
+            "y": 156,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                9
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Herblore"
+        },
+        {
+            "type": 5,
+            "id": 12,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 295,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 295,
+            "y": 156,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                10
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Thieving"
+        },
+        {
+            "type": 5,
+            "id": 13,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 327,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 327,
+            "y": 156,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                11
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Crafting"
+        },
+        {
+            "type": 5,
+            "id": 14,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 182,
+            "originalY": 185,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 182,
+            "y": 185,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                12
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Runecraft"
+        },
+        {
+            "type": 5,
+            "id": 15,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 278,
+            "originalY": 185,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 278,
+            "y": 185,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                13
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Mining"
+        },
+        {
+            "type": 5,
+            "id": 16,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 310,
+            "originalY": 185,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 310,
+            "y": 185,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                14
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Smithing"
+        },
+        {
+            "type": 5,
+            "id": 17,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 166,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 166,
+            "y": 213,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                15
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Fishing"
+        },
+        {
+            "type": 5,
+            "id": 18,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 198,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 198,
+            "y": 213,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                16
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Cooking"
+        },
+        {
+            "type": 5,
+            "id": 19,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 230,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 230,
+            "y": 213,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                17
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Firemaking"
+        },
+        {
+            "type": 5,
+            "id": 20,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 262,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 262,
+            "y": 213,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                18
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Woodcutting"
+        },
+        {
+            "type": 5,
+            "id": 21,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 294,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 294,
+            "y": 213,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                19
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Fletching"
+        },
+        {
+            "type": 5,
+            "id": 22,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 214,
+            "originalY": 185,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 214,
+            "y": 185,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                20
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Slayer"
+        },
+        {
+            "type": 5,
+            "id": 23,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 246,
+            "originalY": 185,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 246,
+            "y": 185,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                21
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Farming"
+        },
+        {
+            "type": 5,
+            "id": 24,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 326,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 326,
+            "y": 213,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                22
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "spriteId": 195,
+            "alternateSpriteId": 196,
+            "hintText": "Advance Construction"
+        },
+        {
+            "type": 4,
+            "id": 25,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 210,
+            "originalY": 266,
+            "width": 93,
+            "height": 14,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 210,
+            "y": 266,
+            "textAlignmentX": 1,
+            "textAlignmentY": 0,
+            "lineHeight": 0,
+            "fontId": 495,
+            "textShadowed": true,
+            "text": "Confirm",
+            "alternateText": "",
+            "textColor": 6710886,
+            "alternateTextColor": 0,
+            "hoveredTextColor": 13421772,
+            "alternateHoveredTextColor": 0,
+            "hintText": "Ok"
+        },
+        {
+            "type": 5,
+            "id": 26,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 182,
+            "originalY": 126,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 182,
+            "y": 126,
+            "spriteId": 197,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 27,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 214,
+            "originalY": 126,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 214,
+            "y": 126,
+            "spriteId": 198,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 28,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 246,
+            "originalY": 126,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 246,
+            "y": 126,
+            "spriteId": 200,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 29,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 278,
+            "originalY": 126,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 278,
+            "y": 126,
+            "spriteId": 202,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 30,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 310,
+            "originalY": 126,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 310,
+            "y": 126,
+            "spriteId": 199,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 31,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 167,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 167,
+            "y": 156,
+            "spriteId": 203,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 32,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 199,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 199,
+            "y": 156,
+            "spriteId": 201,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 33,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 231,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 231,
+            "y": 156,
+            "spriteId": 204,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 34,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 263,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 263,
+            "y": 156,
+            "spriteId": 205,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 35,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 295,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 295,
+            "y": 156,
+            "spriteId": 206,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 36,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 327,
+            "originalY": 156,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 327,
+            "y": 156,
+            "spriteId": 207,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 37,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 182,
+            "originalY": 185,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 182,
+            "y": 185,
+            "spriteId": 215,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 38,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 278,
+            "originalY": 185,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 278,
+            "y": 185,
+            "spriteId": 209,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 39,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 310,
+            "originalY": 185,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 310,
+            "y": 185,
+            "spriteId": 210,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 40,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 166,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 166,
+            "y": 213,
+            "spriteId": 211,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 41,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 198,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 198,
+            "y": 213,
+            "spriteId": 212,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 42,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 230,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 230,
+            "y": 213,
+            "spriteId": 213,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 43,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 262,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 262,
+            "y": 213,
+            "spriteId": 214,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 44,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 294,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 294,
+            "y": 213,
+            "spriteId": 208,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 45,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 214,
+            "originalY": 185,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 214,
+            "y": 185,
+            "spriteId": 216,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 46,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 246,
+            "originalY": 185,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 246,
+            "y": 185,
+            "spriteId": 217,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 47,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 326,
+            "originalY": 213,
+            "width": 25,
+            "height": 25,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 326,
+            "y": 213,
+            "spriteId": 221,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 48,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 478,
+            "originalY": 20,
+            "width": 26,
+            "height": 23,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": 50,
+            "x": 478,
+            "y": 20,
+            "spriteId": 539,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 49,
+            "format": 1,
+            "menuType": 3,
+            "contentType": 0,
+            "originalX": 3,
+            "originalY": 5,
+            "width": 26,
+            "height": 23,
+            "opacity": 0,
+            "parentId": 50,
+            "hoveredSiblingId": -1,
+            "x": 3,
+            "y": 5,
+            "spriteId": 540,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 0,
+            "id": 50,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 475,
+            "originalY": 15,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 475,
+            "y": 15,
+            "scrollHeight": 0,
+            "hidden": true
+        }
+    ]
+}

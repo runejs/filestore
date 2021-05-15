@@ -1,0 +1,117 @@
+{
+    "id": 5,
+    "children": [
+        {
+            "type": 3,
+            "id": 0,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 486,
+            "originalY": 27,
+            "width": 20,
+            "height": 20,
+            "opacity": 40,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 486,
+            "y": 27,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                0
+            ],
+            "cs1": [
+                [
+                    13,
+                    309,
+                    2,
+                    0
+                ]
+            ],
+            "filled": true,
+            "textColor": 2228224,
+            "alternateTextColor": 16711680,
+            "hoveredTextColor": 0,
+            "alternateHoveredTextColor": 0
+        },
+        {
+            "type": 3,
+            "id": 1,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 486,
+            "originalY": 6,
+            "width": 20,
+            "height": 20,
+            "opacity": 40,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 486,
+            "y": 6,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    13,
+                    309,
+                    2,
+                    0
+                ]
+            ],
+            "filled": true,
+            "textColor": 8704,
+            "alternateTextColor": 65280,
+            "hoveredTextColor": 0,
+            "alternateHoveredTextColor": 0
+        },
+        {
+            "type": 3,
+            "id": 2,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 485,
+            "originalY": 5,
+            "width": 22,
+            "height": 22,
+            "opacity": 40,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 485,
+            "y": 5,
+            "filled": false,
+            "textColor": 13421772,
+            "alternateTextColor": 0,
+            "hoveredTextColor": 0,
+            "alternateHoveredTextColor": 0
+        },
+        {
+            "type": 3,
+            "id": 3,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 485,
+            "originalY": 26,
+            "width": 22,
+            "height": 22,
+            "opacity": 40,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 485,
+            "y": 26,
+            "filled": false,
+            "textColor": 13421772,
+            "alternateTextColor": 0,
+            "hoveredTextColor": 0,
+            "alternateHoveredTextColor": 0
+        }
+    ]
+}

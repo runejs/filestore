@@ -1,0 +1,497 @@
+{
+    "id": 330,
+    "children": [
+        {
+            "type": 0,
+            "id": 0,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 0,
+            "originalY": 0,
+            "width": 600,
+            "height": 500,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 0,
+            "y": 0,
+            "scrollHeight": 0,
+            "hidden": false
+        },
+        {
+            "type": 6,
+            "id": 1,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 249,
+            "originalY": 279,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 249,
+            "y": 279,
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6039,
+            "alternateModelId": -1,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 207,
+            "rotationX": 41,
+            "rotationY": 2036
+        },
+        {
+            "type": 0,
+            "id": 2,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 337,
+            "originalY": 97,
+            "width": 155,
+            "height": 170,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 337,
+            "y": 97,
+            "scrollHeight": 0,
+            "hidden": false
+        },
+        {
+            "type": 6,
+            "id": 3,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 98,
+            "originalY": 18,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": 2,
+            "hoveredSiblingId": -1,
+            "x": 98,
+            "y": 18,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6040,
+            "alternateModelId": 6041,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 1400,
+            "rotationX": 397,
+            "rotationY": 276,
+            "hintText": "Set to 1"
+        },
+        {
+            "type": 6,
+            "id": 4,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 119,
+            "originalY": 50,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": 2,
+            "hoveredSiblingId": -1,
+            "x": 119,
+            "y": 50,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                2
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6040,
+            "alternateModelId": 6041,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 1400,
+            "rotationX": 450,
+            "rotationY": 460,
+            "hintText": "Set to 2"
+        },
+        {
+            "type": 6,
+            "id": 5,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 116,
+            "originalY": 90,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": 2,
+            "hoveredSiblingId": -1,
+            "x": 116,
+            "y": 90,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                3
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6040,
+            "alternateModelId": 6041,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 1400,
+            "rotationX": 404,
+            "rotationY": 619,
+            "hintText": "Set to 3"
+        },
+        {
+            "type": 6,
+            "id": 6,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 95,
+            "originalY": 121,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": 2,
+            "hoveredSiblingId": -1,
+            "x": 95,
+            "y": 121,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                4
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6040,
+            "alternateModelId": 6041,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 1400,
+            "rotationX": 429,
+            "rotationY": 819,
+            "hintText": "Set to 4"
+        },
+        {
+            "type": 6,
+            "id": 7,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 58,
+            "originalY": 128,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": 2,
+            "hoveredSiblingId": -1,
+            "x": 58,
+            "y": 128,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                5
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6040,
+            "alternateModelId": 6041,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 1400,
+            "rotationX": 435,
+            "rotationY": 1048,
+            "hintText": "Set to 5"
+        },
+        {
+            "type": 6,
+            "id": 8,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 22,
+            "originalY": 114,
+            "width": 30,
+            "height": 35,
+            "opacity": 0,
+            "parentId": 2,
+            "hoveredSiblingId": -1,
+            "x": 22,
+            "y": 114,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                6
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6040,
+            "alternateModelId": 6041,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 1400,
+            "rotationX": 444,
+            "rotationY": 1216,
+            "hintText": "Set to 6"
+        },
+        {
+            "type": 6,
+            "id": 9,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 3,
+            "originalY": 77,
+            "width": 30,
+            "height": 35,
+            "opacity": 0,
+            "parentId": 2,
+            "hoveredSiblingId": -1,
+            "x": 3,
+            "y": 77,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                7
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6040,
+            "alternateModelId": 6041,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 1400,
+            "rotationX": 499,
+            "rotationY": 1425,
+            "hintText": "Set to 7"
+        },
+        {
+            "type": 6,
+            "id": 10,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 8,
+            "originalY": 38,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 2,
+            "hoveredSiblingId": -1,
+            "x": 8,
+            "y": 38,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                8
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6040,
+            "alternateModelId": 6041,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 1400,
+            "rotationX": 468,
+            "rotationY": 1642,
+            "hintText": "Set to 8"
+        },
+        {
+            "type": 6,
+            "id": 11,
+            "format": 1,
+            "menuType": 5,
+            "contentType": 0,
+            "originalX": 36,
+            "originalY": 10,
+            "width": 30,
+            "height": 35,
+            "opacity": 0,
+            "parentId": 2,
+            "hoveredSiblingId": -1,
+            "x": 36,
+            "y": 10,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                9
+            ],
+            "cs1": [
+                [
+                    5,
+                    261,
+                    0
+                ]
+            ],
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6040,
+            "alternateModelId": 6041,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 1400,
+            "rotationX": 421,
+            "rotationY": 1821,
+            "hintText": "Set to 9"
+        },
+        {
+            "type": 6,
+            "id": 12,
+            "format": 1,
+            "menuType": 1,
+            "contentType": 0,
+            "originalX": 78,
+            "originalY": 62,
+            "width": 30,
+            "height": 32,
+            "opacity": 0,
+            "parentId": 2,
+            "hoveredSiblingId": -1,
+            "x": 78,
+            "y": 62,
+            "modelType": 1,
+            "alternateModelType": 1,
+            "modelId": 6042,
+            "alternateModelId": 6043,
+            "animation": -1,
+            "alternateAnimation": -1,
+            "modelZoom": 1297,
+            "rotationX": 467,
+            "rotationY": 2026,
+            "hintText": "Reset Safe"
+        },
+        {
+            "type": 5,
+            "id": 13,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 483,
+            "originalY": 4,
+            "width": 26,
+            "height": 23,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": 15,
+            "x": 483,
+            "y": 4,
+            "spriteId": 541,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 5,
+            "id": 14,
+            "format": 1,
+            "menuType": 3,
+            "contentType": 0,
+            "originalX": 4,
+            "originalY": 3,
+            "width": 26,
+            "height": 23,
+            "opacity": 0,
+            "parentId": 15,
+            "hoveredSiblingId": -1,
+            "x": 4,
+            "y": 3,
+            "spriteId": 542,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 0,
+            "id": 15,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 479,
+            "originalY": 1,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 479,
+            "y": 1,
+            "scrollHeight": 0,
+            "hidden": true
+        }
+    ]
+}

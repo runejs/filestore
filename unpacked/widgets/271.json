@@ -1,0 +1,2000 @@
+{
+    "id": 271,
+    "children": [
+        {
+            "type": 5,
+            "id": 0,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 3,
+            "originalY": 3,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 3,
+            "y": 3,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    83,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 1,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 45,
+            "originalY": 3,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 45,
+            "y": 3,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    84,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 2,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 86,
+            "originalY": 3,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 86,
+            "y": 3,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    85,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 3,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 45,
+            "originalY": 41,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 45,
+            "y": 41,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    86,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 4,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 86,
+            "originalY": 41,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 86,
+            "y": 41,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    87,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 5,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 127,
+            "originalY": 41,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 127,
+            "y": 41,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    88,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 6,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 3,
+            "originalY": 79,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 3,
+            "y": 79,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    89,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 7,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 45,
+            "originalY": 79,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 45,
+            "y": 79,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    90,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 8,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 86,
+            "originalY": 79,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 86,
+            "y": 79,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    91,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 9,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 45,
+            "originalY": 118,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 45,
+            "y": 118,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    92,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 10,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 86,
+            "originalY": 118,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 86,
+            "y": 118,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    93,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 11,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 127,
+            "originalY": 118,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 127,
+            "y": 118,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    94,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 12,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 3,
+            "originalY": 156,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 3,
+            "y": 156,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    95,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 13,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 45,
+            "originalY": 156,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 45,
+            "y": 156,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    96,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 14,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 86,
+            "originalY": 156,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 86,
+            "y": 156,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    97,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 15,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 45,
+            "originalY": 192,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 45,
+            "y": 192,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    98,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 16,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 86,
+            "originalY": 192,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 86,
+            "y": 192,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    99,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 17,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 127,
+            "originalY": 192,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 127,
+            "y": 192,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    100,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 18,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 5,
+            "originalY": 5,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 5,
+            "y": 5,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                0
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 135,
+            "alternateSpriteId": 115
+        },
+        {
+            "type": 5,
+            "id": 19,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 47,
+            "originalY": 5,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 47,
+            "y": 5,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                3
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 136,
+            "alternateSpriteId": 116
+        },
+        {
+            "type": 5,
+            "id": 20,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 88,
+            "originalY": 5,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 88,
+            "y": 5,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                6
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 137,
+            "alternateSpriteId": 117
+        },
+        {
+            "type": 5,
+            "id": 21,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 47,
+            "originalY": 43,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 47,
+            "y": 43,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                9
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 138,
+            "alternateSpriteId": 118
+        },
+        {
+            "type": 5,
+            "id": 22,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 88,
+            "originalY": 43,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 88,
+            "y": 43,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                12
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 139,
+            "alternateSpriteId": 119
+        },
+        {
+            "type": 5,
+            "id": 23,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 129,
+            "originalY": 43,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 129,
+            "y": 43,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                15
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 140,
+            "alternateSpriteId": 120
+        },
+        {
+            "type": 5,
+            "id": 24,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 5,
+            "originalY": 81,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 5,
+            "y": 81,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                18
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 141,
+            "alternateSpriteId": 121
+        },
+        {
+            "type": 5,
+            "id": 25,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 47,
+            "originalY": 81,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 47,
+            "y": 81,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                21
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 142,
+            "alternateSpriteId": 122
+        },
+        {
+            "type": 5,
+            "id": 26,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 88,
+            "originalY": 81,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 88,
+            "y": 81,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                24
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 143,
+            "alternateSpriteId": 123
+        },
+        {
+            "type": 5,
+            "id": 27,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 47,
+            "originalY": 120,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 47,
+            "y": 120,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                27
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 144,
+            "alternateSpriteId": 124
+        },
+        {
+            "type": 5,
+            "id": 28,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 88,
+            "originalY": 120,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 88,
+            "y": 120,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                30
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 145,
+            "alternateSpriteId": 125
+        },
+        {
+            "type": 5,
+            "id": 29,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 129,
+            "originalY": 120,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 129,
+            "y": 120,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                33
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 146,
+            "alternateSpriteId": 126
+        },
+        {
+            "type": 5,
+            "id": 30,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 5,
+            "originalY": 158,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 5,
+            "y": 158,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                36
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 147,
+            "alternateSpriteId": 127
+        },
+        {
+            "type": 5,
+            "id": 31,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 88,
+            "originalY": 158,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 88,
+            "y": 158,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                42
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 149,
+            "alternateSpriteId": 129
+        },
+        {
+            "type": 5,
+            "id": 32,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 47,
+            "originalY": 158,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 47,
+            "y": 158,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                39
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 148,
+            "alternateSpriteId": 128
+        },
+        {
+            "type": 5,
+            "id": 33,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 88,
+            "originalY": 194,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 88,
+            "y": 194,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                48
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 150,
+            "alternateSpriteId": 130
+        },
+        {
+            "type": 5,
+            "id": 34,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 129,
+            "originalY": 194,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 129,
+            "y": 194,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                51
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 152,
+            "alternateSpriteId": 132
+        },
+        {
+            "type": 5,
+            "id": 35,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 47,
+            "originalY": 194,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 47,
+            "y": 194,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                45
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 151,
+            "alternateSpriteId": 131
+        },
+        {
+            "type": 5,
+            "id": 36,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 127,
+            "originalY": 3,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 127,
+            "y": 3,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    862,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 37,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 129,
+            "originalY": 5,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 129,
+            "y": 5,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                7
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 153,
+            "alternateSpriteId": 133
+        },
+        {
+            "type": 5,
+            "id": 38,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 3,
+            "originalY": 41,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 3,
+            "y": 41,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    863,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 39,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 5,
+            "originalY": 43,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 5,
+            "y": 43,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                8
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 154,
+            "alternateSpriteId": 134
+        },
+        {
+            "type": 5,
+            "id": 40,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 127,
+            "originalY": 79,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 127,
+            "y": 79,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    864,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 41,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 129,
+            "originalY": 81,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 129,
+            "y": 81,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                25
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 506,
+            "alternateSpriteId": 502
+        },
+        {
+            "type": 5,
+            "id": 42,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 3,
+            "originalY": 118,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 3,
+            "y": 118,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    865,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 43,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 5,
+            "originalY": 120,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 5,
+            "y": 120,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                26
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 507,
+            "alternateSpriteId": 503
+        },
+        {
+            "type": 5,
+            "id": 44,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 127,
+            "originalY": 155,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 127,
+            "y": 155,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    866,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 45,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 129,
+            "originalY": 157,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 129,
+            "y": 157,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                43
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 508,
+            "alternateSpriteId": 504
+        },
+        {
+            "type": 5,
+            "id": 46,
+            "format": 1,
+            "menuType": 4,
+            "contentType": 0,
+            "originalX": 3,
+            "originalY": 192,
+            "width": 34,
+            "height": 34,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 3,
+            "y": 192,
+            "alternateOperators": [
+                1
+            ],
+            "alternateRhs": [
+                1
+            ],
+            "cs1": [
+                [
+                    5,
+                    867,
+                    0
+                ]
+            ],
+            "spriteId": -1,
+            "alternateSpriteId": 155,
+            "hintText": "Select"
+        },
+        {
+            "type": 5,
+            "id": 47,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 5,
+            "originalY": 194,
+            "width": 30,
+            "height": 30,
+            "opacity": 0,
+            "parentId": 49,
+            "hoveredSiblingId": -1,
+            "x": 5,
+            "y": 194,
+            "alternateOperators": [
+                3
+            ],
+            "alternateRhs": [
+                44
+            ],
+            "cs1": [
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "spriteId": 509,
+            "alternateSpriteId": 505
+        },
+        {
+            "type": 5,
+            "id": 48,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 63,
+            "originalY": 237,
+            "width": 17,
+            "height": 18,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 63,
+            "y": 237,
+            "spriteId": 651,
+            "alternateSpriteId": -1
+        },
+        {
+            "type": 0,
+            "id": 49,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 11,
+            "originalY": 4,
+            "width": 166,
+            "height": 230,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 11,
+            "y": 4,
+            "scrollHeight": 0,
+            "hidden": false
+        },
+        {
+            "type": 4,
+            "id": 50,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 85,
+            "originalY": 239,
+            "width": 48,
+            "height": 15,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 85,
+            "y": 239,
+            "cs1": [
+                [
+                    1,
+                    5,
+                    0
+                ],
+                [
+                    2,
+                    5,
+                    0
+                ]
+            ],
+            "textAlignmentX": 0,
+            "textAlignmentY": 0,
+            "lineHeight": 0,
+            "fontId": 495,
+            "textShadowed": false,
+            "text": "%1/%2",
+            "alternateText": "",
+            "textColor": 16750623,
+            "alternateTextColor": 0,
+            "hoveredTextColor": 0,
+            "alternateHoveredTextColor": 0
+        },
+        {
+            "type": 8,
+            "id": 51,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 15,
+            "originalY": 8,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 15,
+            "y": 8,
+            "text": "Level 1\\nThick Skin\\nIncreases your defence by 5%"
+        },
+        {
+            "type": 8,
+            "id": 52,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 57,
+            "originalY": 123,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 57,
+            "y": 123,
+            "text": "Level 28\\nSteel Skin\\nIncreases your defence by 15%"
+        },
+        {
+            "type": 8,
+            "id": 53,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 98,
+            "originalY": 123,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 98,
+            "y": 123,
+            "text": "Level 31\\nUltimate Strength\\nIncreases your strength by 15%"
+        },
+        {
+            "type": 8,
+            "id": 54,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 139,
+            "originalY": 123,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 139,
+            "y": 123,
+            "text": "Level 34\\nIncredible Reflexes\\nIncreases your attack by 15%"
+        },
+        {
+            "type": 8,
+            "id": 55,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 15,
+            "originalY": 161,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 15,
+            "y": 161,
+            "text": "Level 37\\nProtect from Magic\\nProtection from magical attacks"
+        },
+        {
+            "type": 8,
+            "id": 56,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 57,
+            "originalY": 161,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 57,
+            "y": 161,
+            "text": "Level 40\\nProtect from Missiles\\nProtection from ranged attacks"
+        },
+        {
+            "type": 8,
+            "id": 57,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 98,
+            "originalY": 161,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 98,
+            "y": 161,
+            "text": "Level 43\\nProtect from Melee\\nProtection from close attacks"
+        },
+        {
+            "type": 8,
+            "id": 58,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 139,
+            "originalY": 160,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 139,
+            "y": 160,
+            "text": "Level 44\\nEagle Eye\\nIncreases your Ranging by 15%"
+        },
+        {
+            "type": 8,
+            "id": 59,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 15,
+            "originalY": 197,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 15,
+            "y": 197,
+            "text": "Level 45\\nMystic Might\\nIncreases your Magic by 15%"
+        },
+        {
+            "type": 8,
+            "id": 60,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 57,
+            "originalY": 197,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 57,
+            "y": 197,
+            "text": "Level 46\\nRetribution\\nInflicts damage to nearby\\ntargets if you die"
+        },
+        {
+            "type": 8,
+            "id": 61,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 98,
+            "originalY": 197,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 98,
+            "y": 197,
+            "text": "Level 49\\nRedemption\\nHeals you if your health\\nfalls below 10%"
+        },
+        {
+            "type": 8,
+            "id": 62,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 139,
+            "originalY": 197,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 139,
+            "y": 197,
+            "text": "Level 52\\nSmite\\n1/4 of damage dealt is \\nalso removed from \\nopponent's Prayer"
+        },
+        {
+            "type": 8,
+            "id": 63,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 57,
+            "originalY": 8,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 57,
+            "y": 8,
+            "text": "Level 4\\nBurst of Strength\\nIncreases your strength by 5%"
+        },
+        {
+            "type": 8,
+            "id": 64,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 98,
+            "originalY": 8,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 98,
+            "y": 8,
+            "text": "Level 7\\nClarity of Thought\\nIncreases your attack by 5%"
+        },
+        {
+            "type": 8,
+            "id": 65,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 57,
+            "originalY": 46,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 57,
+            "y": 46,
+            "text": "Level 10\\nRock Skin\\nIncreases your defence by 10%"
+        },
+        {
+            "type": 8,
+            "id": 66,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 139,
+            "originalY": 8,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 139,
+            "y": 8,
+            "text": "Level 8\\nSharp Eye\\nIncreases your Ranging by 5%"
+        },
+        {
+            "type": 8,
+            "id": 67,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 15,
+            "originalY": 46,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 15,
+            "y": 46,
+            "text": "Level 9\\nMystic Will\\nIncreases your Magic by 5%"
+        },
+        {
+            "type": 8,
+            "id": 68,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 98,
+            "originalY": 46,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 98,
+            "y": 46,
+            "text": "Level 13\\nSuperhuman Strength\\nIncreases your strength by 10%"
+        },
+        {
+            "type": 8,
+            "id": 69,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 139,
+            "originalY": 46,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 139,
+            "y": 46,
+            "text": "Level 16\\nImproved Reflexes\\nIncreases your attack by 10%"
+        },
+        {
+            "type": 8,
+            "id": 70,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 15,
+            "originalY": 84,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 15,
+            "y": 84,
+            "text": "Level 19\\nRapid Restore\\n2x restore rate for all stats\\nexcept hitpoints and prayer"
+        },
+        {
+            "type": 8,
+            "id": 71,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 57,
+            "originalY": 84,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 57,
+            "y": 84,
+            "text": "Level 22\\nRapid Heal\\n2x restore rate for \\nhitpoints stat"
+        },
+        {
+            "type": 8,
+            "id": 72,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 98,
+            "originalY": 84,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 98,
+            "y": 84,
+            "text": "Level 25\\nProtect Items\\nKeep 1 extra item if you die"
+        },
+        {
+            "type": 8,
+            "id": 73,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 139,
+            "originalY": 84,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 139,
+            "y": 84,
+            "text": "Level 26\\nHawk Eye\\nIncreases your Ranging by 10%"
+        },
+        {
+            "type": 8,
+            "id": 74,
+            "format": 1,
+            "menuType": 0,
+            "contentType": 0,
+            "originalX": 15,
+            "originalY": 123,
+            "width": 32,
+            "height": 32,
+            "opacity": 0,
+            "parentId": -1,
+            "hoveredSiblingId": -1,
+            "x": 15,
+            "y": 123,
+            "text": "Level 27\\nMystic Lore\\nIncreases your Magic by 10%"
+        }
+    ]
+}

@@ -22,6 +22,7 @@
     "dependencies": {
         "@runejs/core": "^1.3.2",
         "canvas": "^2.6.1",
+        "jszip": "^3.6.0",
         "node-properties-parser": "0.0.2",
         "pngjs": "^6.0.0",
         "seek-bzip": "^1.0.5",

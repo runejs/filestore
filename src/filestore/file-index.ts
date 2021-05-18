@@ -4,6 +4,9 @@ import { Archive } from './archive';
 import { FileData } from './file-data';
 import { FilestoreChannels, readIndexedDataChunk, decompress } from './data';
 import { hash } from './util';
+import JSZip from 'jszip';
+import * as fs from 'fs';
+import { getFileName } from './filestore';
 
 
 const NAME_FLAG = 0x01;
@@ -32,6 +35,22 @@ export const indexIdMap: { [key: string]: number } = {
     'binary': 10,
     'jingles': 11,
     'scripts': 12
+};
+
+export const fileExtensions: { [key: string]: string } = {
+    'skeletons': '.dat',
+    'frames': '.dat',
+    'configs': '.dat',
+    'widgets': '.dat',
+    'sounds': '.wav',
+    'regions': '.dat',
+    'music': '.mid',
+    'models': '.dat',
+    'sprites': '.dat',
+    'textures': '.dat',
+    'binary': '.dat',
+    'jingles': '.ogg',
+    'scripts': '.dat'
 };
 
 /**
@@ -92,6 +111,53 @@ export class FileIndex {
     public constructor(indexId: number, filestoreChannels: FilestoreChannels) {
         this.indexId = indexId;
         this.filestoreChannels = filestoreChannels;
+    }
+
+    public async writeFilesToStore(): Promise<void> {
+        logger.info(`Writing ${this.storePath}...`);
+        const storeZip = !this.storeFileExists() ? new JSZip() : await JSZip.loadAsync(fs.readFileSync(this.storePath));
+        const fileCount = this.files.size;
+        const fileExt = fileExtensions[this.name];
+        logger.info(`${fileCount} files found within this index.`);
+        for(let fileId = 0; fileId < fileCount; fileId++) {
+            try {
+                const file = this.files.get(fileId);
+                const fileName = fileId + (file.nameHash ? '_' + getFileName(file.nameHash) : '');
+                if(file instanceof Archive) {
+                    logger.info(`Writing archive ${fileName}...`);
+                    const archive = file as Archive;
+                    const folder = storeZip.folder(`${fileName}`);
+                    archive.decodeArchiveFiles();
+                    const archiveFileCount = archive.files.size;
+                    for(let archiveFileId = 0; archiveFileId < archiveFileCount; archiveFileId++) {
+                        try {
+                            const archiveFile = archive.getFile(archiveFileId);
+                            const archiveFileName = archiveFileId + (archiveFile.nameHash ? '_' +
+                                getFileName(archiveFile.nameHash) : '');
+                            logger.info(`Writing archive file ${archiveFileName}...`);
+
+                            folder.file(archiveFileName + fileExt, Buffer.from(archiveFile.content));
+                        } catch(e) {
+                            logger.error(e);
+                        }
+                    }
+                } else {
+                    logger.info(`Writing file ${fileName}${fileExt}...`);
+                    storeZip.file(fileName + fileExt, Buffer.from(file.decompress()));
+                }
+            } catch(lorgeE) {
+                logger.error(lorgeE);
+            }
+        }
+
+        await new Promise<void>(resolve => {
+            storeZip.generateNodeStream({ type: 'nodebuffer', streamFiles: true })
+                .pipe(fs.createWriteStream(this.storePath))
+                .on('finish', () => {
+                    logger.info(`${this.storePath} written.`);
+                    resolve();
+                });
+        });
     }
 
     /**
@@ -316,6 +382,18 @@ export class FileIndex {
                 }
             }
         }
+    }
+
+    private storeFileExists(): boolean {
+        return fs.existsSync(this.storePath);
+    }
+
+    public get name(): string {
+        return getIndexId(this.indexId) as string;
+    }
+
+    public get storePath(): string {
+        return `./stores/${this.indexId}_${this.name}.zip`;
     }
 
 }

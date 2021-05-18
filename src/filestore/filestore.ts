@@ -75,13 +75,25 @@ export class Filestore {
         }
 
         if(!this.indexes.has(indexId)) {
-            const archiveIndex = new FileIndex(indexId, this.channels);
-            archiveIndex.decodeIndex();
-            this.indexes.set(indexId, archiveIndex);
-            return archiveIndex;
+            const index = new FileIndex(indexId, this.channels);
+            index.decodeIndex();
+            this.indexes.set(indexId, index);
+
+            return index;
         } else {
             return this.indexes.get(indexId);
         }
+    }
+
+    public getAllIndexes(): FileIndex[] {
+        const indexNames = Object.keys(indexIdMap);
+        const indexes = new Array(indexNames.length) as FileIndex[];
+        indexNames.forEach(indexName => {
+            const indexId: number = indexIdMap[indexName];
+            indexes[indexId] = this.getIndex(indexId);
+        });
+
+        return indexes;
     }
 
     public get itemStore(): ItemStore {

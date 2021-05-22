@@ -4,6 +4,9 @@ import { join } from 'path';
 import JSZip from 'jszip';
 import { logger } from '@runejs/core';
 import { IndexManifest, IndexName } from './index-manifest';
+import { ArchiveFile } from './archive-file';
+import { ArchiveFolder } from './archive-folder';
+import { ByteBuffer } from '@runejs/core/buffer';
 
 
 export class IndexedArchive {
@@ -22,13 +25,39 @@ export class IndexedArchive {
         }
     }
 
+    public async getFile(fileId: number): Promise<ArchiveFile | ArchiveFolder | null> {
+        if(!this.manifest) {
+            logger.error(`Index manifest not found - archive not yet loaded. ` +
+                `Please use loadArchive() before attempting to access files.`);
+            return null;
+        }
 
-
-    public async loadArchive(): Promise<void> {
-        const zipArchive = await JSZip.loadAsync(readFileSync(this.filePath));
+        const zipArchive = await this.loadZip();
 
         if(!zipArchive) {
-            logger.error(`Error loading indexed archive ${this.indexId} ${this.indexName}`);
+            return null;
+        }
+
+        const fileEntry = this.manifest.files[`${fileId}`];
+        if(!fileEntry) {
+            logger.error(`File not found ${fileId}`);
+            return null;
+        }
+
+        const file = zipArchive.files[fileEntry.file];
+        if(file.dir) {
+            const folder = zipArchive.folder(fileEntry.file);
+            return new ArchiveFolder(this.manifest, fileId, folder.files);
+        } else {
+            const fileData = await file.async('nodebuffer');
+            return new ArchiveFile(this.manifest, fileId, new ByteBuffer(fileData));
+        }
+    }
+
+    public async loadArchive(): Promise<void> {
+        const zipArchive = await this.loadZip();
+
+        if(!zipArchive) {
             return;
         }
 
@@ -84,6 +113,23 @@ export class IndexedArchive {
         }*/
 
         this.loaded = true;
+    }
+
+    public async loadZip(): Promise<JSZip> {
+        try {
+            const archive = await JSZip.loadAsync(readFileSync(this.filePath));
+
+            if(!archive) {
+                logger.error(`Error loading indexed archive ${this.indexId} ${this.indexName}`);
+                return null;
+            }
+
+            return archive;
+        } catch(error) {
+            logger.error(`Error loading indexed archive ${this.indexId} ${this.indexName}`);
+            logger.error(error);
+            return null;
+        }
     }
 
     public get filePath(): string {

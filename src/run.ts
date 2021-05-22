@@ -10,7 +10,9 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
         xteas: await xteaRegions()
     });
 
-    clientFileStore.getAllIndexes().forEach(index => index.generateIndexedArchive());
+
+
+    // clientFileStore.getAllIndexes().forEach(index => index.generateIndexedArchive());
 
     // const fileStore = new FileStore();
     // fileStore.loadStoreArchive(6, 'music');

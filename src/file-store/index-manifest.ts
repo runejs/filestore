@@ -71,6 +71,7 @@ export interface IndexManifest {
     indexId: number;
     name: IndexName;
     fileCompression: FileCompression;
+    fileExtension: string;
     format?: number;
     version?: number;
     files: { [key: number]: IndexedFileEntry }; // file index within the archive => IndexedFileEntry

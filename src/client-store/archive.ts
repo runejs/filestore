@@ -70,7 +70,7 @@ export class Archive extends FileData {
 
         const archiveEntry = readIndexedDataChunk(this.fileId, this.index.indexId, this.filestoreChannels);
         archiveEntry.dataFile.readerIndex = 0;
-        const  { compression, version, buffer } = decompress(archiveEntry.dataFile);
+        const { compression, version, buffer } = decompress(archiveEntry.dataFile);
         buffer.readerIndex = 0;
         const archiveSize = this.files.size;
 

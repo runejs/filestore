@@ -393,6 +393,7 @@ export class FileIndex {
             indexId: this.indexId,
             name: this.name as IndexName,
             fileCompression: !this.compression ? 'uncompressed' : (this.compression === 1 ? 'bzip' : 'gzip'),
+            fileExtension: fileExt,
             format: this.format,
             version: this.version,
             files: fileIndex

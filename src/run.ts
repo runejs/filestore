@@ -1,6 +1,19 @@
-import { Filestore } from './filestore';
+import { ClientFileStore, loadXteaRegionFiles } from './client-store';
+import { FileStore } from './file-store/file-store';
 
 
-const fileStore = new Filestore('./packed', { configDir: './config' });
+const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
 
-fileStore.getAllIndexes().forEach(index => index.writeFilesToStore());
+(async () => {
+    const clientFileStore = new ClientFileStore('./packed', {
+        configDir: './config',
+        xteas: await xteaRegions()
+    });
+
+    clientFileStore.getAllIndexes().forEach(index => index.generateIndexedArchive());
+
+    // const fileStore = new FileStore();
+    // fileStore.loadStoreArchive(6, 'music');
+})();
+
+

@@ -1,16 +1,31 @@
 import { ByteBuffer } from '@runejs/core/buffer';
 import { gunzipSync } from 'zlib';
+import * as compressjs from 'compressjs';
 const seekBzip = require('seek-bzip');
+const bzip = compressjs.Bzip2;
 
 
-export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: number, buffer: ByteBuffer, version: number } {
+export interface DecompressedFile {
+    compression: number;
+    buffer: ByteBuffer;
+    version: number;
+}
+
+
+// @todo stub
+export const compress = (file: DecompressedFile, keys?: number[]): ByteBuffer => {
+    return null;
+};
+
+
+export const decompress = (buffer: ByteBuffer, keys?: number[]): DecompressedFile => {
     buffer.readerIndex = 0;
     if(!buffer || buffer.length === 0) {
         return { compression: -1, buffer: null, version: -1 };
     }
 
-    const compression = buffer.get('BYTE', 'UNSIGNED');
-    const compressedLength = buffer.get('INT');
+    const compression = buffer.get('byte', 'unsigned');
+    const compressedLength = buffer.get('int');
 
     if (keys && keys.length == 4 && (keys[0] != 0 || keys[1] != 0 || keys[2] != 0 || keys[3] != 0)) {
         const readerIndex = buffer.readerIndex;
@@ -18,7 +33,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
         if (buffer.length - (compressedLength + readerIndex + 4) >= 2) {
             lengthOffset += 2;
         }
-        const decryptedData = this.decryptXtea(buffer, keys, buffer.length - lengthOffset);
+        const decryptedData = decryptXtea(buffer, keys, buffer.length - lengthOffset);
         decryptedData.copy(buffer, readerIndex, 0);
         buffer.readerIndex = readerIndex;
     }
@@ -27,7 +42,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
         // Uncompressed file
         const data = new ByteBuffer(compressedLength);
         buffer.copy(data, 0, buffer.readerIndex, compressedLength);
-        const decryptedData = this.decryptXtea(data, keys, compressedLength);
+        const decryptedData = decryptXtea(data, keys, compressedLength);
         buffer.readerIndex = (buffer.readerIndex + compressedLength);
 
         let version = -1;
@@ -50,7 +65,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
 
         let decompressed: ByteBuffer;
         if(compression === 1) { // BZIP2
-            decompressed = this.decompressBzip(decryptedData);
+            decompressed = decompressBzip(decryptedData);
         } else if(compression === 2) { // GZIP
             decompressed = new ByteBuffer(gunzipSync(decryptedData));
         } else {
@@ -70,9 +85,16 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
 
         return { compression, buffer: decompressed, version };
     }
-}
+};
 
-export function decryptXtea(input: ByteBuffer, keys: number[], length: number): ByteBuffer {
+
+// @todo stub
+export const encryptXtea = (input: ByteBuffer, keys: number[], length: number): ByteBuffer => {
+    return null;
+};
+
+
+export const decryptXtea = (input: ByteBuffer, keys: number[], length: number): ByteBuffer => {
     if(!keys || keys.length === 0) {
         return input;
     }
@@ -81,8 +103,8 @@ export function decryptXtea(input: ByteBuffer, keys: number[], length: number): 
     const numBlocks = Math.floor(length / 8);
 
     for(let block = 0; block < numBlocks; block++) {
-        let v0 = input.get('INT');
-        let v1 = input.get('INT');
+        let v0 = input.get('int');
+        let v1 = input.get('int');
         let sum = 0x9E3779B9 * 32;
 
         for(let i = 0; i < 32; i++) {
@@ -95,25 +117,36 @@ export function decryptXtea(input: ByteBuffer, keys: number[], length: number): 
             v0 = toInt(v0);
         }
 
-        output.put(v0, 'INT');
-        output.put(v1, 'INT');
+        output.put(v0, 'int');
+        output.put(v1, 'int');
     }
 
     input.copy(output, output.writerIndex, input.readerIndex);
     return output;
-}
+};
 
-function toInt(value): number {
+
+const toInt = (value): number => {
     return value | 0;
-}
+};
 
-export function decompressBzip(data: ByteBuffer): ByteBuffer {
-    const buffer = Buffer.alloc(data.length + 4);
-    data.copy(buffer, 4);
-    buffer[0] = 'B'.charCodeAt(0);
-    buffer[1] = 'Z'.charCodeAt(0);
-    buffer[2] = 'h'.charCodeAt(0);
-    buffer[3] = '1'.charCodeAt(0);
 
-    return new ByteBuffer(seekBzip.decode(buffer));
-}
+const charCode = (letter: string) => letter.charCodeAt(0);
+
+
+// @todo stub
+export const compressBzip = (rawFileData: ByteBuffer): ByteBuffer => {
+    return null;
+};
+
+
+export const decompressBzip = (compressedFileData: ByteBuffer): ByteBuffer => {
+    const buffer = Buffer.alloc(compressedFileData.length + 4);
+    compressedFileData.copy(buffer, 4);
+    buffer[0] = charCode('B');
+    buffer[1] = charCode('Z');
+    buffer[2] = charCode('h');
+    buffer[3] = charCode('1'); // block count
+
+    return new ByteBuffer(bzip.decompressFile(buffer));
+};

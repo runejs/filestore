@@ -1,7 +1,6 @@
 import { ByteBuffer } from '@runejs/core/buffer';
 import { gunzipSync } from 'zlib';
 import * as compressjs from 'compressjs';
-const seekBzip = require('seek-bzip');
 const bzip = compressjs.Bzip2;
 
 
@@ -136,7 +135,9 @@ const charCode = (letter: string) => letter.charCodeAt(0);
 
 // @todo stub
 export const compressBzip = (rawFileData: ByteBuffer): ByteBuffer => {
-    return null;
+    const compressedFile = bzip.compressFile(rawFileData);
+    console.log(compressedFile);
+    return compressedFile;
 };
 
 

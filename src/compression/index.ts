@@ -57,7 +57,7 @@ export const compress = (file: DecompressedFile, keys?: number[]): ByteBuffer =>
     }
 
     // write the file version, if one is applied
-    if(file.version !== -1) {
+    if(file.version ?? -1 !== -1) {
         compressedFileData.put(file.version, 'short');
     }
 

@@ -1,9 +1,8 @@
-import { Archive, ClientFileStore, getFileName} from '../client-store';
+import { ClientFileStore } from '../client-store';
 import { logger } from '@runejs/core';
-import JSZip from 'jszip';
 import fs from 'fs';
 import { IndexedArchive } from './archive/indexed-archive';
-import { fileExtensions, IndexName } from './index-manifest';
+import { IndexName } from './index-manifest';
 
 
 export class FileStore {

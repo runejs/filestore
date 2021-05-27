@@ -61,6 +61,10 @@ export const getIndexId = (index: number): IndexName => {
 export type FileCompression = 'uncompressed' | 'bzip' | 'gzip';
 
 
+export const getCompressionKey = (compression: FileCompression) =>
+    compression === 'gzip' ? 2 : (compression === 'bzip' ? 1 : 0);
+
+
 export interface IndexedFileEntry {
     file: string;
     version?: number;

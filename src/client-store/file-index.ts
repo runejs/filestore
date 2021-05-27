@@ -6,11 +6,12 @@ import { logger } from '@runejs/core';
 
 import { Archive } from './archive';
 import { FileData } from './file-data';
-import { decompress, ClientStoreChannel, extractIndexedFile } from './data';
+import { ClientStoreChannel, extractIndexedFile } from './data';
 import { hash } from './util';
 import { ClientFileStore, getFileName } from './client-file-store';
 import { fileExtensions, getIndexId, IndexedFileEntry, IndexManifest, IndexName } from '../file-store/index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
+import { decompress } from '../compression';
 
 
 const NAME_FLAG = 0x01;

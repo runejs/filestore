@@ -1,6 +1,6 @@
-import { ClientFileStore, compressBzip, decompressBzip, loadXteaRegionFiles } from './client-store';
+import { ClientFileStore, loadXteaRegionFiles } from './client-store';
 import { FileStore } from './file-store/file-store';
-import { logger } from '@runejs/core';
+import { FileGroup } from './file-store/archive/file-group';
 
 
 const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
@@ -11,36 +11,18 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
         xteas: await xteaRegions()
     });
 
-    const testRegion = clientFileStore.regionStore.getRegion(27, 80);
+    const testCacheFile = clientFileStore.getIndex('configs').getArchive(10);
 
-    const testRegionFile = clientFileStore.getIndex('regions').getFile(testRegion.mapFile.fileId);
+    console.log(testCacheFile.content.buffer);
 
-    console.log(testRegionFile.content.buffer);
+    const fileStore = new FileStore();
 
-    console.log(String.fromCharCode(testRegionFile.content[0]));
-    console.log(String.fromCharCode(testRegionFile.content[1]));
-    console.log(String.fromCharCode(testRegionFile.content[2]));
-    console.log(String.fromCharCode(testRegionFile.content[3]));
+    const configArchive = await fileStore.loadStoreArchive(2, 'configs');
 
-    testRegionFile.decompress();
+    const archivedFileGroup = await configArchive.getFile(10) as FileGroup;
 
-    const reCompressedFile = compressBzip(testRegionFile.content);
-
-    const reDecompressedFile = decompressBzip(reCompressedFile);
-
-    console.log(reDecompressedFile.buffer);
-
-    console.log(String.fromCharCode(reDecompressedFile[0]));
-    console.log(String.fromCharCode(reDecompressedFile[1]));
-    console.log(String.fromCharCode(reDecompressedFile[2]));
-    console.log(String.fromCharCode(reDecompressedFile[3]));
-
-
-
-    // clientFileStore.getAllIndexes().forEach(index => index.generateIndexedArchive());
-
-    // const fileStore = new FileStore();
-    // fileStore.loadStoreArchive(6, 'music');
+    // @TODO very broken
+    console.log(await archivedFileGroup.packFolder());
 })();
 
 

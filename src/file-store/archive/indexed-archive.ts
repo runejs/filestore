@@ -44,7 +44,12 @@ export class IndexedArchive {
             return null;
         }
 
-        const file = zipArchive.files[fileEntry.file];
+        const file = zipArchive.files[`${fileId}`] || zipArchive.files[`${fileId}/`];
+
+        if(!file) {
+            throw new Error(`File not found: ${fileEntry.file}`);
+        }
+
         if(file.dir) {
             const folder = zipArchive.folder(fileEntry.file);
             return new FileGroup(this.manifest, fileId, folder.files);

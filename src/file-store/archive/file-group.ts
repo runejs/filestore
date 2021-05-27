@@ -1,7 +1,8 @@
 import { JSZipObject } from 'jszip';
 import { IndexedFile } from './indexed-file';
-import { IndexManifest } from '../index-manifest';
+import { getCompressionKey, IndexManifest } from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
+import { compress } from '../../compression';
 
 
 export class FileGroup extends IndexedFile {
@@ -46,9 +47,11 @@ export class FileGroup extends IndexedFile {
         // Write stripe count
         archive.put(1); // Stripe count should always be 1 because we're making a clean archive :)
 
-        // @TODO recompress archive file and we're done!
-
-        return archive;
+        return compress({
+            buffer: archive,
+            compression: getCompressionKey(this.indexManifest.fileCompression),
+            version: this.indexManifest.files[this.fileId].version || -1
+        });
     }
 
     public async getFile(fileId: number): Promise<IndexedFile> {

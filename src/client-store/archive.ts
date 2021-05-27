@@ -2,7 +2,7 @@ import { ByteBuffer } from '@runejs/core/buffer';
 
 import { FileData } from './file-data';
 import { FileIndex } from './file-index';
-import { FilestoreChannels, readIndexedDataChunk, decompress } from './data';
+import { ClientStoreChannel, extractIndexedFile, decompress } from './data';
 
 
 export class Archive extends FileData {
@@ -25,7 +25,7 @@ export class Archive extends FileData {
      * @param index The File Index that this Archive belongs to.
      * @param filestoreChannels The main filestore channel for data access.
      */
-    public constructor(id: number, index: FileIndex, filestoreChannels: FilestoreChannels);
+    public constructor(id: number, index: FileIndex, filestoreChannels: ClientStoreChannel);
 
     /**
      * Creates a new `Archive` object.
@@ -33,9 +33,9 @@ export class Archive extends FileData {
      * @param index The File Index that this Archive belongs to.
      * @param filestoreChannels The main filestore channel for data access.
      */
-    public constructor(fileData: FileData, index: FileIndex, filestoreChannels: FilestoreChannels);
+    public constructor(fileData: FileData, index: FileIndex, filestoreChannels: ClientStoreChannel);
 
-    public constructor(idOrFileData: number | FileData, index: FileIndex, filestoreChannels: FilestoreChannels) {
+    public constructor(idOrFileData: number | FileData, index: FileIndex, filestoreChannels: ClientStoreChannel) {
         super(typeof idOrFileData === 'number' ? idOrFileData : idOrFileData.fileId, index, filestoreChannels);
 
         if(typeof idOrFileData !== 'number') {
@@ -68,7 +68,7 @@ export class Archive extends FileData {
             return;
         }
 
-        const archiveEntry = readIndexedDataChunk(this.fileId, this.index.indexId, this.filestoreChannels);
+        const archiveEntry = extractIndexedFile(this.fileId, this.index.indexId, this.filestoreChannels);
         archiveEntry.dataFile.readerIndex = 0;
         const { compression, version, buffer } = decompress(archiveEntry.dataFile);
         buffer.readerIndex = 0;
@@ -81,19 +81,19 @@ export class Archive extends FileData {
         this.compression = compression;
         this.files.clear();
         buffer.readerIndex = (buffer.length - 1);
-        const chunkCount = buffer.get('BYTE', 'UNSIGNED');
+        const stripeCount = buffer.get('byte', 'unsigned');
 
-        const chunkSizes: number[][] = new Array(chunkCount).fill(new Array(archiveSize));
+        const stripeLengths: number[][] = new Array(stripeCount).fill(new Array(archiveSize));
         const sizes: number[] = new Array(archiveSize).fill(0);
-        buffer.readerIndex = (buffer.length - 1 - chunkCount * archiveSize * 4);
-        for(let chunk = 0; chunk < chunkCount; chunk++) {
-            let chunkSize = 0;
+        buffer.readerIndex = (buffer.length - 1 - stripeCount * archiveSize * 4);
+        for(let stripe = 0; stripe < stripeCount; stripe++) {
+            let currentLength = 0;
             for(let id = 0; id < archiveSize; id++) {
-                const delta = buffer.get('INT');
-                chunkSize += delta;
+                const stripeSize = buffer.get('int');
+                currentLength += stripeSize;
 
-                chunkSizes[chunk][id] = chunkSize;
-                sizes[id] += chunkSize;
+                stripeLengths[stripe][id] = currentLength;
+                sizes[id] += currentLength;
             }
         }
 
@@ -105,9 +105,9 @@ export class Archive extends FileData {
 
         buffer.readerIndex = 0;
 
-        for(let chunk = 0; chunk < chunkCount; chunk++) {
+        for(let chunk = 0; chunk < stripeCount; chunk++) {
             for(let id = 0; id < archiveSize; id++) {
-                const chunkSize = chunkSizes[chunk][id];
+                const chunkSize = stripeLengths[chunk][id];
                 this.files.get(id).content.putBytes(buffer.getSlice(buffer.readerIndex, chunkSize));
 
                 let sourceEnd: number = buffer.readerIndex + chunkSize;

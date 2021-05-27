@@ -1,6 +1,6 @@
 import { ByteBuffer } from '@runejs/core/buffer';
 
-import { decompress, readIndexedDataChunk, FilestoreChannels } from './data';
+import { decompress, extractIndexedFile, ClientStoreChannel } from './data';
 import { FileIndex } from './file-index';
 import { getFileName } from './client-file-store';
 
@@ -52,7 +52,7 @@ export class FileData {
      */
     public type: 'archive' | 'file' = 'file';
 
-    protected readonly filestoreChannels: FilestoreChannels;
+    protected readonly filestoreChannels: ClientStoreChannel;
     private decompressed: boolean = false;
 
     /**
@@ -61,7 +61,7 @@ export class FileData {
      * @param index The File Index that this file belongs to.
      * @param filestoreChannels The main filestore channel for data access.
      */
-    public constructor(fileId: number, index: FileIndex, filestoreChannels: FilestoreChannels) {
+    public constructor(fileId: number, index: FileIndex, filestoreChannels: ClientStoreChannel) {
         this.fileId = fileId;
         this.index = index;
         this.filestoreChannels = filestoreChannels;
@@ -81,7 +81,7 @@ export class FileData {
         const keys = this.index.clientFileStore.xteas[this.name] || undefined;
 
         this.decompressed = true;
-        const archiveEntry = readIndexedDataChunk(this.fileId, this.index.indexId, this.filestoreChannels);
+        const archiveEntry = extractIndexedFile(this.fileId, this.index.indexId, this.filestoreChannels);
         const { buffer } = decompress(archiveEntry?.dataFile, keys);
         this.content = buffer;
         return this.content;

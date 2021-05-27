@@ -6,7 +6,7 @@ import { logger } from '@runejs/core';
 
 import { Archive } from './archive';
 import { FileData } from './file-data';
-import { decompress, FilestoreChannels, readIndexedDataChunk } from './data';
+import { decompress, ClientStoreChannel, extractIndexedFile } from './data';
 import { hash } from './util';
 import { ClientFileStore, getFileName } from './client-file-store';
 import { fileExtensions, getIndexId, IndexedFileEntry, IndexManifest, IndexName } from '../file-store/index-manifest';
@@ -54,7 +54,7 @@ export class FileIndex {
      */
     public files: Map<number, Archive | FileData> = new Map<number, Archive | FileData>();
 
-    private readonly filestoreChannels: FilestoreChannels;
+    private readonly filestoreChannels: ClientStoreChannel;
 
     /**
      * Creates a new File Index with the specified index ID and filestore channel.
@@ -62,7 +62,7 @@ export class FileIndex {
      * @param indexId The ID of this File Index.
      * @param filestoreChannels The main filestore channel for data access.
      */
-    public constructor(clientFileStore: ClientFileStore, indexId: number, filestoreChannels: FilestoreChannels) {
+    public constructor(clientFileStore: ClientFileStore, indexId: number, filestoreChannels: ClientStoreChannel) {
         this.clientFileStore = clientFileStore;
         this.indexId = indexId;
         this.filestoreChannels = filestoreChannels;
@@ -183,7 +183,7 @@ export class FileIndex {
      * Decodes the packed index file data from the filestore on disk.
      */
     public decodeIndex(): void {
-        const indexEntry = readIndexedDataChunk(this.indexId, 255, this.filestoreChannels);
+        const indexEntry = extractIndexedFile(this.indexId, 255, this.filestoreChannels);
         indexEntry.dataFile.readerIndex = 0;
         const { compression, version, buffer } = decompress(indexEntry.dataFile);
         buffer.readerIndex = 0;

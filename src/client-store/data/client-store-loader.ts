@@ -3,13 +3,13 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 
-export interface FilestoreChannels {
+export interface ClientStoreChannel {
     dataChannel: ByteBuffer;
     indexChannels: ByteBuffer[];
     metaChannel: ByteBuffer;
 }
 
-export const loadFilestore = (dir: string): FilestoreChannels => {
+export const loadClientStore = (dir: string): ClientStoreChannel => {
     const dataChannel = new ByteBuffer(readFileSync(join(dir, 'main_file_cache.dat2')));
     const indexChannels = [];
 

@@ -1,4 +1,4 @@
-import { FilestoreChannels, loadFilestore } from './data';
+import { ClientStoreChannel, loadClientStore } from './data';
 import { FileIndex} from './file-index';
 import { getFileNames, XteaRegion } from './util';
 import {
@@ -37,7 +37,7 @@ export class ClientFileStore {
     public readonly widgetStore: WidgetStore;
     public readonly textureStore: TextureStore;
 
-    public readonly channels: FilestoreChannels;
+    public readonly channels: ClientStoreChannel;
 
     public readonly indexes = new Map<number, FileIndex>();
 
@@ -53,7 +53,7 @@ export class ClientFileStore {
         this.filestoreDir = filestoreDir;
         this.configDir = options?.configDir || filestoreDir;
         this.xteas = options?.xteas || {};
-        this.channels = loadFilestore(filestoreDir);
+        this.channels = loadClientStore(filestoreDir);
 
         fileNames = getFileNames(this.configDir);
 

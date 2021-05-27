@@ -1,7 +1,15 @@
 import { ByteBuffer } from '@runejs/core/buffer';
-import { gunzipSync } from 'zlib';
+import { gunzipSync, gzipSync } from 'zlib';
 import * as compressjs from 'compressjs';
 const bzip = compressjs.Bzip2;
+
+
+const toInt = (value): number => {
+    return value | 0;
+};
+
+
+const charCode = (letter: string) => letter.charCodeAt(0);
 
 
 export interface DecompressedFile {
@@ -13,7 +21,48 @@ export interface DecompressedFile {
 
 // @todo stub
 export const compress = (file: DecompressedFile, keys?: number[]): ByteBuffer => {
-    return null;
+    const compressedFileData = new ByteBuffer(file.buffer.length);
+    compressedFileData.put(file.compression);
+
+    // @TODO xtea
+
+    if(file.compression === 0) {
+        // uncompressed files
+
+        // write the uncompressed file length
+        compressedFileData.put(file.buffer.length, 'int');
+
+        // write the uncompressed file data
+        compressedFileData.putBytes(file.buffer);
+    } else {
+        // compressed Bzip2 or Gzip file
+
+        let compressedData: ByteBuffer;
+
+        if(file.compression === 1) {
+            compressedData = compressBzip(file.buffer);
+        } else if(file.compression === 2) {
+            compressedData = new ByteBuffer(gzipSync(file.buffer));
+        } else {
+            throw new Error(`Invalid compression type`);
+        }
+
+        // write the compressed file length
+        compressedFileData.put(compressedData.length, 'int');
+
+        // write the uncompressed file length
+        compressedFileData.put(file.buffer.length, 'int');
+
+        // write the compressed file data
+        compressedFileData.putBytes(compressedData);
+    }
+
+    // write the file version, if one is applied
+    if(file.version !== -1) {
+        compressedFileData.put(file.version, 'short');
+    }
+
+    return compressedFileData;
 };
 
 
@@ -26,10 +75,10 @@ export const decompress = (buffer: ByteBuffer, keys?: number[]): DecompressedFil
     const compression = buffer.get('byte', 'unsigned');
     const compressedLength = buffer.get('int');
 
-    if (keys && keys.length == 4 && (keys[0] != 0 || keys[1] != 0 || keys[2] != 0 || keys[3] != 0)) {
+    if(keys && keys.length === 4 && (keys[0] !== 0 || keys[1] !== 0 || keys[2] !== 0 || keys[3] !== 0)) {
         const readerIndex = buffer.readerIndex;
         let lengthOffset = readerIndex;
-        if (buffer.length - (compressedLength + readerIndex + 4) >= 2) {
+        if(buffer.length - (compressedLength + readerIndex + 4) >= 2) {
             lengthOffset += 2;
         }
         const decryptedData = decryptXtea(buffer, keys, buffer.length - lengthOffset);
@@ -46,13 +95,13 @@ export const decompress = (buffer: ByteBuffer, keys?: number[]): DecompressedFil
 
         let version = -1;
         if(buffer.readable >= 2) {
-            version = buffer.get('SHORT');
+            version = buffer.get('short');
         }
 
         return { compression, buffer: decryptedData, version };
     } else {
         // Compressed file
-        const uncompressedLength = buffer.get('INT');
+        const uncompressedLength = buffer.get('int');
         if(uncompressedLength < 0) {
             throw new Error('MISSING_ENCRYPTION_KEYS');
         }
@@ -79,7 +128,7 @@ export const decompress = (buffer: ByteBuffer, keys?: number[]): DecompressedFil
 
         let version = -1;
         if(buffer.readable >= 2) {
-            version = buffer.get('SHORT');
+            version = buffer.get('short');
         }
 
         return { compression, buffer: decompressed, version };
@@ -125,19 +174,10 @@ export const decryptXtea = (input: ByteBuffer, keys: number[], length: number): 
 };
 
 
-const toInt = (value): number => {
-    return value | 0;
-};
-
-
-const charCode = (letter: string) => letter.charCodeAt(0);
-
-
-// @todo stub
 export const compressBzip = (rawFileData: ByteBuffer): ByteBuffer => {
-    const compressedFile = bzip.compressFile(rawFileData);
-    console.log(compressedFile);
-    return compressedFile;
+    const compressedFile = new ByteBuffer(bzip.compressFile(rawFileData));
+    // Do not include the BZh- header since we know at the archive level which compression level is being used.
+    return new ByteBuffer(compressedFile.slice(4, compressedFile.length));
 };
 
 
@@ -147,7 +187,7 @@ export const decompressBzip = (compressedFileData: ByteBuffer): ByteBuffer => {
     buffer[0] = charCode('B');
     buffer[1] = charCode('Z');
     buffer[2] = charCode('h');
-    buffer[3] = charCode('1'); // block count
+    buffer[3] = charCode('1');
 
     return new ByteBuffer(bzip.decompressFile(buffer));
 };

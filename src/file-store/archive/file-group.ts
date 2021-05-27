@@ -1,10 +1,10 @@
 import { JSZipObject } from 'jszip';
-import { ArchiveFile } from './archive-file';
-import { IndexManifest } from './index-manifest';
+import { IndexedFile } from './indexed-file';
+import { IndexManifest } from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 
 
-export class ArchiveFolder extends ArchiveFile {
+export class FileGroup extends IndexedFile {
 
     public files: { [key: string]: JSZipObject };
 
@@ -37,22 +37,24 @@ export class ArchiveFolder extends ArchiveFile {
         }
 
         // Write individual file sizes
+        let prevLen: number = 0;
         for(const fileSize of fileSizes) {
-            archive.put(fileSize, 'int');
+            archive.put(fileSize - prevLen, 'int');
+            prevLen = fileSize;
         }
 
-        // Write chunk count
-        archive.put(1); // Chunk count should always be 1 because we're making a clean archive :)
+        // Write stripe count
+        archive.put(1); // Stripe count should always be 1 because we're making a clean archive :)
 
         // @TODO recompress archive file and we're done!
 
         return archive;
     }
 
-    public async getFile(fileId: number): Promise<ArchiveFile> {
+    public async getFile(fileId: number): Promise<IndexedFile> {
         const fileName = `${fileId}${this.indexManifest.fileExtension}`; // @TODO folder manifests for these sub-archive file indexes
         const fileData = await this.files[fileName].async('nodebuffer');
-        return new ArchiveFile(this.indexManifest, fileId, new ByteBuffer(fileData));
+        return new IndexedFile(this.indexManifest, fileId, new ByteBuffer(fileData));
     }
 
 }

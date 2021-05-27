@@ -1,11 +1,11 @@
-import { FileStore } from './file-store';
+import { FileStore } from '../file-store';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import JSZip from 'jszip';
 import { logger } from '@runejs/core';
-import { IndexManifest, IndexName } from './index-manifest';
-import { ArchiveFile } from './archive-file';
-import { ArchiveFolder } from './archive-folder';
+import { IndexManifest, IndexName } from '../index-manifest';
+import { IndexedFile } from './indexed-file';
+import { FileGroup } from './file-group';
 import { ByteBuffer } from '@runejs/core/buffer';
 
 
@@ -25,7 +25,7 @@ export class IndexedArchive {
         }
     }
 
-    public async getFile(fileId: number): Promise<ArchiveFile | ArchiveFolder | null> {
+    public async getFile(fileId: number): Promise<IndexedFile | FileGroup | null> {
         if(!this.manifest) {
             logger.error(`Index manifest not found - archive not yet loaded. ` +
                 `Please use loadArchive() before attempting to access files.`);
@@ -47,10 +47,10 @@ export class IndexedArchive {
         const file = zipArchive.files[fileEntry.file];
         if(file.dir) {
             const folder = zipArchive.folder(fileEntry.file);
-            return new ArchiveFolder(this.manifest, fileId, folder.files);
+            return new FileGroup(this.manifest, fileId, folder.files);
         } else {
             const fileData = await file.async('nodebuffer');
-            return new ArchiveFile(this.manifest, fileId, new ByteBuffer(fileData));
+            return new IndexedFile(this.manifest, fileId, new ByteBuffer(fileData));
         }
     }
 

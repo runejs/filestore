@@ -1,4 +1,4 @@
-import { ClientFileStore, compressBzip, loadXteaRegionFiles } from './client-store';
+import { ClientFileStore, compressBzip, decompressBzip, loadXteaRegionFiles } from './client-store';
 import { FileStore } from './file-store/file-store';
 import { logger } from '@runejs/core';
 
@@ -14,17 +14,26 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
     const testRegion = clientFileStore.regionStore.getRegion(27, 80);
 
     const testRegionFile = clientFileStore.getIndex('regions').getFile(testRegion.mapFile.fileId);
-    testRegionFile.decompress();
 
+    console.log(testRegionFile.content.buffer);
+
+    console.log(String.fromCharCode(testRegionFile.content[0]));
+    console.log(String.fromCharCode(testRegionFile.content[1]));
+    console.log(String.fromCharCode(testRegionFile.content[2]));
+    console.log(String.fromCharCode(testRegionFile.content[3]));
+
+    testRegionFile.decompress();
 
     const reCompressedFile = compressBzip(testRegionFile.content);
 
-    console.log(reCompressedFile);
+    const reDecompressedFile = decompressBzip(reCompressedFile);
 
-    console.log(String.fromCharCode(reCompressedFile[0]));
-    console.log(String.fromCharCode(reCompressedFile[1]));
-    console.log(String.fromCharCode(reCompressedFile[2]));
-    console.log(String.fromCharCode(reCompressedFile[3]));
+    console.log(reDecompressedFile.buffer);
+
+    console.log(String.fromCharCode(reDecompressedFile[0]));
+    console.log(String.fromCharCode(reDecompressedFile[1]));
+    console.log(String.fromCharCode(reDecompressedFile[2]));
+    console.log(String.fromCharCode(reDecompressedFile[3]));
 
 
 

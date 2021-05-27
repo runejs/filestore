@@ -2,7 +2,8 @@ import { ByteBuffer } from '@runejs/core/buffer';
 
 import { FileData } from './file-data';
 import { FileIndex } from './file-index';
-import { ClientStoreChannel, extractIndexedFile, decompress } from './data';
+import { ClientStoreChannel, extractIndexedFile } from './data';
+import { decompress } from '../compression';
 
 
 export class Archive extends FileData {

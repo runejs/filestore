@@ -19,7 +19,6 @@ export interface DecompressedFile {
 }
 
 
-// @todo stub
 export const compress = (file: DecompressedFile, keys?: number[]): ByteBuffer => {
     const compressedFileData = new ByteBuffer(file.buffer.length);
     compressedFileData.put(file.compression);

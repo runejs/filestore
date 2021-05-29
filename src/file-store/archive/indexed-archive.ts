@@ -1,7 +1,7 @@
 import { FileStore } from '../file-store';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import JSZip from 'jszip';
+import JSZip, { JSZipObject } from 'jszip';
 import { logger } from '@runejs/core';
 import { IndexManifest, IndexName } from '../index-manifest';
 import { IndexedFile } from './indexed-file';
@@ -52,7 +52,11 @@ export class IndexedArchive {
 
         if(file.dir) {
             const folder = zipArchive.folder(fileEntry.file);
-            return new FileGroup(this.manifest, fileId, folder.files);
+            const folderFileNames = Object.keys(folder.files) ?? [];
+            const folderFiles: { [key: string]: JSZipObject } = {};
+            folderFileNames.filter(fileName => fileName?.startsWith(`${fileId}/`))
+                .forEach(fileName => folderFiles[fileName] = folder.files[fileName]);
+            return new FileGroup(this.manifest, fileId, folderFiles);
         } else {
             const fileData = await file.async('nodebuffer');
             return new IndexedFile(this.manifest, fileId, new ByteBuffer(fileData));

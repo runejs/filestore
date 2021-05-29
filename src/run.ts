@@ -1,6 +1,7 @@
-import { ClientFileStore, loadXteaRegionFiles } from './client-store';
+import { ClientFileStore, extractIndexedFile, loadXteaRegionFiles } from './client-store';
 import { FileStore } from './file-store/file-store';
 import { FileGroup } from './file-store/archive/file-group';
+import { decompress } from './compression';
 
 
 const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
@@ -11,9 +12,17 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
         xteas: await xteaRegions()
     });
 
-    const testCacheFile = clientFileStore.getIndex('configs').getArchive(10);
+    const testCacheFile = extractIndexedFile(10, 2, clientFileStore.channels).dataFile;
 
-    console.log(testCacheFile.content.buffer);
+    console.log('\n\nCompressed Original');
+    console.log(`LENGTH = ${testCacheFile.length}`);
+    console.log(testCacheFile);
+
+    const decompressedCacheFile = decompress(testCacheFile);
+
+    console.log('\n\nDe-compressed Original');
+    console.log(`LENGTH = ${decompressedCacheFile.buffer.length}`);
+    console.log(decompressedCacheFile.buffer);
 
     const fileStore = new FileStore();
 
@@ -21,8 +30,11 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
 
     const archivedFileGroup = await configArchive.getFile(10) as FileGroup;
 
-    // @TODO very broken
-    console.log(await archivedFileGroup.packFolder());
+    const repackedFile = await archivedFileGroup.compress();
+
+    console.log('\n\nRe-compressed File');
+    console.log(`LENGTH = ${repackedFile.length}`);
+    console.log(repackedFile);
 })();
 
 

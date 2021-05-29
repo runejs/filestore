@@ -54,7 +54,8 @@ export class IndexedArchive {
             const folder = zipArchive.folder(fileEntry.file);
             const folderFileNames = Object.keys(folder.files) ?? [];
             const folderFiles: { [key: string]: JSZipObject } = {};
-            folderFileNames.filter(fileName => fileName?.startsWith(`${fileId}/`))
+            folderFileNames
+                .filter(fileName => fileName?.startsWith(`${fileId}/`) && fileName?.endsWith(this.manifest.fileExtension))
                 .forEach(fileName => folderFiles[fileName] = folder.files[fileName]);
             return new FileGroup(this.manifest, fileId, folderFiles);
         } else {

@@ -22,6 +22,7 @@ export class FileGroup extends IndexedFile {
         console.log(`\n\nFile Count = ${fileCount}`);
         const fileSizes: number[] = new Array(fileCount);
         const fileData: Buffer[] = new Array(fileCount);
+
         for(let i = 0; i < fileCount; i++) {
             const fileName = fileKeys[i];
             fileData[i] = await this.files[fileName].async('nodebuffer');

@@ -35,6 +35,10 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
     console.log('\n\nRe-compressed File');
     console.log(`LENGTH = ${repackedFile.length}`);
     console.log(repackedFile);
+    
+    const reunpackedrepackedFile = decompress(repackedFile);
+
+    console.log('\n\nThe the fuck is this absolute monstrosity of a compression circle jerk');
+    console.log(`LENGTH = ${reunpackedrepackedFile.buffer.length}`);
+    console.log(reunpackedrepackedFile.buffer);
 })();
-
-

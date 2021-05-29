@@ -2,7 +2,7 @@ import { JSZipObject } from 'jszip';
 import { IndexedFile } from './indexed-file';
 import { getCompressionKey, IndexManifest } from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { compress } from '../../compression';
+import { compressFile } from '../../compression';
 
 
 export class FileGroup extends IndexedFile {
@@ -62,7 +62,7 @@ export class FileGroup extends IndexedFile {
         console.log(`COMPRESSION = ${compression}`);
         console.log(group);
 
-        return compress({
+        return compressFile({
             buffer: group,
             compression: getCompressionKey(this.indexManifest.fileCompression),
             version: this.indexManifest.files[this.fileId].version || -1

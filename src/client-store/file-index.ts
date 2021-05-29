@@ -11,7 +11,7 @@ import { hash } from './util';
 import { ClientFileStore, getFileName } from './client-file-store';
 import { fileExtensions, getIndexId, IndexedFileEntry, IndexManifest, IndexName } from '../file-store/index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { decompress } from '../compression';
+import { decompressFile } from '../compression';
 
 
 const NAME_FLAG = 0x01;
@@ -186,7 +186,7 @@ export class FileIndex {
     public decodeIndex(): void {
         const indexEntry = extractIndexedFile(this.indexId, 255, this.filestoreChannels);
         indexEntry.dataFile.readerIndex = 0;
-        const { compression, version, buffer } = decompress(indexEntry.dataFile);
+        const { compression, version, buffer } = decompressFile(indexEntry.dataFile);
         buffer.readerIndex = 0;
 
         this.version = version;

@@ -1,7 +1,7 @@
 import { ClientFileStore, extractIndexedFile, loadXteaRegionFiles } from './client-store';
 import { FileStore } from './file-store/file-store';
 import { FileGroup } from './file-store/archive/file-group';
-import { decompress } from './compression';
+import { decompressFile } from './compression';
 
 
 const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
@@ -18,7 +18,7 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
     console.log(`LENGTH = ${testCacheFile.length}`);
     console.log(testCacheFile);
 
-    const decompressedCacheFile = decompress(testCacheFile);
+    const decompressedCacheFile = decompressFile(testCacheFile);
 
     console.log('\n\nDe-compressed Original');
     console.log(`LENGTH = ${decompressedCacheFile.buffer.length}`);
@@ -35,8 +35,8 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
     console.log('\n\nRe-compressed File');
     console.log(`LENGTH = ${repackedFile.length}`);
     console.log(repackedFile);
-    
-    const reunpackedrepackedFile = decompress(repackedFile);
+
+    const reunpackedrepackedFile = decompressFile(repackedFile);
 
     console.log('\n\nThe the fuck is this absolute monstrosity of a compression circle jerk');
     console.log(`LENGTH = ${reunpackedrepackedFile.buffer.length}`);

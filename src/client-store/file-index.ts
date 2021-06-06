@@ -1,6 +1,8 @@
 import JSZip from 'jszip';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as CRC32 from 'crc-32';
+import { createHash } from 'crypto';
 
 import { logger } from '@runejs/core';
 
@@ -9,13 +11,12 @@ import { FileData } from './file-data';
 import { ClientStoreChannel, extractIndexedFile } from './data';
 import { hash } from './util';
 import { ClientFileStore, getFileName } from './client-file-store';
-import { fileExtensions, getIndexId, IndexedFileEntry, IndexManifest, IndexName } from '../file-store/index-manifest';
+import { fileExtensions, getIndexId, FileMetadata, IndexManifest, IndexName } from '../file-store/index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { decompressFile } from '../compression';
+import { decompressVersionedFile } from '../compression';
 
 
 const NAME_FLAG = 0x01;
-const WHIRLPOOL_FLAG = 0x02;
 
 
 export class FileIndex {
@@ -186,7 +187,7 @@ export class FileIndex {
     public decodeIndex(): void {
         const indexEntry = extractIndexedFile(this.indexId, 255, this.filestoreChannels);
         indexEntry.dataFile.readerIndex = 0;
-        const { compression, version, buffer } = decompressFile(indexEntry.dataFile);
+        const { compression, version, buffer } = decompressVersionedFile(indexEntry.dataFile);
         buffer.readerIndex = 0;
 
         this.version = version;
@@ -194,25 +195,16 @@ export class FileIndex {
 
         /* file header */
         this.format = buffer.get('BYTE', 'UNSIGNED');
-        if(this.format >= 6) {
-            // this.version = buffer.get('INT'); not used by 435
-        }
         this.settings = buffer.get('BYTE', 'UNSIGNED');
 
         /* file ids */
         const fileCount = buffer.get('SHORT', 'UNSIGNED');
         const ids: number[] = new Array(fileCount);
         let accumulator = 0;
-        let size = -1;
         for(let i = 0; i < ids.length; i++) {
             let delta = buffer.get('SHORT', 'UNSIGNED');
             ids[i] = accumulator += delta;
-            if(ids[i] > size) {
-                size = ids[i];
-            }
         }
-
-        size++;
 
         for(const id of ids) {
             this.files.set(id, new FileData(id, this, this.filestoreChannels));
@@ -231,22 +223,13 @@ export class FileIndex {
             this.files.get(id).crc = buffer.get('INT');
         }
 
-        /* read the whirlpool values */
-        if((this.settings & WHIRLPOOL_FLAG) !== 0) {
-            for(const id of ids) {
-                buffer.copy(this.files.get(id).whirlpool, 0,
-                    buffer.readerIndex, buffer.readerIndex + 64);
-                buffer.readerIndex = (buffer.readerIndex + 64);
-            }
-        }
-
         /* read the version numbers */
         for(const id of ids) {
             this.files.get(id).version = buffer.get('INT');
         }
 
-        /* read the child sizes */
-        const members: number[][] = new Array(size).fill([]);
+        /* read the child count */
+        const members: number[][] = new Array(ids.length).fill([]);
         for(const id of ids) {
             members[id] = new Array(buffer.get('SHORT', 'UNSIGNED'));
         }
@@ -254,17 +237,11 @@ export class FileIndex {
         /* read the child ids */
         for(const id of ids) {
             accumulator = 0;
-            size = -1;
 
             for(let i = 0; i < members[id].length; i++) {
                 let delta = buffer.get('SHORT', 'UNSIGNED');
                 members[id][i] = accumulator += delta;
-                if(members[id][i] > size) {
-                    size = members[id][i];
-                }
             }
-
-            size++;
 
             /* allocate specific entries within the array */
             const file = this.files.get(id);
@@ -295,7 +272,7 @@ export class FileIndex {
         }
     }
 
-    public async generateIndexedArchive(): Promise<void> {
+    public async generateArchive(): Promise<void> {
         if(fs.existsSync(this.storePath)) {
             fs.rmSync(this.storePath, {
                 force: true,
@@ -315,7 +292,7 @@ export class FileIndex {
 
         logger.info(`${fileCount} files found within this index.`);
 
-        const fileIndex: { [key: number]: IndexedFileEntry } = {};
+        const fileIndex: { [key: number]: FileMetadata } = {};
         const errors: { [key: number]: string[] } = {};
 
         const pushError = (fileId: number, error) => {
@@ -338,18 +315,23 @@ export class FileIndex {
 
             const fileName = file.nameHash ? getFileName(file.nameHash) : fileId;
 
+            const hash = createHash('sha256');
+
             if(file instanceof Archive) {
                 // Write sub-archive/folder
-
-                fileIndex[fileId] = {
-                    file: `${fileName}`,
-                    version: file.version || -1
-                };
 
                 const archive = file as Archive;
                 const folder = storeZip.folder(`${fileName}`);
                 archive.decodeArchiveFiles();
                 const archiveFileCount = archive.files.size;
+
+                fileIndex[fileId] = {
+                    file: `${fileName}`,
+                    version: file.version || -1,
+                    crc: CRC32.buf(archive.content),
+                    sha256: hash.update(archive.content).digest('hex'),
+                    children: new Array(archiveFileCount)
+                };
 
                 for(let archiveFileId = 0; archiveFileId < archiveFileCount; archiveFileId++) {
                     const archiveFile = archive.getFile(archiveFileId);
@@ -357,19 +339,16 @@ export class FileIndex {
                         getFileName(archiveFile.nameHash) : '');
 
                     if(!archiveFile?.content) {
-                        pushError(fileId, `Sub-archive file ${fileId} not found`);
+                        pushError(fileId, `File group ${fileId} not found`);
                         continue;
                     }
 
                     folder.file(archiveFileName + fileExt, Buffer.from(archiveFile.content));
+
+                    fileIndex[fileId].children[archiveFileId] = archiveFileName + fileExt;
                 }
             } else {
                 // Write single file
-
-                fileIndex[fileId] = {
-                    file: fileName + fileExt,
-                    version: file.version || -1
-                };
 
                 let decompressedFile: ByteBuffer;
 
@@ -386,7 +365,16 @@ export class FileIndex {
                     continue;
                 }
 
-                storeZip.file(fileName + fileExt, Buffer.from(decompressedFile ?? file.content));
+                const fileContent = Buffer.from(decompressedFile ?? file.content);
+
+                fileIndex[fileId] = {
+                    file: fileName + fileExt,
+                    crc: CRC32.buf(fileContent),
+                    sha256: hash.update(fileContent).digest('hex'),
+                    version: file.version || -1
+                };
+
+                storeZip.file(fileName + fileExt, fileContent);
             }
         }
 
@@ -397,6 +385,7 @@ export class FileIndex {
             fileExtension: fileExt,
             format: this.format,
             version: this.version,
+            settings: this.settings,
             files: fileIndex
         };
 

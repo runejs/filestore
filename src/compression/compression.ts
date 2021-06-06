@@ -12,7 +12,7 @@ export interface StoreFile {
 }
 
 
-export const compressFile = (file: StoreFile, keys?: number[]): ByteBuffer => {
+export const compressVersionedFile = (file: StoreFile, keys?: number[]): ByteBuffer => {
     const compressedFileData = new ByteBuffer(file.buffer.length);
     compressedFileData.put(file.compression);
 
@@ -61,7 +61,7 @@ export const compressFile = (file: StoreFile, keys?: number[]): ByteBuffer => {
 };
 
 
-export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile => {
+export const decompressVersionedFile = (buffer: ByteBuffer, keys?: number[]): StoreFile => {
     buffer.readerIndex = 0;
 
     if(!buffer || buffer.length === 0) {
@@ -72,6 +72,7 @@ export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile =
     const compressedLength = buffer.get('int');
 
     if(Xtea.validKeys(keys)) {
+        // Decode xtea encrypted file
         const readerIndex = buffer.readerIndex;
         let lengthOffset = readerIndex;
         if(buffer.length - (compressedLength + readerIndex + 4) >= 2) {

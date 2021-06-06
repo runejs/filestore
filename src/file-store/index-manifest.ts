@@ -65,19 +65,21 @@ export const getCompressionKey = (compression: FileCompression) =>
     compression === 'gzip' ? 2 : (compression === 'bzip' ? 1 : 0);
 
 
-export interface IndexedFileEntry {
+export interface FileMetadata {
     file: string;
     version?: number;
+    crc?: number;
+    sha256?: string;
+    children?: string[];
 }
 
-export interface IndexManifest {
-
+export interface  IndexManifest {
     indexId: number;
     name: IndexName;
     fileCompression: FileCompression;
     fileExtension: string;
     format?: number;
     version?: number;
-    files: { [key: number]: IndexedFileEntry }; // file index within the archive => IndexedFileEntry
-
+    settings?: number;
+    files: { [key: number]: FileMetadata }; // file index within the archive => IndexedFileEntry
 }

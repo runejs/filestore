@@ -4,4 +4,6 @@ src
 packed
 config
 unpacked
+stores
+output
 dist/run.*

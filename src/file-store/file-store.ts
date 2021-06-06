@@ -1,7 +1,7 @@
 import { ClientFileStore } from '../client-store';
 import { logger } from '@runejs/core';
 import fs from 'fs';
-import { IndexedArchive } from './archive/indexed-archive';
+import { IndexedArchive } from './archive';
 import { IndexName } from './index-manifest';
 
 
@@ -21,6 +21,30 @@ export class FileStore {
         this.indexedArchives.set(indexId, indexedArchive);
         await indexedArchive.loadArchive();
         return indexedArchive;
+    }
+
+    public async generateCrcTable(): Promise<void> {
+        if(!this.indexedArchives.size) {
+            await this.loadStoreArchives();
+        }
+
+        const indexCount = this.indexedArchives.size;
+
+        for(let i = 0; i < indexCount; i++) {
+
+        }
+
+        /*const promiseList: Promise<void | ByteBuffer>[] = new Array(this.indexedArchives.size);
+
+        this.indexedArchives.forEach((archive, index) =>
+            promiseList[index] = archive.unpack());
+
+        await Promise.all(promiseList);
+
+        this.indexedArchives.forEach((archive, index) =>
+            promiseList[index] = archive.compress());
+
+        await Promise.all(promiseList);*/
     }
 
     public async loadStoreArchives(): Promise<void> {

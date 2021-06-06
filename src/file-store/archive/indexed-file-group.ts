@@ -4,7 +4,7 @@ import { IndexManifest } from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 
 
-export class FileGroup extends IndexedFile {
+export class IndexedFileGroup extends IndexedFile {
 
     public files: { [key: string]: JSZipObject };
 

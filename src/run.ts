@@ -11,7 +11,7 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
         xteas: await xteaRegions()
     });
 
-    clientFileStore.getAllIndexes().forEach(index => index.generateArchive());
+    // clientFileStore.getAllIndexes().forEach(index => index.generateArchive());
 
     /*const indexEntry = extractIndexedFile(2, 255, clientFileStore.channels);
     const decompressed = decompressVersionedFile(indexEntry.dataFile);
@@ -25,7 +25,7 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
 
     const configArchive = await fileStore.loadStoreArchive(2, 'configs');
 
-    // await configArchive.indexArchiveFiles();
+    await configArchive.indexArchiveFiles();
 
     /*const packed = await configArchive.compress();
 

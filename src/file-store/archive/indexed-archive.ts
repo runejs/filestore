@@ -5,7 +5,7 @@ import JSZip, { JSZipObject } from 'jszip';
 import { logger } from '@runejs/core';
 import { fileExtensions, getIndexId, FileMetadata, IndexManifest, IndexName } from '../index-manifest';
 import { IndexedFile } from './indexed-file';
-import { FileGroup } from './file-group';
+import { IndexedFileGroup } from './indexed-file-group';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { Archive, getFileName, hash } from '../../client-store';
 import * as CRC32 from 'crc-32';
@@ -31,6 +31,11 @@ export class IndexedArchive {
         }
     }
 
+    public newFileIndex(): number {
+        const currentIndexes: number[] = Object.keys(this.files).map(indexStr => parseInt(indexStr, 10));
+        return Math.max(...currentIndexes) + 1;
+    }
+
     public async indexArchiveFiles(): Promise<void> {
         const storeZip = await this.loadZip();
 
@@ -39,6 +44,31 @@ export class IndexedArchive {
         }
 
         logger.info(`Indexing ${this.filePath}...`);
+
+        const newManifest: IndexManifest = {
+            indexId: this.indexId,
+            name: this.indexName,
+            fileCompression: this.manifest.fileCompression,
+            fileExtension: this.manifest.fileExtension,
+            format: this.manifest.format ?? undefined,
+            version: this.manifest.version ?? undefined,
+            settings: this.manifest.settings ?? undefined,
+            files: {}
+        };
+
+        const oldFiles = this.files;
+
+        const originalFile = (fileName: string): FileMetadata | null => oldFiles[fileName] ?? null;
+
+        const originalFileIndex = (fileName: string): number => {
+            const fileIndexes: string[] = Object.keys(this.files);
+            for(const fileIndex of fileIndexes) {
+                if(this.files[fileIndex]?.file === fileName) {
+                    return parseInt(fileIndex, 10);
+                }
+            }
+            return -1;
+        };
 
         const extension = this.manifest.fileExtension;
         const fileNames = Object.keys(storeZip.files).filter(fileName => {
@@ -62,10 +92,34 @@ export class IndexedArchive {
         logger.info(`Found ${fileNames.length} files or file groups.`);
 
         for(const fileName of fileNames) {
+            const noFileExtension = fileName.replace(this.manifest.fileExtension, '');
+            const zippedFile = storeZip.files[fileName];
+            const oldFile: FileMetadata | null = originalFile(fileName);
+            const oldFileIndex: number = originalFileIndex(fileName);
+            const fileIndex = oldFileIndex !== -1 ? oldFileIndex : this.newFileIndex();
+            newManifest.files[fileIndex] = oldFile ? oldFile : {
+                file: fileName
+            };
 
+            if(zippedFile.dir) {
+                const folder = storeZip.folder(fileName);
+                const folderFileNames = Object.keys(folder.files) ?? [];
+                const folderFiles: { [key: string]: JSZipObject } = {};
+                folderFileNames
+                    .filter(groupedFileName => groupedFileName?.startsWith(fileName) &&
+                        groupedFileName?.endsWith(this.manifest.fileExtension))
+                    .forEach(groupedFileName => folderFiles[groupedFileName] = folder.files[groupedFileName]);
+
+                newManifest.files[fileIndex].children = new Array(folderFileNames.length);
+            } else {
+                const fileData = await zippedFile.async('nodebuffer');
+                const indexedFile = new IndexedFile(this.manifest, fileIndex, new ByteBuffer(fileData));
+                if(indexedFile.fileData) {
+                    newManifest.files[fileIndex].crc = CRC32.buf(indexedFile.fileData);
+                    newManifest.files[fileIndex].sha256 = ''; // @TODO left off here
+                }
+            }
         }
-
-        console.log(fileNames);
 
         /*const fileCount = this.files.size;
         const fileExt = fileExtensions[this.archiveName];
@@ -185,7 +239,7 @@ export class IndexedArchive {
                 if(!!file?.fileId) {
                     this.files[file.fileId] = file;
 
-                    if(file instanceof FileGroup) {
+                    if(file instanceof IndexedFileGroup) {
                         file.fileData = await file.pack();
                     }
                 }
@@ -255,7 +309,7 @@ export class IndexedArchive {
 
         // Write file group child counts
         for(const file of files) {
-            if(file instanceof FileGroup) {
+            if(file instanceof IndexedFileGroup) {
                 buffer.put(file.fileCount, 'short');
             } else {
                 buffer.put(0, 'short');
@@ -264,11 +318,11 @@ export class IndexedArchive {
 
         // Write file group children
         for(const file of files) {
-            if(!(file instanceof FileGroup)) {
+            if(!(file instanceof IndexedFileGroup)) {
                 continue;
             }
 
-            const group = file as FileGroup;
+            const group = file as IndexedFileGroup;
             const childKeys = Object.keys(group.files);
             writtenFileIndex = 0;
 
@@ -343,7 +397,7 @@ export class IndexedArchive {
             folderFileNames
                 .filter(fileName => fileName?.startsWith(`${fileId}/`) && fileName?.endsWith(this.manifest.fileExtension))
                 .forEach(fileName => folderFiles[fileName] = folder.files[fileName]);
-            return new FileGroup(this.manifest, fileId, folderFiles);
+            return new IndexedFileGroup(this.manifest, fileId, folderFiles);
         } else {
             const fileData = await file.async('nodebuffer');
             return new IndexedFile(this.manifest, fileId, new ByteBuffer(fileData));

@@ -2,7 +2,7 @@ import { ClientFileStore } from '../client-store';
 import { logger } from '@runejs/core';
 import fs from 'fs';
 import { IndexedArchive } from './archive';
-import { IndexName } from './index-manifest';
+import { getIndexName, indexIdMap, IndexName } from './index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 
 
@@ -10,8 +10,6 @@ export class FileStore {
 
     public fileStorePath: string;
     public indexedArchives: Map<number, IndexedArchive> = new Map();
-
-    private clientFileStore: ClientFileStore | undefined;
 
     public constructor(fileStorePath?: string) {
         this.fileStorePath = fileStorePath ?? './stores';
@@ -22,6 +20,17 @@ export class FileStore {
         this.indexedArchives.set(indexId, indexedArchive);
         await indexedArchive.loadArchive();
         return indexedArchive;
+    }
+
+    public async getFile(indexId: number, fileId: number, compressed: boolean = true): Promise<ByteBuffer> {
+        if(!this.indexedArchives.has(indexId)) {
+            await this.loadStoreArchive(indexId, getIndexName(indexId));
+        }
+
+        const archive = this.indexedArchives.get(indexId);
+        const file = await archive.getFile(fileId);
+
+        return compressed ? await file.compress() : await file.pack();
     }
 
     public async generateCrcTable(): Promise<ByteBuffer> {
@@ -42,7 +51,7 @@ export class FileStore {
             buffer.put(crc, 'int');
         }
 
-        return buffer.flipWriter();
+        return buffer;
     }
 
     public async loadStoreArchives(): Promise<void> {

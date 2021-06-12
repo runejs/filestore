@@ -25,6 +25,18 @@ export const indexIdMap: { [key: string]: number } = {
 };
 
 
+export const getIndexName = (indexId: number): IndexName => {
+    const indexNames = Object.keys(indexIdMap);
+    for(const indexName of indexNames) {
+        if(indexIdMap[indexName] === indexId) {
+            return indexName as IndexName;
+        }
+    }
+
+    return null;
+};
+
+
 export const fileExtensions: { [key: string]: string } = {
     'skeletons': '.dat',
     'frames': '.dat',

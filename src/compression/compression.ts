@@ -13,50 +13,65 @@ export interface StoreFile {
 
 
 export const compressVersionedFile = (file: StoreFile, keys?: number[]): ByteBuffer => {
-    const compressedFileData = new ByteBuffer(file.buffer.length);
-    compressedFileData.put(file.compression);
-
-    let compressedLength: number = file.buffer.length;
+    let newFileData: ByteBuffer;
+    let newFileLength: number;
 
     if(file.compression === 0) {
         // uncompressed files
+        newFileData = new ByteBuffer(file.buffer.length + 7);
+
+        // indicate that no file compression is applied
+        newFileData.put(0);
 
         // write the uncompressed file length
-        compressedFileData.put(file.buffer.length, 'int');
+        newFileData.put(file.buffer.length, 'int');
 
         // write the uncompressed file data
-        compressedFileData.putBytes(file.buffer);
+        newFileData.putBytes(file.buffer);
+
+        newFileLength = file.buffer.length;
     } else {
         // compressed Bzip2 or Gzip file
 
         const compressedData: ByteBuffer = file.compression === 1 ?
             Bzip2.compress(file.buffer) : Gzip.compress(file.buffer);
 
-        compressedLength = compressedData.length;
+        const compressedLength: number = compressedData.length;
+
+        newFileData = new ByteBuffer(compressedData.length + 11);
+
+        // indicate which type of file compression was used (1 or 2)
+        newFileData.put(file.compression);
 
         // write the compressed file length
-        compressedFileData.put(compressedLength, 'int');
+        newFileData.put(compressedLength, 'int');
 
         // write the uncompressed file length
-        compressedFileData.put(file.buffer.length, 'int');
+        newFileData.put(file.buffer.length, 'int');
 
         // write the compressed file data
-        compressedFileData.putBytes(compressedData);
+        newFileData.putBytes(compressedData);
+
+        newFileLength = compressedLength;
+    }
+
+    if(!newFileData) {
+        return null;
     }
 
     // write the file version
-    compressedFileData.put(file.version ?? 0, 'short');
+    newFileData.put(file.version ?? 0, 'short');
 
     if(Xtea.validKeys(keys)) {
         // @TODO untested
-        const writerIndex = compressedFileData.writerIndex;
+        const writerIndex = newFileData.writerIndex;
         let lengthOffset = writerIndex;
-        if(compressedFileData.length - (compressedLength + writerIndex + 4) >= 2) {
+        if(newFileData.length - (newFileLength + writerIndex + 4) >= 2) {
             lengthOffset += 2;
         }
-        return Xtea.encrypt(compressedFileData, keys, compressedFileData.length - lengthOffset).flipWriter();
+        return Xtea.encrypt(newFileData, keys, newFileData.length - lengthOffset).flipWriter();
     } else {
-        return compressedFileData.flipWriter();
+        return newFileData.flipWriter();
     }
 };
 

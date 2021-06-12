@@ -1,17 +1,17 @@
 import { ByteBuffer } from '@runejs/core/buffer';
 
-import { FileData } from './file-data';
+import { ClientFile } from './client-file';
 import { FileIndex } from './file-index';
 import { ClientStoreChannel, extractIndexedFile } from './data';
 import { decompressVersionedFile } from '../compression';
 
 
-export class Archive extends FileData {
+export class ClientFileGroup extends ClientFile {
 
     /**
      * A map of files housed within this Archive.
      */
-    public files: Map<number, FileData>;
+    public files: Map<number, ClientFile>;
 
     /**
      * The type of file, either an `archive` or a plain `file`.
@@ -34,13 +34,13 @@ export class Archive extends FileData {
      * @param index The File Index that this Archive belongs to.
      * @param filestoreChannels The main filestore channel for data access.
      */
-    public constructor(fileData: FileData, index: FileIndex, filestoreChannels: ClientStoreChannel);
+    public constructor(fileData: ClientFile, index: FileIndex, filestoreChannels: ClientStoreChannel);
 
-    public constructor(idOrFileData: number | FileData, index: FileIndex, filestoreChannels: ClientStoreChannel) {
+    public constructor(idOrFileData: number | ClientFile, index: FileIndex, filestoreChannels: ClientStoreChannel) {
         super(typeof idOrFileData === 'number' ? idOrFileData : idOrFileData.fileId, index, filestoreChannels);
 
         if(typeof idOrFileData !== 'number') {
-            const fileData = idOrFileData as FileData;
+            const fileData = idOrFileData as ClientFile;
             const { content, nameHash, crc, whirlpool, version, compression } = fileData;
             this.content = content;
             this.nameHash = nameHash;
@@ -50,14 +50,14 @@ export class Archive extends FileData {
             this.compression = compression;
         }
 
-        this.files = new Map<number, FileData>();
+        this.files = new Map<number, ClientFile>();
     }
 
     /**
      * Fetches a file from this Archive by ID.
      * @param fileId The ID of the file to find.
      */
-    public getFile(fileId: number): FileData | null {
+    public getFile(fileId: number): ClientFile | null {
         return this.files.get(fileId) || null;
     }
 
@@ -99,7 +99,7 @@ export class Archive extends FileData {
         }
 
         for(let id = 0; id < archiveSize; id++) {
-            const fileData = new FileData(id, this.index, this.filestoreChannels);
+            const fileData = new ClientFile(id, this.index, this.filestoreChannels);
             fileData.content = new ByteBuffer(sizes[id]);
             this.files.set(id, fileData);
         }

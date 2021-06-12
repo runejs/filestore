@@ -1,7 +1,7 @@
 import { logger } from '@runejs/core';
-import { Archive } from '../../archive';
+import { ClientFileGroup } from '../../client-file-group';
 import { ConfigStore } from '../config-store';
-import { FileData } from '../../file-data';
+import { ClientFile } from '../../client-file';
 
 
 /**
@@ -23,7 +23,7 @@ export class VarbitStore {
     /**
      * The Varbit Archive, containing details about every game varbit.
      */
-    public readonly varbitArchive: Archive;
+    public readonly varbitArchive: ClientFileGroup;
 
     public constructor(private configStore: ConfigStore) {
         this.varbitArchive = this.configStore.getArchive('varbits');
@@ -55,7 +55,7 @@ export class VarbitStore {
      * Parses a raw varbit data file into a readable VarbitConfig object.
      * @param varbitFile The raw file-store varbit data.
      */
-    public decodeVarbitFile(varbitFile: FileData): VarbitConfig {
+    public decodeVarbitFile(varbitFile: ClientFile): VarbitConfig {
         const varbitConfig = new VarbitConfig();
 
         const buffer = varbitFile.content;

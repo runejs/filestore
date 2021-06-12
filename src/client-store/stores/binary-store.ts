@@ -2,7 +2,7 @@ import { logger } from '@runejs/core';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 import { ClientFileStore, getFileName } from '../client-file-store';
-import { FileData } from '../file-data';
+import { ClientFile } from '../client-file';
 
 
 /**
@@ -17,10 +17,10 @@ export class BinaryStore {
      * Writes the specified file or all binary files to the disk.
      * @param binaryFile [optional] The file to write to disk. Writes all stored binary files to disk if not provided.
      */
-    public async writeToDisk(binaryFile?: FileData): Promise<void> {
+    public async writeToDisk(binaryFile?: ClientFile): Promise<void> {
         if(!binaryFile) {
             // Write all files
-            const binaryFiles: FileData[] = this.decodeBinaryFileStore();
+            const binaryFiles: ClientFile[] = this.decodeBinaryFileStore();
             binaryFiles.forEach(file => this.writeToDisk(file));
         } else {
             // Write single file
@@ -44,7 +44,7 @@ export class BinaryStore {
      * @param nameOrId The name or ID of the binary file.
      * @returns The binary FileData object, or null if the file is not found.
      */
-    public getBinaryFile(nameOrId: string | number): FileData | null {
+    public getBinaryFile(nameOrId: string | number): ClientFile | null {
         if(!nameOrId) {
             return null;
         }
@@ -57,10 +57,10 @@ export class BinaryStore {
      * Decodes all binary files within the binary store.
      * @returns The list of decoded files from the binary store.
      */
-    public decodeBinaryFileStore(): FileData[] {
+    public decodeBinaryFileStore(): ClientFile[] {
         const binaryIndex = this.fileStore.getIndex('binary');
         const binaryFileCount = binaryIndex.files.size;
-        const binaryFiles: FileData[] = new Array(binaryFileCount);
+        const binaryFiles: ClientFile[] = new Array(binaryFileCount);
 
         for(let binaryFileId = 0; binaryFileId < binaryFileCount; binaryFileId++) {
             const fileData = binaryIndex.getFile(binaryFileId);

@@ -1,7 +1,7 @@
 import { logger } from '@runejs/core';
-import { Archive } from '../../archive';
+import { ClientFileGroup } from '../../client-file-group';
 import { ConfigStore } from '../config-store';
-import { FileData } from '../../file-data';
+import { ClientFile } from '../../client-file';
 
 
 /**
@@ -92,7 +92,7 @@ export class ObjectStore {
     /**
      * The Object Archive, containing details about every game object.
      */
-    public readonly objectArchive: Archive;
+    public readonly objectArchive: ClientFileGroup;
 
     public constructor(private configStore: ConfigStore) {
         this.objectArchive = this.configStore.getArchive('objects');
@@ -124,7 +124,7 @@ export class ObjectStore {
      * Parses a raw game object data file into a readable ObjectConfig object.
      * @param objectFile The raw file-store game object data.
      */
-    public decodeObjectFile(objectFile: FileData): ObjectConfig {
+    public decodeObjectFile(objectFile: ClientFile): ObjectConfig {
         const objectConfig = new ObjectConfig();
 
         const buffer = objectFile.content;

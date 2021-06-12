@@ -3,6 +3,7 @@ import { logger } from '@runejs/core';
 import fs from 'fs';
 import { IndexedArchive } from './archive';
 import { IndexName } from './index-manifest';
+import { ByteBuffer } from '@runejs/core/buffer';
 
 
 export class FileStore {
@@ -23,28 +24,25 @@ export class FileStore {
         return indexedArchive;
     }
 
-    public async generateCrcTable(): Promise<void> {
+    public async generateCrcTable(): Promise<ByteBuffer> {
         if(!this.indexedArchives.size) {
             await this.loadStoreArchives();
         }
 
         const indexCount = this.indexedArchives.size;
+        const buffer = new ByteBuffer(4048);
 
-        for(let i = 0; i < indexCount; i++) {
+        buffer.put(0, 'byte');
+        buffer.put(indexCount * 6, 'int');
 
+        for(let indexId = 0; indexId < indexCount; indexId++) {
+            const indexedArchive = this.indexedArchives.get(indexId);
+            const crc = indexedArchive.manifest.crc;
+            logger.info(`Index ${indexId} CRC = ${crc}`);
+            buffer.put(crc, 'int');
         }
 
-        /*const promiseList: Promise<void | ByteBuffer>[] = new Array(this.indexedArchives.size);
-
-        this.indexedArchives.forEach((archive, index) =>
-            promiseList[index] = archive.unpack());
-
-        await Promise.all(promiseList);
-
-        this.indexedArchives.forEach((archive, index) =>
-            promiseList[index] = archive.compress());
-
-        await Promise.all(promiseList);*/
+        return buffer.flipWriter();
     }
 
     public async loadStoreArchives(): Promise<void> {

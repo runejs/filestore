@@ -1,9 +1,9 @@
 import { logger } from '@runejs/core';
 import { ByteBuffer } from '@runejs/core/buffer';
 
-import { Archive } from '../../archive';
+import { ClientFileGroup } from '../../client-file-group';
 import { ConfigStore } from '../config-store';
-import { FileData } from '../../file-data';
+import { ClientFile } from '../../client-file';
 
 
 /**
@@ -79,7 +79,7 @@ export class ItemStore {
     /**
      * The Item Archive, containing details about every game item.
      */
-    public readonly itemArchive: Archive;
+    public readonly itemArchive: ClientFileGroup;
 
     public constructor(private configStore: ConfigStore) {
         this.itemArchive = this.configStore.getArchive('items');
@@ -275,7 +275,7 @@ export class ItemStore {
      * Parses a raw item data file into a readable ItemConfig object.
      * @param itemFile The raw file-store item data.
      */
-    public decodeItemFile(itemFile: FileData): ItemConfig {
+    public decodeItemFile(itemFile: ClientFile): ItemConfig {
         const itemConfig = new ItemConfig();
 
         const buffer = itemFile.content;

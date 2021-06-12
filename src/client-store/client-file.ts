@@ -6,7 +6,7 @@ import { getFileName } from './client-file-store';
 import { decompressVersionedFile } from '../compression';
 
 
-export class FileData {
+export class ClientFile {
 
     /**
      * The ID of this file within it's File Index.

@@ -2,7 +2,7 @@ import { logger } from '@runejs/core';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 import { ClientFileStore, getFileName } from '../client-file-store';
-import { FileData } from '../file-data';
+import { ClientFile } from '../client-file';
 
 
 /**
@@ -10,7 +10,7 @@ import { FileData } from '../file-data';
  */
 export class MidiFile {
 
-    public constructor(public readonly fileData: FileData) {
+    public constructor(public readonly fileData: ClientFile) {
     }
 
     /**

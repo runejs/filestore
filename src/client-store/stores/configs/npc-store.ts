@@ -1,8 +1,8 @@
 import { logger } from '@runejs/core';
 
-import { Archive } from '../../archive';
+import { ClientFileGroup } from '../../client-file-group';
 import { ConfigStore } from '../config-store';
-import { FileData } from '../../file-data';
+import { ClientFile } from '../../client-file';
 
 
 /**
@@ -70,7 +70,7 @@ export class NpcStore {
     /**
      * The NPC Archive, containing details about every game NPC.
      */
-    public readonly npcArchive: Archive;
+    public readonly npcArchive: ClientFileGroup;
     private readonly children: Map<number, number[]> = new Map();
 
     public constructor(private configStore: ConfigStore) {
@@ -103,7 +103,7 @@ export class NpcStore {
      * Parses a raw npc data file into a readable NpcConfig object.
      * @param npcFile The raw file-store npc data.
      */
-    public decodeNpcFile(npcFile: FileData): NpcConfig {
+    public decodeNpcFile(npcFile: ClientFile): NpcConfig {
         const npcConfig = new NpcConfig();
 
         const buffer = npcFile.content;

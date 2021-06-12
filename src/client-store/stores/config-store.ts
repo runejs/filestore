@@ -1,6 +1,6 @@
 import { ClientFileStore } from '../client-file-store';
 import { FileIndex } from '../file-index';
-import { Archive } from '../archive';
+import { ClientFileGroup } from '../client-file-group';
 import { NpcStore, ObjectStore, ItemStore, VarbitStore } from './configs';
 
 
@@ -83,7 +83,7 @@ export class ConfigStore {
         this.varbitStore = new VarbitStore(this);
     }
 
-    public getArchive(configId: ConfigId | number): Archive {
+    public getArchive(configId: ConfigId | number): ClientFileGroup {
         if(typeof configId !== 'number') {
             configId = configIdMap[configId];
         }

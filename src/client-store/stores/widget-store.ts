@@ -2,8 +2,8 @@ import { ByteBuffer } from '@runejs/core/buffer';
 
 import { FileIndex } from '../file-index';
 import { ClientFileStore } from '../client-file-store';
-import { FileData } from '../file-data';
-import { Archive } from '../archive';
+import { ClientFile } from '../client-file';
+import { ClientFileGroup } from '../client-file-group';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { logger } from '@runejs/core';
 
@@ -216,9 +216,9 @@ export class WidgetStore {
             return this.decodeWidgetFile(id, file);
         } else if(file.type === 'archive') {
             const widgetParent = new ParentWidget(id);
-            const archive: Archive = file as Archive;
+            const archive: ClientFileGroup = file as ClientFileGroup;
             archive.decodeArchiveFiles();
-            const widgetChildFiles: FileData[] = Array.from(archive.files.values());
+            const widgetChildFiles: ClientFile[] = Array.from(archive.files.values());
             widgetParent.children = new Array(widgetChildFiles.length);
             for(let i = 0; i < widgetChildFiles.length; i++) {
                 widgetParent.children[i] = this.decodeWidgetFile(i, widgetChildFiles[i]);
@@ -233,7 +233,7 @@ export class WidgetStore {
      * @param id The numeric ID of the widget file to decode.
      * @param widgetFile The file data of the widget file to decode.
      */
-    public decodeWidgetFile(id: number, widgetFile: FileData | Archive): WidgetBase {
+    public decodeWidgetFile(id: number, widgetFile: ClientFile | ClientFileGroup): WidgetBase {
         if(!widgetFile.content) {
             widgetFile.decompress();
         }

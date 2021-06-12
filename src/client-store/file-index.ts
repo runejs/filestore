@@ -6,8 +6,8 @@ import { createHash } from 'crypto';
 
 import { logger } from '@runejs/core';
 
-import { Archive } from './archive';
-import { FileData } from './file-data';
+import { ClientFileGroup } from './client-file-group';
+import { ClientFile } from './client-file';
 import { ClientStoreChannel, extractIndexedFile } from './data';
 import { hash } from './util';
 import { ClientFileStore, getFileName } from './client-file-store';
@@ -54,7 +54,7 @@ export class FileIndex {
     /**
      * A map of all files housed within this File Index. Values are either an `Archive` or `FileData` object.
      */
-    public files: Map<number, Archive | FileData> = new Map<number, Archive | FileData>();
+    public files: Map<number, ClientFileGroup | ClientFile> = new Map<number, ClientFileGroup | ClientFile>();
 
     private readonly filestoreChannels: ClientStoreChannel;
 
@@ -75,14 +75,14 @@ export class FileIndex {
      * @param fileId The ID of the file to fetch.
      * @returns The requested FileData object, or null if no matching file was found.
      */
-    public getFile(fileId: number): FileData | null;
+    public getFile(fileId: number): ClientFile | null;
 
     /**
      * Fetches a single file from this index.
      * @param fileName The name of the file to fetch.
      * @returns The requested FileData object, or null if no matching file was found.
      */
-    public getFile(fileName: string): FileData | null;
+    public getFile(fileName: string): ClientFile | null;
 
     /**
      * Fetches a single file from this index.
@@ -90,15 +90,15 @@ export class FileIndex {
      * @param keys The XTEA keys.
      * @returns The requested FileData object, or null if no matching file was found.
      */
-    public getFile(fileIdOrName: number | string, keys?: number[]): FileData | null;
-    public getFile(fileIdOrName: number | string, keys?: number[]): FileData | null {
-        let fileData: FileData;
+    public getFile(fileIdOrName: number | string, keys?: number[]): ClientFile | null;
+    public getFile(fileIdOrName: number | string, keys?: number[]): ClientFile | null {
+        let fileData: ClientFile;
 
         if(typeof fileIdOrName === 'string') {
-            fileData = this.findByName(fileIdOrName) as FileData;
+            fileData = this.findByName(fileIdOrName) as ClientFile;
         } else {
             const archiveId = fileIdOrName as number;
-            fileData = this.files.get(archiveId) as FileData;
+            fileData = this.files.get(archiveId) as ClientFile;
         }
 
         if(!fileData) {
@@ -125,29 +125,29 @@ export class FileIndex {
      * @param archiveId The ID of the archive to fetch.
      * @returns The requested Archive object, or null if no Archive was found.
      */
-    public getArchive(archiveId: number): Archive | null;
+    public getArchive(archiveId: number): ClientFileGroup | null;
 
     /**
      * Fetches an archive from this index.
      * @param archiveName The name of the archive to fetch.
      * @returns The requested Archive object, or null if no Archive was found.
      */
-    public getArchive(archiveName: string): Archive | null;
+    public getArchive(archiveName: string): ClientFileGroup | null;
 
     /**
      * Fetches an archive from this index.
      * @param archiveIdOrName The ID or name of the archive to fetch.
      * @returns The requested Archive object, or null if no Archive was found.
      */
-    public getArchive(archiveIdOrName: number | string): Archive | null;
-    public getArchive(archiveIdOrName: number | string): Archive | null {
-        let archive: Archive;
+    public getArchive(archiveIdOrName: number | string): ClientFileGroup | null;
+    public getArchive(archiveIdOrName: number | string): ClientFileGroup | null {
+        let archive: ClientFileGroup;
 
         if(typeof archiveIdOrName === 'string') {
-            archive = this.findByName(archiveIdOrName) as Archive;
+            archive = this.findByName(archiveIdOrName) as ClientFileGroup;
         } else {
             const archiveId = archiveIdOrName as number;
-            archive = this.files.get(archiveId) as Archive;
+            archive = this.files.get(archiveId) as ClientFileGroup;
         }
 
         if(!archive) {
@@ -168,7 +168,7 @@ export class FileIndex {
      * @param fileName The name of the archive or file to search for.
      * @returns An Archive or FileData object, or null if no matching files were found with the specified name.
      */
-    public findByName(fileName: string): Archive | FileData | null {
+    public findByName(fileName: string): ClientFileGroup | ClientFile | null {
         const indexFileCount = this.files.size;
         const nameHash = hash(fileName);
         for(let fileId = 0; fileId < indexFileCount; fileId++) {
@@ -207,7 +207,7 @@ export class FileIndex {
         }
 
         for(const id of ids) {
-            this.files.set(id, new FileData(id, this, this.filestoreChannels));
+            this.files.set(id, new ClientFile(id, this, this.filestoreChannels));
         }
 
         /* read the name hashes if present */
@@ -247,13 +247,13 @@ export class FileIndex {
             const file = this.files.get(id);
             if(members[id].length > 1) {
                 if(file.type === 'file') {
-                    this.files.set(id, new Archive(file, this, this.filestoreChannels));
+                    this.files.set(id, new ClientFileGroup(file, this, this.filestoreChannels));
                 }
 
-                const archive = this.files.get(id) as Archive;
+                const archive = this.files.get(id) as ClientFileGroup;
 
                 for(const childId of members[id]) {
-                    archive.files.set(childId, new FileData(childId, this, this.filestoreChannels));
+                    archive.files.set(childId, new ClientFile(childId, this, this.filestoreChannels));
                 }
             }
         }
@@ -261,7 +261,7 @@ export class FileIndex {
         /* read the child name hashes */
         if((this.settings & NAME_FLAG) !== 0) {
             for(const id of ids) {
-                const archive = this.files.get(id) as Archive;
+                const archive = this.files.get(id) as ClientFileGroup;
                 for(const childId of members[id]) {
                     const nameHash = buffer.get('INT');
                     if(archive?.files?.get(childId)) {
@@ -317,10 +317,10 @@ export class FileIndex {
 
             const hash = createHash('sha256');
 
-            if(file instanceof Archive) {
+            if(file instanceof ClientFileGroup) {
                 // Write sub-archive/folder
 
-                const archive = file as Archive;
+                const archive = file as ClientFileGroup;
                 const folder = storeZip.folder(`${fileName}`);
                 archive.decodeArchiveFiles();
                 const archiveFileCount = archive.files.size;
@@ -378,6 +378,10 @@ export class FileIndex {
             }
         }
 
+        const indexEntry = extractIndexedFile(this.indexId, 255, this.filestoreChannels);
+        indexEntry.dataFile.readerIndex = 0;
+        const indexData = decompressVersionedFile(indexEntry.dataFile).buffer;
+
         const manifest: IndexManifest = {
             indexId: this.indexId,
             name: this.name as IndexName,
@@ -386,6 +390,8 @@ export class FileIndex {
             format: this.format,
             version: this.version,
             settings: this.settings,
+            crc: CRC32.buf(indexData),
+            sha256: createHash('sha256').update(indexData).digest('hex'),
             files: fileIndex
         };
 

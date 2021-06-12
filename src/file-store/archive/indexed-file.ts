@@ -28,6 +28,10 @@ export class IndexedFile {
         });
     }
 
+    public get fullFileName(): string {
+        return this.indexManifest?.files[this.fileId]?.file ?? '';
+    }
+
     public get fileName(): string {
         return (this.indexManifest?.files[this.fileId]?.file ?? '')
             .replace(this.indexManifest.fileExtension, '');

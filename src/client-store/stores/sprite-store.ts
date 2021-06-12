@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'fs';
 import { PNG } from 'pngjs';
 
 import { ClientFileStore, getFileName } from '../client-file-store';
-import { FileData } from '../file-data';
+import { ClientFile } from '../client-file';
 
 
 export function toRgb(num: number): number[] {
@@ -121,7 +121,7 @@ export class SpritePack {
 
     private _sprites: Sprite[];
 
-    public constructor(public readonly fileData: FileData) {
+    public constructor(public readonly fileData: ClientFile) {
     }
 
     public async writeToDisk(): Promise<void> {

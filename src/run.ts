@@ -16,7 +16,7 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
 
     // clientFileStore.getAllIndexes().forEach(index => index.generateArchive());
 
-    await clientFileStore.getIndex(0).generateArchive();
+    // await clientFileStore.getIndex(0).generateArchive();
 
     /*const indexEntry = extractIndexedFile(2, 255, clientFileStore.channels);
     const decompressed = decompressVersionedFile(indexEntry.dataFile);
@@ -32,12 +32,12 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
 
     // await fileStore.generateCrcTable();
 
-    /*const indexCount = fileStore.indexedArchives.size;
+    const indexCount = fileStore.indexedArchives.size;
     for(let i = 0; i < indexCount; i++) {
         const archive = fileStore.indexedArchives.get(i);
         logger.info(`Indexing archive ${i}...`);
         await archive.indexArchiveFiles();
-    }*/
+    }
 
     // await fileStore.indexedArchives.get(0).indexArchiveFiles();
 

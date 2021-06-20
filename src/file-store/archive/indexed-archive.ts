@@ -24,6 +24,7 @@ export class IndexedArchive {
     private indexName: IndexName;
     private loaded: boolean = false;
     private _manifest: IndexManifest;
+    private _fileErrors: { [key: string]: string[] };
 
     public constructor(fileStore: FileStore, indexId: number, indexName?: string) {
         this.fileStore = fileStore;
@@ -86,8 +87,6 @@ export class IndexedArchive {
 
             return fileName.endsWith(extension);
         });
-
-        console.log(fileNames);
 
         const existingFileList: IndexedFile[] = Object.values(this.files);
 
@@ -206,8 +205,9 @@ export class IndexedArchive {
     public async compressIndexData(): Promise<ByteBuffer> {
         await this.loadArchive();
 
-        const files = this.manifest.files;
-        const fileIndexes = Object.keys(files).map(indexStr => parseInt(indexStr, 10));
+        const files = this._fileErrors ? { ...this._fileErrors, ...this._manifest.files } : this._manifest.files;
+        const fileIndexes = Object.keys(files).map(indexStr => parseInt(indexStr, 10))
+            .sort((a, b) => a - b);
         const fileCount = fileIndexes.length;
 
         const buffer = new ByteBuffer(350000);
@@ -230,7 +230,7 @@ export class IndexedArchive {
 
             for(const fileIndex of fileIndexes) {
                 const file = files[fileIndex];
-                if(!file) {
+                if(!file?.file) {
                     buffer.put(0, 'int');
                 } else {
                     const fileName = file.file.replace(this.manifest.fileExtension, '');
@@ -267,8 +267,17 @@ export class IndexedArchive {
 
             // Write child indexes
             for(let i = 0; i < childCount; i++) {
-                buffer.put(i - writtenFileIndex, 'short');
-                writtenFileIndex = i;
+                if(file?.children) {
+                    const child = file.children[i];
+                    const idxStr = child.substr(0, child.indexOf('.'));
+                    const index = parseInt(idxStr, 10);
+
+                    buffer.put(index - writtenFileIndex, 'short');
+                    writtenFileIndex = index;
+                } else {
+                    buffer.put(i - writtenFileIndex, 'short');
+                    writtenFileIndex = i;
+                }
             }
         }
 
@@ -276,16 +285,22 @@ export class IndexedArchive {
         if(this.fileNames) {
             for(const fileIndex of fileIndexes) {
                 const file = files[fileIndex];
-                if(!file?.children?.length) {
-                    continue;
-                }
-
-                for(let i = 0; i < file.children.length; i++) {
-                    const childFile = file.children[i];
-                    if(!childFile) {
+                if(file?.children) {
+                    for(let i = 0; i < file.children.length; i++) {
+                        const childFile = file.children[i];
+                        if(!childFile) {
+                            buffer.put(0, 'int');
+                        } else {
+                            const fileName = childFile.replace(this.manifest.fileExtension, '');
+                            const nameHash: number = /^[a-zA-Z ]+$/i ? hash(fileName) : parseInt(fileName, 10);
+                            buffer.put(nameHash, 'int');
+                        }
+                    }
+                } else {
+                    if(!file?.file) {
                         buffer.put(0, 'int');
                     } else {
-                        const fileName = childFile.replace(this.manifest.fileExtension, '');
+                        const fileName = file.file.replace(this.manifest.fileExtension, '');
                         const nameHash: number = /^[a-zA-Z ]+$/i ? hash(fileName) : parseInt(fileName, 10);
                         buffer.put(nameHash, 'int');
                     }
@@ -372,6 +387,13 @@ export class IndexedArchive {
             return;
         }
 
+        const errorLog = zipArchive.files['.error-log.json' ];
+        if(errorLog) {
+            logger.info(`Error log found for index ${this.indexId}.`);
+            const errorLogContent = await errorLog.async('string');
+            this._fileErrors = JSON.parse(errorLogContent) as { [key: string]: string[] };
+        }
+
         const strContent = await manifestFile.async('string');
 
         this._manifest = JSON.parse(strContent) as IndexManifest;
@@ -398,6 +420,10 @@ export class IndexedArchive {
 
     public get manifest(): IndexManifest {
         return this._manifest;
+    }
+
+    public get fileErrors(): { [p: string]: string[] } {
+        return this._fileErrors;
     }
 
     public get archiveName(): string {

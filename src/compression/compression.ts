@@ -18,7 +18,7 @@ export const compressVersionedFile = (file: StoreFile, keys?: number[]): ByteBuf
 
     if(file.compression === 0) {
         // uncompressed files
-        newFileData = new ByteBuffer(file.buffer.length + 7);
+        newFileData = new ByteBuffer(file.buffer.length + (file.version ? 7 : 5));
 
         // indicate that no file compression is applied
         newFileData.put(0);
@@ -38,7 +38,7 @@ export const compressVersionedFile = (file: StoreFile, keys?: number[]): ByteBuf
 
         const compressedLength: number = compressedData.length;
 
-        newFileData = new ByteBuffer(compressedData.length + 11);
+        newFileData = new ByteBuffer(compressedData.length + (file.version ? 11 : 9));
 
         // indicate which type of file compression was used (1 or 2)
         newFileData.put(file.compression);

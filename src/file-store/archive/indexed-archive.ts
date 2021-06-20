@@ -79,13 +79,15 @@ export class IndexedArchive {
                 return true;
             }
 
-            // Exclude grouped files (for now)
+            // Exclude grouped file children (for now)
             if(fileName.indexOf('/') !== -1) {
                 return false;
             }
 
             return fileName.endsWith(extension);
         });
+
+        console.log(fileNames);
 
         const existingFileList: IndexedFile[] = Object.values(this.files);
 
@@ -98,6 +100,8 @@ export class IndexedArchive {
             const oldFile: FileMetadata | null = oldFileIndex !== -1 ? this._manifest.files[oldFileIndex] ?? null : null;
             const fileIndex = oldFileIndex !== -1 ? oldFileIndex : this.newFileIndex();
             const hash = createHash('sha256');
+
+            logger.info(`Indexing file ${fileName} - old index = ${oldFileIndex} - index = ${fileIndex}`);
 
             newManifest.files[fileIndex] = oldFile ? oldFile : {
                 file: fileName,
@@ -113,6 +117,7 @@ export class IndexedArchive {
             let fileDigest: string = '';
 
             if(zippedFile.dir) {
+                logger.info(`Indexing file ${fileIndex} children...`);
                 const folder = storeZip.folder(fileName);
                 let folderFileNames = Object.keys(folder.files) ?? [];
                 const folderFiles: { [key: string]: JSZipObject } = {};
@@ -178,12 +183,14 @@ export class IndexedArchive {
         let promiseList: Promise<void>[] = new Array(fileCount);
         for(let i = 0; i < fileCount; i++) {
             promiseList[i] = this.getFile(fileIndexes[i], loadFileData, zipArchive).then(async file => {
-                if(!!file?.fileId) {
-                    this.files[file.fileId] = file;
+                if(!file) {
+                    return;
+                }
 
-                    if(loadFileData && file instanceof IndexedFileGroup) {
-                        file.fileData = await file.pack();
-                    }
+                this.files[file.fileId] = file;
+
+                if(loadFileData && file instanceof IndexedFileGroup) {
+                    file.fileData = await file.pack();
                 }
             });
         }
@@ -203,7 +210,7 @@ export class IndexedArchive {
         const fileIndexes = Object.keys(files).map(indexStr => parseInt(indexStr, 10));
         const fileCount = fileIndexes.length;
 
-        const buffer = new ByteBuffer(250000);
+        const buffer = new ByteBuffer(350000);
         let writtenFileIndex = 0;
 
         // Write index file header
@@ -248,20 +255,18 @@ export class IndexedArchive {
         // Write file group child counts
         for(const fileIndex of fileIndexes) {
             const file = files[fileIndex];
-            buffer.put(file?.children?.length ?? 0, 'short');
+            buffer.put(file?.children?.length || 1, 'short');
         }
 
         // Write file group children
         for(const fileIndex of fileIndexes) {
             const file = files[fileIndex];
-            if(!file?.children?.length) {
-                continue;
-            }
+            const childCount = file?.children?.length || 1;
 
             writtenFileIndex = 0;
 
             // Write child indexes
-            for(let i = 0; i < file.children.length; i++) {
+            for(let i = 0; i < childCount; i++) {
                 buffer.put(i - writtenFileIndex, 'short');
                 writtenFileIndex = i;
             }

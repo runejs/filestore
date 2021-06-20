@@ -191,18 +191,18 @@ export class FileIndex {
         buffer.readerIndex = 0;
 
         this.version = version;
-        this.compression = compression;
+        this.compression = compression; // index manifests are also compressed to the same level as standard files
 
         /* file header */
-        this.format = buffer.get('BYTE', 'UNSIGNED');
-        this.settings = buffer.get('BYTE', 'UNSIGNED');
+        this.format = buffer.get('byte', 'unsigned');
+        this.settings = buffer.get('byte', 'unsigned');
+        const fileCount = buffer.get('short', 'unsigned');
 
         /* file ids */
-        const fileCount = buffer.get('SHORT', 'UNSIGNED');
         const ids: number[] = new Array(fileCount);
         let accumulator = 0;
         for(let i = 0; i < ids.length; i++) {
-            let delta = buffer.get('SHORT', 'UNSIGNED');
+            let delta = buffer.get('short', 'unsigned');
             ids[i] = accumulator += delta;
         }
 
@@ -213,25 +213,25 @@ export class FileIndex {
         /* read the name hashes if present */
         if((this.settings & NAME_FLAG) !== 0) {
             for(const id of ids) {
-                const nameHash = buffer.get('INT');
+                const nameHash = buffer.get('int');
                 this.files.get(id).nameHash = nameHash;
             }
         }
 
         /* read the crc values */
         for(const id of ids) {
-            this.files.get(id).crc = buffer.get('INT');
+            this.files.get(id).crc = buffer.get('int');
         }
 
         /* read the version numbers */
         for(const id of ids) {
-            this.files.get(id).version = buffer.get('INT');
+            this.files.get(id).version = buffer.get('int');
         }
 
         /* read the child count */
         const members: number[][] = new Array(ids.length).fill([]);
         for(const id of ids) {
-            members[id] = new Array(buffer.get('SHORT', 'UNSIGNED'));
+            members[id] = new Array(buffer.get('short', 'unsigned'));
         }
 
         /* read the child ids */
@@ -239,7 +239,7 @@ export class FileIndex {
             accumulator = 0;
 
             for(let i = 0; i < members[id].length; i++) {
-                let delta = buffer.get('SHORT', 'UNSIGNED');
+                let delta = buffer.get('short', 'unsigned');
                 members[id][i] = accumulator += delta;
             }
 
@@ -263,7 +263,7 @@ export class FileIndex {
             for(const id of ids) {
                 const archive = this.files.get(id) as ClientFileGroup;
                 for(const childId of members[id]) {
-                    const nameHash = buffer.get('INT');
+                    const nameHash = buffer.get('int');
                     if(archive?.files?.get(childId)) {
                         archive.files.get(childId).nameHash = nameHash;
                     }

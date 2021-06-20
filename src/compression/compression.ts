@@ -60,7 +60,9 @@ export const compressVersionedFile = (file: StoreFile, keys?: number[]): ByteBuf
     }
 
     // write the file version
-    newFileData.put(file.version ?? 0, 'short');
+    if(file.version) {
+        newFileData.put(file.version, 'short');
+    }
 
     if(Xtea.validKeys(keys)) {
         // @TODO untested

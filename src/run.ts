@@ -1,6 +1,7 @@
 import { ClientFileStore, extractIndexedFile, loadXteaRegionFiles } from './client-store';
 import { FileStore } from './file-store';
 import { decompressVersionedFile } from './compression';
+import { logger } from '@runejs/core';
 
 
 const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
@@ -11,7 +12,9 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
         xteas: await xteaRegions()
     });
 
-    clientFileStore.getAllIndexes().forEach(index => index.generateArchive());
+    console.log('');
+
+    // clientFileStore.getAllIndexes().forEach(index => index.decodeIndex());
 
     /*const indexEntry = extractIndexedFile(2, 255, clientFileStore.channels);
     const decompressed = decompressVersionedFile(indexEntry.dataFile);
@@ -23,7 +26,18 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
 
     const fileStore = new FileStore();
 
-    const configArchive = await fileStore.loadStoreArchive(2, 'configs');
+    await fileStore.loadStoreArchives();
+
+    // await fileStore.generateCrcTable();
+
+    const indexCount = fileStore.indexedArchives.size;
+    for(let i = 0; i < indexCount; i++) {
+        const archive = fileStore.indexedArchives.get(i);
+        logger.info(`Indexing archive ${i}...`);
+        await archive.indexArchiveFiles();
+    }
+
+    // const configArchive = await fileStore.loadStoreArchive(2, 'configs');
 
     // await configArchive.indexArchiveFiles();
 

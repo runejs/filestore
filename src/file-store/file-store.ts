@@ -33,16 +33,47 @@ export class FileStore {
         return compressed ? await file.compress() : await file.pack();
     }
 
+    public async generateUpdateServerFile(index: number, file: number, fileBuffer: ByteBuffer): Promise<ByteBuffer> {
+        const buffer = new ByteBuffer((fileBuffer.length - 2) + ((fileBuffer.length - 2) / 511) + 8);
+
+        buffer.put(index);
+        buffer.put(file, 'short');
+
+        let length: number = ((fileBuffer.at(1, 'u') << 24) + (fileBuffer.at(2, 'u') << 16) +
+            (fileBuffer.at(3, 'u') << 8) + fileBuffer.at(4, 'u')) + 9;
+        if(fileBuffer.at(0) === 0) {
+            length -= 4;
+        }
+
+        logger.info(`Requested file length: ${length}`);
+
+        let s = 3;
+        for(let i = 0; i < length; i++) {
+            if(s === 512) {
+                buffer.put(255);
+                s = 1;
+            }
+
+            const b = fileBuffer.at(i);
+            buffer.put(b);
+            s++;
+        }
+
+        buffer.putBytes(fileBuffer, 0, length);
+        return buffer;
+    }
+
     public async generateCrcTable(): Promise<ByteBuffer> {
         if(!this.indexedArchives.size) {
             await this.loadStoreArchives();
         }
 
         const indexCount = this.indexedArchives.size;
-        const buffer = new ByteBuffer(4048);
+        const crcTableFileSize = 78;
+        const buffer = new ByteBuffer(4096);
 
-        buffer.put(0, 'byte');
-        buffer.put(indexCount * 6, 'int');
+        buffer.put(0, 'byte'); // compression level (none)
+        buffer.put(crcTableFileSize, 'int'); // file size
 
         for(let indexId = 0; indexId < indexCount; indexId++) {
             const indexedArchive = this.indexedArchives.get(indexId);

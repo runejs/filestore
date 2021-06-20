@@ -4,6 +4,7 @@ import fs from 'fs';
 import { IndexedArchive } from './archive';
 import { getIndexName, indexIdMap, IndexName } from './index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
+import JSZip from 'jszip';
 
 
 export class FileStore {
@@ -22,13 +23,18 @@ export class FileStore {
         return indexedArchive;
     }
 
-    public async getFile(indexId: number, fileId: number, compressed: boolean = true): Promise<ByteBuffer> {
+    public async getFile(indexId: number, fileId: number, compressed: boolean = true,
+                         zipArchive?: JSZip | any | undefined): Promise<ByteBuffer | null> {
         if(!this.indexedArchives.has(indexId)) {
             await this.loadStoreArchive(indexId, getIndexName(indexId));
         }
 
         const archive = this.indexedArchives.get(indexId);
-        const file = await archive.getFile(fileId);
+        const file = await archive.getFile(fileId, true, zipArchive);
+
+        if(!file) {
+            return null;
+        }
 
         return compressed ? await file.compress() : await file.pack();
     }

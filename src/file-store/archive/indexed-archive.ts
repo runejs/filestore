@@ -188,8 +188,17 @@ export class IndexedArchive {
 
                 this.files[file.fileId] = file;
 
-                if(loadFileData && file instanceof IndexedFileGroup) {
-                    file.fileData = await file.pack();
+                if(loadFileData) {
+                    try {
+                        if(file instanceof IndexedFileGroup) {
+                            file.fileData = await file.compressGroup();
+                        } else {
+                            file.fileData = await file.compress();
+                        }
+                    } catch(error) {
+                        logger.error(`File ${file?.fileId ?? i} has no data.`);
+                        file.fileData = undefined;
+                    }
                 }
             });
         }
@@ -318,7 +327,8 @@ export class IndexedArchive {
         });
     }
 
-    public async getFile(fileId: number, loadFileData: boolean = true, zipArchive?: JSZip): Promise<IndexedFile | null> {
+    public async getFile(fileId: number, loadFileData: boolean = true,
+                         zipArchive?: JSZip): Promise<IndexedFile | IndexedFileGroup | null> {
         if(!this._manifest) {
             logger.error(`Index manifest not found - archive not yet loaded. ` +
                 `Please use loadArchive() before attempting to access files.`);

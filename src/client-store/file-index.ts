@@ -9,7 +9,7 @@ import { logger } from '@runejs/core';
 import { ClientFileGroup } from './client-file-group';
 import { ClientFile } from './client-file';
 import { ClientStoreChannel, extractIndexedFile } from './data';
-import { hash } from './util';
+import { hashFileName } from './util';
 import { ClientFileStore, getFileName } from './client-file-store';
 import { fileExtensions, getIndexId, FileMetadata, IndexManifest, IndexName } from '../file-store/index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
@@ -170,7 +170,7 @@ export class FileIndex {
      */
     public findByName(fileName: string): ClientFileGroup | ClientFile | null {
         const indexFileCount = this.files.size;
-        const nameHash = hash(fileName);
+        const nameHash = hashFileName(fileName);
         for(let fileId = 0; fileId < indexFileCount; fileId++) {
             const item = this.files.get(fileId);
             if(item?.nameHash === nameHash) {
@@ -326,7 +326,9 @@ export class FileIndex {
                 const archiveFileCount = archive.files.size;
 
                 fileIndex[fileId] = {
-                    file: `${fileName}`,
+                    file: `${fileName}/`,
+                    realName: `${fileName}`,
+                    nameHash: archive.nameHash ?? undefined,
                     version: file.version || -1,
                     crc: CRC32.buf(archive.content),
                     sha256: hash.update(archive.content).digest('hex'),
@@ -369,6 +371,8 @@ export class FileIndex {
 
                 fileIndex[fileId] = {
                     file: fileName + fileExt,
+                    realName: `${fileName}`,
+                    nameHash: file.nameHash ?? undefined,
                     crc: CRC32.buf(fileContent),
                     sha256: hash.update(fileContent).digest('hex'),
                     version: file.version || -1

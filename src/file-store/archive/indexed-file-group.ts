@@ -24,8 +24,13 @@ export class IndexedFileGroup extends IndexedFile {
 
         for(let i = 0; i < fileCount; i++) {
             const fileName = fileKeys[i];
-            fileData[i] = await this.files[fileName].async('nodebuffer');
-            fileSizes[i] = fileData[i]?.length ?? 0;
+            const zippedFile = this.files[fileName] ?? this.files[fileName + '/'];
+            if(!zippedFile) {
+                fileSizes[i] = 0;
+            } else {
+                fileData[i] = await zippedFile.async('nodebuffer');
+                fileSizes[i] = fileData[i]?.length ?? 0;
+            }
         }
 
         // Size of all individual files + 1 int (4 bytes) per file containing it's size + 1 byte at the end denoting number of chunks

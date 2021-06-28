@@ -7,7 +7,7 @@ import { getIndexId, FileMetadata, IndexManifest, IndexName, getCompressionKey }
 import { IndexedFile } from './indexed-file';
 import { IndexedFileGroup } from './indexed-file-group';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { hash } from '../../client-store';
+import { hashFileName } from '../../client-store';
 import * as CRC32 from 'crc-32';
 import fs from 'fs';
 import { createHash } from 'crypto';
@@ -65,7 +65,9 @@ export class IndexedArchive {
         };
 
         const originalFileIndex = (fileName: string, fileList: IndexedFile[]): number => {
-            const originalFile = fileList.find(indexedFile => indexedFile.fullFileName === fileName);
+            const folderCheck = fileName.replace('/', '');
+            const originalFile = fileList.find(indexedFile =>
+                indexedFile.fullFileName === fileName || indexedFile.fullFileName === folderCheck);
             return originalFile?.fileId ?? -1;
         };
 
@@ -94,7 +96,6 @@ export class IndexedArchive {
 
         for(let fileName of fileNames) {
             const zippedFile = storeZip.files[fileName];
-            fileName = fileName.replace('/', '');
             const oldFileIndex: number = originalFileIndex(fileName, existingFileList);
             const oldFile: FileMetadata | null = oldFileIndex !== -1 ? this._manifest.files[oldFileIndex] ?? null : null;
             const fileIndex = oldFileIndex !== -1 ? oldFileIndex : this.newFileIndex();
@@ -102,9 +103,20 @@ export class IndexedArchive {
 
             logger.info(`Indexing file ${fileName} - old index = ${oldFileIndex} - index = ${fileIndex}`);
 
-            newManifest.files[fileIndex] = oldFile ? oldFile : {
+            let nameHash: number | undefined;
+            const actualFileName = fileName.replace(this.manifest.fileExtension, '')
+                .replace('/', '');
+            if(this.fileNames) {
+                nameHash = /[a-z]/ig.test(actualFileName) ? hashFileName(actualFileName) : parseInt(actualFileName, 10);
+            }
+
+            const fileVersion = oldFile?.version !== undefined ? oldFile.version : 0;
+
+            newManifest.files[fileIndex] = {
                 file: fileName,
-                version: oldFile?.version ?? 0
+                realName: actualFileName,
+                version: fileVersion,
+                nameHash: nameHash ?? undefined
             };
 
             const newFile = newManifest.files[fileIndex];
@@ -120,18 +132,19 @@ export class IndexedArchive {
                 const folder = storeZip.folder(fileName);
                 let folderFileNames = Object.keys(folder.files) ?? [];
                 const folderFiles: { [key: string]: JSZipObject } = {};
+                const folderName = fileName.endsWith('/') ? fileName : fileName + '/';
                 folderFileNames
-                    .filter(groupedFileName => groupedFileName?.startsWith(fileName + '/') &&
+                    .filter(groupedFileName => groupedFileName?.startsWith(folderName) &&
                         groupedFileName?.endsWith(this._manifest.fileExtension))
                     .forEach(groupedFileName => folderFiles[groupedFileName] = folder.files[groupedFileName]);
 
                 folderFileNames = Object.keys(folderFiles)
-                    .map(folderFileName => folderFileName.replace(fileName + '/', ''));
+                    .map(folderFileName => folderFileName.replace(folderName, ''));
 
                 newManifest.files[fileIndex].children = folderFileNames;
 
                 const indexedGroup = new IndexedFileGroup(this._manifest, fileIndex, folderFiles);
-                const groupFile = await indexedGroup.pack();
+                const groupFile = await indexedGroup.packGroup();
                 fileDigest = hash.update(groupFile).digest('hex');
                 newFile.crc = CRC32.buf(groupFile);
             } else {
@@ -147,11 +160,9 @@ export class IndexedArchive {
                 newFile.sha256 = fileDigest;
             }
 
-            if(oldFile) {
+            if(oldFile?.sha256 && oldFile.sha256 !== fileDigest) {
                 // Update the file's version number if it already existed and has changed
-                if(oldFile.sha256 !== fileDigest) {
-                    newFile.version++;
-                }
+                newFile.version++;
             }
         }
 
@@ -242,9 +253,7 @@ export class IndexedArchive {
                 if(!file?.file) {
                     buffer.put(0, 'int');
                 } else {
-                    const fileName = file.file.replace(this.manifest.fileExtension, '');
-                    const nameHash: number = /^[a-zA-Z ]+$/i ? hash(fileName) : parseInt(fileName, 10);
-                    buffer.put(nameHash, 'int');
+                    buffer.put(file.nameHash ?? 0, 'int');
                 }
             }
         }
@@ -291,6 +300,7 @@ export class IndexedArchive {
         }
 
         // Write child name hashes (if applicable)
+        // @TODO Single child files need a name of blank string?
         if(this.fileNames) {
             for(const fileIndex of fileIndexes) {
                 const file = files[fileIndex];
@@ -301,18 +311,12 @@ export class IndexedArchive {
                             buffer.put(0, 'int');
                         } else {
                             const fileName = childFile.replace(this.manifest.fileExtension, '');
-                            const nameHash: number = /^[a-zA-Z ]+$/i ? hash(fileName) : parseInt(fileName, 10);
+                            const nameHash: number = /[a-z]/ig.test(fileName) ? hashFileName(fileName) : parseInt(fileName, 10);
                             buffer.put(nameHash, 'int');
                         }
                     }
                 } else {
-                    if(!file?.file) {
-                        buffer.put(0, 'int');
-                    } else {
-                        const fileName = file.file.replace(this.manifest.fileExtension, '');
-                        const nameHash: number = /^[a-zA-Z ]+$/i ? hash(fileName) : parseInt(fileName, 10);
-                        buffer.put(nameHash, 'int');
-                    }
+                    buffer.put(0, 'int');
                 }
             }
         }

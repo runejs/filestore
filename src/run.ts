@@ -32,15 +32,17 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
 
     // await fileStore.generateCrcTable();
 
-    /*const indexCount = fileStore.indexedArchives.size;
+    const indexCount = fileStore.indexedArchives.size;
     for(let i = 0; i < indexCount; i++) {
         const archive = fileStore.indexedArchives.get(i);
-        logger.info(`Indexing archive ${i}...`);
-        await archive.indexArchiveFiles();
-    }*/
+        // if(i === 8) {
+            logger.info(`Indexing archive ${i}...`);
+            await archive.indexArchiveFiles();
+        // }
+    }
 
 
-    const testFileId = 0;
+    /*const testFileId = 0;
     await fileStore.indexedArchives.get(0).unpack(false);
     const testFileGroup = await (fileStore.indexedArchives.get(0).files[testFileId] as IndexedFileGroup).compressGroup();
 
@@ -49,7 +51,7 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
     const compressionLevel = testFileGroup.get();
     const compressedLength = testFileGroup.get('int');
 
-    console.log(`File ${testFileId} compression = ${compressionLevel}, compressedLength = ${compressedLength}`);
+    console.log(`File ${testFileId} compression = ${compressionLevel}, compressedLength = ${compressedLength}`);*/
 
 
     // await fileStore.indexedArchives.get(0).indexArchiveFiles();

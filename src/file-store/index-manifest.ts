@@ -85,6 +85,8 @@ export interface FileSettings {
 
 export interface FileMetadata extends FileSettings {
     file: string;
+    realName: string;
+    nameHash?: number;
     children?: string[];
 }
 

@@ -8,7 +8,7 @@ import { logger } from '@runejs/core';
 
 import { ClientFileGroup } from './client-file-group';
 import { ClientFile } from './client-file';
-import { ClientStoreChannel, extractIndexedFile } from './data';
+import { ClientStoreChannel, ExtractedFile, extractIndexedFile } from './data';
 import { hashFileName } from './util';
 import { ClientFileStore, getFileName } from './client-file-store';
 import { fileExtensions, getIndexId, FileMetadata, IndexManifest, IndexName } from '../file-store/index-manifest';
@@ -185,8 +185,17 @@ export class FileIndex {
      * Decodes the packed index file data from the filestore on disk.
      */
     public decodeIndex(): void {
-        const indexEntry = extractIndexedFile(this.indexId, 255, this.filestoreChannels);
-        indexEntry.dataFile.readerIndex = 0;
+        let indexEntry: ExtractedFile | undefined;
+
+        try {
+            indexEntry = extractIndexedFile(this.indexId, 255, this.filestoreChannels);
+            indexEntry.dataFile.readerIndex = 0;
+        } catch(error) {
+            logger.error(`Error decoding index ${this.indexId}:`);
+            logger.error(error);
+            return;
+        }
+
         const { compression, version, buffer } = decompressVersionedFile(indexEntry.dataFile);
         buffer.readerIndex = 0;
 

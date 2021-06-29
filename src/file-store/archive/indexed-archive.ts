@@ -94,14 +94,14 @@ export class IndexedArchive {
 
         logger.info(`Found ${fileNames.length} files or file groups.`);
 
+        let newFileIndex = this.newFileIndex();
+
         for(let fileName of fileNames) {
             const zippedFile = storeZip.files[fileName];
             const oldFileIndex: number = originalFileIndex(fileName, existingFileList);
             const oldFile: FileMetadata | null = oldFileIndex !== -1 ? this._manifest.files[oldFileIndex] ?? null : null;
-            const fileIndex = oldFileIndex !== -1 ? oldFileIndex : this.newFileIndex();
+            const fileIndex = oldFileIndex !== -1 ? oldFileIndex : newFileIndex++;
             const hash = createHash('sha256');
-
-            logger.info(`Indexing file ${fileName} - old index = ${oldFileIndex} - index = ${fileIndex}`);
 
             let nameHash: number | undefined;
             const actualFileName = fileName.replace(this.manifest.fileExtension, '')
@@ -128,7 +128,6 @@ export class IndexedArchive {
             let fileDigest: string = '';
 
             if(zippedFile.dir) {
-                logger.info(`Indexing file ${fileIndex} children...`);
                 const folder = storeZip.folder(fileName);
                 let folderFileNames = Object.keys(folder.files) ?? [];
                 const folderFiles: { [key: string]: JSZipObject } = {};
@@ -163,6 +162,7 @@ export class IndexedArchive {
             if(oldFile?.sha256 && oldFile.sha256 !== fileDigest) {
                 // Update the file's version number if it already existed and has changed
                 newFile.version++;
+                logger.info(`File ${fileIndex} version increased from ${newFile.version - 1} to ${newFile.version}`);
             }
         }
 
@@ -230,7 +230,7 @@ export class IndexedArchive {
             .sort((a, b) => a - b);
         const fileCount = fileIndexes.length;
 
-        const buffer = new ByteBuffer(350000);
+        const buffer = new ByteBuffer(1000 * 1000);
         let writtenFileIndex = 0;
 
         // Write index file header

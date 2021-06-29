@@ -4,6 +4,9 @@ node_modules
 /cache
 /data
 /output
+/stores
+/packed
+/unpacked
 
 # Log files
 npm-debug.log*

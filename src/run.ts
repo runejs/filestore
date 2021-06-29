@@ -14,7 +14,7 @@ const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
 
     console.log('');
 
-    clientFileStore.getAllIndexes().forEach(index => index.generateArchive());
+    // clientFileStore.getAllIndexes().forEach(index => index.generateArchive());
 
     // await clientFileStore.getIndex(0).generateArchive();
 

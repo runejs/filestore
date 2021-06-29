@@ -19,7 +19,7 @@ export class FileStore {
     public async loadStoreArchive(indexId: number, indexName: IndexName): Promise<IndexedArchive> {
         const indexedArchive = new IndexedArchive(this, indexId, indexName);
         this.indexedArchives.set(indexId, indexedArchive);
-        await indexedArchive.loadArchive();
+        await indexedArchive.loadManifestFile();
         return indexedArchive;
     }
 
@@ -30,7 +30,7 @@ export class FileStore {
         }
 
         const archive = this.indexedArchives.get(indexId);
-        const file = await archive.getFile(fileId, true, zipArchive);
+        const file = await archive.loadFile(fileId, true, zipArchive);
 
         if(!file) {
             return null;
@@ -106,7 +106,7 @@ export class FileStore {
 
                 const indexedArchive = new IndexedArchive(this, indexId, indexName);
                 this.indexedArchives.set(indexId, indexedArchive);
-                promises.push(indexedArchive.loadArchive());
+                promises.push(indexedArchive.loadManifestFile());
             } catch(e) {
                 logger.error(`Error loading indexed archive ${archivePath}`);
                 logger.error(e);

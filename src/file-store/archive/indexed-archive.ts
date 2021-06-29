@@ -34,11 +34,9 @@ export class IndexedArchive {
         }
     }
 
-    public newFileIndex(): number {
-        const currentIndexes: number[] = Object.keys(this.files).map(indexStr => parseInt(indexStr, 10));
-        return Math.max(...currentIndexes) + 1;
-    }
-
+    /**
+     * Re-indexes the entire archive, evaluating each file and file group for changes to append to the manifest file.
+     */
     public async indexArchiveFiles(): Promise<void> {
         await this.unpack(false);
 
@@ -94,7 +92,7 @@ export class IndexedArchive {
 
         logger.info(`Found ${fileNames.length} files or file groups.`);
 
-        let newFileIndex = this.newFileIndex();
+        let newFileIndex = this.createNewFileIndex();
 
         for(let fileName of fileNames) {
             const zippedFile = storeZip.files[fileName];
@@ -168,7 +166,7 @@ export class IndexedArchive {
 
         this._manifest = newManifest;
 
-        const indexData = await this.compressIndexData();
+        const indexData = await this.generateIndexFile();
         this._manifest.crc = CRC32.buf(await this.fileStore.generateUpdateServerFile(255, this.indexId, indexData));
         this._manifest.sha256 = createHash('sha256').update(indexData).digest('hex');
 
@@ -184,6 +182,10 @@ export class IndexedArchive {
         });
     }
 
+    /**
+     * Unpacks the archive, it's manifest, and it's files.
+     * @param loadFileData Whether or not to load file contents into memory. Defaults to true.
+     */
     public async unpack(loadFileData: boolean = true): Promise<void> {
         const fileIndexes = Object.keys(this._manifest.files)
             .map(indexStr => parseInt(indexStr, 10));
@@ -192,7 +194,7 @@ export class IndexedArchive {
 
         let promiseList: Promise<void>[] = new Array(fileCount);
         for(let i = 0; i < fileCount; i++) {
-            promiseList[i] = this.getFile(fileIndexes[i], loadFileData, zipArchive).then(async file => {
+            promiseList[i] = this.loadFile(fileIndexes[i], loadFileData, zipArchive).then(async file => {
                 if(!file) {
                     return;
                 }
@@ -220,10 +222,10 @@ export class IndexedArchive {
     }
 
     /**
-     * Compresses the archive's index data into a flat file for update server usage.
+     * Compresses the archive's index data into a flat file for update server and client usage.
      */
-    public async compressIndexData(): Promise<ByteBuffer> {
-        await this.loadArchive();
+    public async generateIndexFile(): Promise<ByteBuffer> {
+        await this.loadManifestFile();
 
         const files = this._fileErrors ? { ...this._fileErrors, ...this._manifest.files } : this._manifest.files;
         const fileIndexes = Object.keys(files).map(indexStr => parseInt(indexStr, 10))
@@ -331,8 +333,15 @@ export class IndexedArchive {
         });
     }
 
-    public async getFile(fileId: number, loadFileData: boolean = true,
-                         zipArchive?: JSZip): Promise<IndexedFile | IndexedFileGroup | null> {
+    /**
+     * Loads the specified file from the zip archive on disc.
+     * @param fileId The index of the file to load.
+     * @param loadFileData Whether or not to load the file's data into memory automatically. Defaults to true.
+     * @param zipArchive [optional] An active instance of the zip archive object from JSZip may be passed in to
+     * avoid the zip file being repeatedly loaded and unloaded for multi-file loading.
+     */
+    public async loadFile(fileId: number, loadFileData: boolean = true,
+                          zipArchive?: JSZip): Promise<IndexedFile | IndexedFileGroup | null> {
         if(!this._manifest) {
             logger.error(`Index manifest not found - archive not yet loaded. ` +
                 `Please use loadArchive() before attempting to access files.`);
@@ -370,51 +379,56 @@ export class IndexedArchive {
         }
     }
 
-    public async loadArchive(force: boolean = false): Promise<void> {
+    /**
+     * Loads the archive's manifest and error log files from the zip archive on disc.
+     * @param force Force re-load the manifest if it is already loaded. Defaults to false.
+     */
+    public async loadManifestFile(force: boolean = false): Promise<IndexManifest | null> {
         if(this.loaded && !force) {
-            return;
+            return this._manifest ?? null;
         }
 
         const zipArchive = await this.loadZip();
 
         if(!zipArchive) {
             logger.error(`Store zip not found.`);
-            return;
+            return this._manifest ?? null;
         }
 
         const noFilesError = `No files found within indexed archive ${this.indexId} ${this.indexName}`;
         if(!zipArchive.files) {
             logger.error(noFilesError);
-            return;
+            return this._manifest ?? null;
         }
 
         const fileNames = Object.keys(zipArchive.files);
-
         if(!fileNames?.length) {
             logger.error(noFilesError);
-            return;
+            return this._manifest ?? null;
         }
 
         const manifestFile = zipArchive.files['.manifest.json'];
         if(!manifestFile) {
             logger.error(`Missing manifest file for indexed archive ${this.indexId} ${this.indexName}`);
-            return;
+            return this._manifest ?? null;
         }
 
-        const errorLog = zipArchive.files['.error-log.json' ];
-        if(errorLog) {
+        const errorLogFile = zipArchive.files['.error-log.json' ];
+        if(errorLogFile) {
             logger.info(`Error log found for index ${this.indexId}.`);
-            const errorLogContent = await errorLog.async('string');
+            const errorLogContent = await errorLogFile.async('string');
             this._fileErrors = JSON.parse(errorLogContent) as { [key: string]: string[] };
         }
 
-        const strContent = await manifestFile.async('string');
-
-        this._manifest = JSON.parse(strContent) as IndexManifest;
-
+        this._manifest = JSON.parse(await manifestFile.async('string')) as IndexManifest;
         this.loaded = true;
+
+        return this._manifest;
     }
 
+    /**
+     * Loads the zip archive on disc as a JSZip object and returns it.
+     */
     public async loadZip(): Promise<JSZip> {
         try {
             const archive = await JSZip.loadAsync(readFileSync(this.filePath));
@@ -430,6 +444,14 @@ export class IndexedArchive {
             logger.error(error);
             return null;
         }
+    }
+
+    /**
+     * Creates a brand new file index for this archive based off of the last file entry's index.
+     */
+    public createNewFileIndex(): number {
+        const currentIndexes: number[] = Object.keys(this.files).map(indexStr => parseInt(indexStr, 10));
+        return Math.max(...currentIndexes) + 1;
     }
 
     public get manifest(): IndexManifest {

@@ -11,7 +11,13 @@ import { ClientFile } from './client-file';
 import { ClientStoreChannel, ExtractedFile, extractIndexedFile } from './data';
 import { hashFileName } from './util';
 import { ClientFileStore, getFileName } from './client-file-store';
-import { fileExtensions, getIndexId, FileMetadata, IndexManifest, IndexName } from '../file-store/index-manifest';
+import {
+    fileExtensions,
+    getIndexId,
+    IndexManifest,
+    IndexName,
+    IndexedFileMap, FileErrorMap
+} from '../file-store';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { decompressVersionedFile } from '../compression';
 
@@ -281,7 +287,14 @@ export class FileIndex {
         }
     }
 
-    public async generateArchive(): Promise<void> {
+    /**
+     * Generates a zip archive of this client cache archive, containing all of it's indexed files.
+     * @param matchMapFiles Defaults to false - Whether or not to ensure that map files have matching decrypted
+     * landscape files. Setting this to true will remove all map files (mX_Y.dat) for which the corresponding
+     * landscape file (if it has one) does not have any XTEA encryption keys. This helps with finding map files
+     * that specifically have valid corresponding landscape files.
+     */
+    public async generateArchive(matchMapFiles: boolean = false): Promise<void> {
         if(fs.existsSync(this.storePath)) {
             fs.rmSync(this.storePath, {
                 force: true,
@@ -301,62 +314,67 @@ export class FileIndex {
 
         logger.info(`${fileCount} files found within this index.`);
 
-        const fileIndex: { [key: number]: FileMetadata } = {};
-        const errors: { [key: number]: string[] } = {};
+        const fileIndexMap: IndexedFileMap = {};
+        const errors: FileErrorMap = {};
 
-        const pushError = (fileId: number, error) => {
+        const pushError = (errors: FileErrorMap, fileIdx: number, name: string, nameHash: number, error) => {
             logger.error(error);
 
-            if(errors[fileId]) {
-                errors[fileId].push(error);
+            if(errors[fileIdx]) {
+                errors[fileIdx].errors.push(error);
             } else {
-                errors[fileId] = [ error ];
+                errors[fileIdx] = {
+                    name, nameHash, errors: [ error ]
+                };
             }
         }
 
-        for(let fileId = 0; fileId < fileCount; fileId++) {
-            const file = this.files.get(fileId);
+        const fileContents: Buffer[] = new Array(fileCount);
+
+        for(let fileIndex = 0; fileIndex < fileCount; fileIndex++) {
+            const file = this.files.get(fileIndex);
 
             if(!file) {
-                pushError(fileId, `File not found`);
+                pushError(errors, fileIndex, undefined, undefined, `File not found`);
                 continue;
             }
 
-            const fileName = file.nameHash ? getFileName(file.nameHash) : fileId;
+            const fileName = file.nameHash ? getFileName(file.nameHash) : fileIndex;
 
             const hash = createHash('sha256');
 
             if(file instanceof ClientFileGroup) {
                 // Write sub-archive/folder
 
-                const archive = file as ClientFileGroup;
+                const fileGroup = file as ClientFileGroup;
                 const folder = storeZip.folder(`${fileName}`);
-                archive.decodeArchiveFiles();
-                const archiveFileCount = archive.files.size;
+                fileGroup.decodeArchiveFiles();
+                const archiveFileCount = fileGroup.files.size;
 
-                fileIndex[fileId] = {
+                fileIndexMap[fileIndex] = {
                     file: `${fileName}/`,
                     realName: `${fileName}`,
-                    nameHash: archive.nameHash ?? undefined,
+                    fileSize: fileGroup.groupCompressedSize ?? 0,
+                    nameHash: fileGroup.nameHash ?? undefined,
                     version: file.version || -1,
-                    crc: CRC32.buf(archive.content),
-                    sha256: hash.update(archive.content).digest('hex'),
+                    crc: CRC32.buf(fileGroup.content),
+                    sha256: hash.update(fileGroup.content).digest('hex'),
                     children: new Array(archiveFileCount)
                 };
 
                 for(let archiveFileId = 0; archiveFileId < archiveFileCount; archiveFileId++) {
-                    const archiveFile = archive.getFile(archiveFileId);
+                    const archiveFile = fileGroup.getFile(archiveFileId);
                     const archiveFileName = archiveFileId + (archiveFile.nameHash ? '_' +
                         getFileName(archiveFile.nameHash) : '');
 
                     if(!archiveFile?.content) {
-                        pushError(fileId, `File group ${fileId} not found`);
+                        pushError(errors, fileIndex, file.name, file.nameHash, `File group ${fileIndex} not found`);
                         continue;
                     }
 
                     folder.file(archiveFileName + fileExt, Buffer.from(archiveFile.content));
 
-                    fileIndex[fileId].children[archiveFileId] = archiveFileName + fileExt;
+                    fileIndexMap[fileIndex].children[archiveFileId] = archiveFileName + fileExt;
                 }
             } else {
                 // Write single file
@@ -367,27 +385,50 @@ export class FileIndex {
                     decompressedFile = file.decompress();
                 } catch(error) {
                     if(error?.message === 'MISSING_ENCRYPTION_KEYS') {
-                        pushError(fileId, `Missing encryption keys for file ${fileId}`);
+                        pushError(errors, fileIndex, file.name, file.nameHash, `Missing encryption keys for file ${fileIndex}`);
                     }
                 }
 
                 if(!(decompressedFile ?? file.content)) {
-                    pushError(fileId, `File not found`);
+                    pushError(errors, fileIndex, file.name, file.nameHash, `File not found`);
                     continue;
                 }
 
-                const fileContent = Buffer.from(decompressedFile ?? file.content);
+                fileContents[fileIndex] = Buffer.from(decompressedFile ?? file.content);
 
-                fileIndex[fileId] = {
+                fileIndexMap[fileIndex] = {
                     file: fileName + fileExt,
                     realName: `${fileName}`,
+                    fileSize: 0,
                     nameHash: file.nameHash ?? undefined,
-                    crc: CRC32.buf(fileContent),
-                    sha256: hash.update(fileContent).digest('hex'),
+                    crc: CRC32.buf(fileContents[fileIndex]),
+                    sha256: hash.update(fileContents[fileIndex]).digest('hex'),
                     version: file.version || -1
                 };
+            }
+        }
 
-                storeZip.file(fileName + fileExt, fileContent);
+        const errorLogEntries = Object.values(errors);
+
+        for(let fileIndex = 0; fileIndex < fileCount; fileIndex++) {
+            const fileContent = fileContents[fileIndex];
+            const file = this.files.get(fileIndex);
+            if(!fileContent || !file) {
+                continue;
+            }
+
+            if(matchMapFiles) {
+                const mapFileCoords = file.name.substr(1);
+                const errorLogCheck = errorLogEntries.find(error => error?.name && error.name.indexOf(mapFileCoords) !== -1);
+                if(!errorLogCheck) {
+                    fileIndexMap[fileIndex].fileSize = fileContent.length;
+                    storeZip.file(file.name + fileExt, fileContent);
+                } else {
+                    pushError(errors, fileIndex, file.name, file.nameHash, `Missing landscape file for map ${fileIndex}`);
+                }
+            } else {
+                fileIndexMap[fileIndex].fileSize = fileContent.length;
+                storeZip.file(file.name + fileExt, fileContent);
             }
         }
 
@@ -405,7 +446,7 @@ export class FileIndex {
             settings: this.settings,
             crc: CRC32.buf(indexData),
             sha256: createHash('sha256').update(indexData).digest('hex'),
-            files: fileIndex
+            files: fileIndexMap
         };
 
         storeZip.file(`.manifest.json`, JSON.stringify(manifest, null, 4));

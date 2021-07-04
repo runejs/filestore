@@ -18,6 +18,8 @@ export class ClientFileGroup extends ClientFile {
      */
     public type: 'archive' | 'file' = 'archive';
 
+    public groupCompressedSize: number = 0;
+
     private decoded: boolean = false;
 
     /**
@@ -71,6 +73,7 @@ export class ClientFileGroup extends ClientFile {
 
         const archiveEntry = extractIndexedFile(this.fileId, this.index.indexId, this.filestoreChannels);
         archiveEntry.dataFile.readerIndex = 0;
+        this.groupCompressedSize = archiveEntry.dataFile.length;
         const { compression, version, buffer } = decompressVersionedFile(archiveEntry.dataFile);
         buffer.readerIndex = 0;
         const archiveSize = this.files.size;

@@ -1,15 +1,14 @@
 import { FileStore } from '../file-store';
-import { readFileSync } from 'fs';
+import fs from 'fs';
 import path, { join } from 'path';
 import JSZip, { JSZipObject } from 'jszip';
 import { logger } from '@runejs/core';
-import { getIndexId, FileMetadata, IndexManifest, IndexName, getCompressionKey } from '../index-manifest';
+import { FileMetadata, getCompressionKey, getIndexId, IndexManifest, IndexName } from '../index-manifest';
 import { IndexedFile } from './indexed-file';
 import { IndexedFileGroup } from './indexed-file-group';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { hashFileName } from '../../client-store';
 import * as CRC32 from 'crc-32';
-import fs from 'fs';
 import { createHash } from 'crypto';
 import { compressVersionedFile } from '../../compression';
 
@@ -17,7 +16,6 @@ import { compressVersionedFile } from '../../compression';
 export class IndexedArchive {
 
     public files: { [key: number]: IndexedFile } = {};
-    public archiveData: ByteBuffer | null = null;
 
     private readonly fileStore: FileStore;
     private indexId: number;
@@ -110,14 +108,15 @@ export class IndexedArchive {
 
             const fileVersion = oldFile?.version !== undefined ? oldFile.version : 0;
 
-            newManifest.files[fileIndex] = {
+            const newFile: FileMetadata = {
                 file: fileName,
                 realName: actualFileName,
+                fileSize: 0,
                 version: fileVersion,
                 nameHash: nameHash ?? undefined
             };
 
-            const newFile = newManifest.files[fileIndex];
+            newManifest.files[fileIndex] = newFile;
 
             if(!newFile.version) {
                 newFile.version = 0;
@@ -127,29 +126,24 @@ export class IndexedArchive {
 
             if(zippedFile.dir) {
                 const folder = storeZip.folder(fileName);
-                let folderFileNames = Object.keys(folder.files) ?? [];
-                const folderFiles: { [key: string]: JSZipObject } = {};
-                const folderName = fileName.endsWith('/') ? fileName : fileName + '/';
-                folderFileNames
-                    .filter(groupedFileName => groupedFileName?.startsWith(folderName) &&
-                        groupedFileName?.endsWith(this._manifest.fileExtension))
-                    .forEach(groupedFileName => folderFiles[groupedFileName] = folder.files[groupedFileName]);
+                const folderFileNames: string[] = [];
+                folder.forEach(fileName => folderFileNames.push(fileName));
 
-                folderFileNames = Object.keys(folderFiles)
-                    .map(folderFileName => folderFileName.replace(folderName, ''));
+                newFile.children = folderFileNames;
 
-                newManifest.files[fileIndex].children = folderFileNames;
-
-                const indexedGroup = new IndexedFileGroup(this._manifest, fileIndex, folderFiles);
+                const indexedGroup = new IndexedFileGroup(this._manifest, fileIndex, folder);
                 const groupFile = await indexedGroup.packGroup();
+
                 fileDigest = hash.update(groupFile).digest('hex');
                 newFile.crc = CRC32.buf(groupFile);
+                newFile.fileSize = groupFile.length;
             } else {
                 const fileData = await zippedFile.async('nodebuffer');
                 const indexedFile = new IndexedFile(this._manifest, fileIndex, new ByteBuffer(fileData));
                 if(indexedFile.fileData) {
                     fileDigest = hash.update(indexedFile.fileData).digest('hex');
                     newFile.crc = CRC32.buf(indexedFile.fileData);
+                    newFile.fileSize = indexedFile.fileData.length;
                 }
             }
 
@@ -185,38 +179,71 @@ export class IndexedArchive {
     /**
      * Unpacks the archive, it's manifest, and it's files.
      * @param loadFileData Whether or not to load file contents into memory. Defaults to true.
+     * @param compressFileData Compress the file data if loaded. Defaults to true.
+     * @param forceAsync Forces the files to be loaded in async fashion without using the recorded
+     * fileSize in the manifest. Defaults to false.
      */
-    public async unpack(loadFileData: boolean = true): Promise<void> {
-        const fileIndexes = Object.keys(this._manifest.files)
-            .map(indexStr => parseInt(indexStr, 10));
-        const fileCount = fileIndexes.length;
+    public async unpack(loadFileData: boolean = true,
+                        compressFileData: boolean = true,
+                        forceAsync: boolean = false): Promise<void> {
+        const fileIndexes = Object.keys(this._manifest.files).map(indexStr => parseInt(indexStr, 10));
         const zipArchive = await this.loadZip();
 
-        let promiseList: Promise<void>[] = new Array(fileCount);
-        for(let i = 0; i < fileCount; i++) {
-            promiseList[i] = this.loadFile(fileIndexes[i], loadFileData, zipArchive).then(async file => {
-                if(!file) {
-                    return;
-                }
+        for(const index of fileIndexes) {
+            const fileMetadata = this.manifest.files[index];
+            const fileName = fileMetadata?.file ?? '';
+            if(!fileName) {
+                logger.warn(`File ${index} was not found within the archive manifest file.`);
+                continue;
+            }
 
-                this.files[file.fileId] = file;
+            const file = zipArchive.files[fileName];
+            if(!file) {
+                logger.warn(`File ${index} was not found within the zip archive.`);
+                continue;
+            }
 
-                if(loadFileData) {
-                    try {
-                        if(file instanceof IndexedFileGroup) {
-                            file.fileData = await file.compressGroup();
-                        } else {
-                            file.fileData = await file.compress();
-                        }
-                    } catch(error) {
-                        logger.error(`File ${file?.fileId ?? i} has no data.`);
-                        file.fileData = undefined;
+            try {
+                if(file.dir) {
+                    // logger.info(`Loading file group ${index} children...`);
+                    const zippedFolder = zipArchive.folder(fileName);
+                    const fileGroup = new IndexedFileGroup(this._manifest, index, zippedFolder);
+
+                    if(loadFileData) {
+                        await fileGroup.compressGroup();
                     }
-                }
-            });
-        }
 
-        await Promise.all(promiseList);
+                    this.files[index] = fileGroup;
+                } else {
+                    // logger.info(`Loading file ${index} data...`);
+                    let fileData: Buffer | null;
+                    if(loadFileData) {
+                        if(fileMetadata.fileSize && !forceAsync) {
+                            fileData = loadFileData ? file.nodeStream().read(fileMetadata.fileSize) as Buffer : null;
+                        }
+
+                        if(!fileData || forceAsync) {
+                            fileData = await file.async('nodebuffer');
+                        }
+                    }
+
+                    const indexedFile = new IndexedFile(this._manifest, index, fileData ? new ByteBuffer(fileData) : null);
+
+                    if(fileName === 'p11_full.dat') {
+                        console.log(fileData);
+                    }
+
+                    if(loadFileData) {
+                        indexedFile.compress();
+                    }
+
+                    this.files[index] = indexedFile;
+                }
+            } catch(error) {
+                logger.error(`Error loading file ${index}:`);
+                logger.error(error);
+            }
+        }
 
         this.loaded = true;
     }
@@ -367,14 +394,9 @@ export class IndexedArchive {
 
         if(file.dir) {
             const folder = zipArchive.folder(fileEntry.file);
-            const folderFileNames = Object.keys(folder.files) ?? [];
-            const folderFiles: { [key: string]: JSZipObject } = {};
-            folderFileNames
-                .filter(fileName => fileName?.startsWith(`${fileId}/`) && fileName?.endsWith(this._manifest.fileExtension))
-                .forEach(fileName => folderFiles[fileName] = folder.files[fileName]);
-            return new IndexedFileGroup(this._manifest, fileId, folderFiles);
+            return new IndexedFileGroup(this._manifest, fileId, folder);
         } else {
-            const fileData = loadFileData ? new ByteBuffer(await file.async('nodebuffer')) : null;
+            const fileData = loadFileData && file ? new ByteBuffer(file.nodeStream().read() as Buffer) : null;
             return new IndexedFile(this._manifest, fileId, fileData);
         }
     }
@@ -431,14 +453,15 @@ export class IndexedArchive {
      */
     public async loadZip(): Promise<JSZip> {
         try {
-            const archive = await JSZip.loadAsync(readFileSync(this.filePath));
-
-            if(!archive) {
-                logger.error(`Error loading indexed archive ${this.indexId} ${this.indexName}`);
-                return null;
-            }
-
-            return archive;
+            return await new JSZip.external.Promise((resolve, reject) => {
+                fs.readFile(this.filePath, (err, data) => {
+                    if(err) {
+                        reject(err);
+                    } else {
+                        resolve(data);
+                    }
+                });
+            }).then((data: any) => JSZip.loadAsync(data));
         } catch(error) {
             logger.error(`Error loading indexed archive ${this.indexId} ${this.indexName}`);
             logger.error(error);

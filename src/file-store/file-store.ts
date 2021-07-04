@@ -1,7 +1,7 @@
 import { ClientFileStore } from '../client-store';
 import { logger } from '@runejs/core';
 import fs from 'fs';
-import { IndexedArchive } from './archive';
+import { IndexedArchive, IndexedFileGroup } from './archive';
 import { getIndexName, indexIdMap, IndexName } from './index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 import JSZip from 'jszip';
@@ -30,13 +30,41 @@ export class FileStore {
         }
 
         const archive = this.indexedArchives.get(indexId);
+        const loadedFile = archive.files[fileId];
+
+        if(loadedFile) {
+            if(compressed && loadedFile.compressedFileData) {
+                return loadedFile.compressedFileData ?? null;
+            }
+
+            if(!compressed && loadedFile.fileData) {
+                return loadedFile.fileData ?? null;
+            }
+        }
+
         const file = await archive.loadFile(fileId, true, zipArchive);
 
         if(!file) {
             return null;
         }
 
-        return compressed ? await file.compress() : await file.pack();
+        let fileData: ByteBuffer | undefined;
+
+        if(file instanceof IndexedFileGroup) {
+            if(compressed) {
+                fileData = await file.compressGroup();
+            } else {
+                fileData = await file.packGroup();
+            }
+        } else {
+            if(compressed) {
+                fileData = await file.compress();
+            } else {
+                fileData = file.fileData;
+            }
+        }
+
+        return fileData;
     }
 
     public async generateUpdateServerFile(index: number, file: number, fileBuffer: ByteBuffer): Promise<ByteBuffer> {

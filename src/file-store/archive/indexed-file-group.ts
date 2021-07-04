@@ -1,46 +1,56 @@
-import { JSZipObject } from 'jszip';
+import JSZip, { JSZipObject } from 'jszip';
 import { IndexedFile } from './indexed-file';
 import { IndexManifest } from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { compressVersionedFile } from '../../compression';
+import { logger } from '@runejs/core';
 
 
 export class IndexedFileGroup extends IndexedFile {
 
-    public files: { [key: string]: JSZipObject };
+    private _folder: JSZip;
+    private files: JSZipObject[] = [];
+    private fileNames: string[] = [];
 
     public constructor(indexManifest: IndexManifest,
                        archiveId: number,
-                       files: { [key: string]: JSZipObject }) {
+                       zippedFolder: JSZip) {
         super(indexManifest, archiveId);
-        this.files = files;
+        this._folder = zippedFolder;
+        this.loadFileInfo();
     }
 
-    public async packGroup(): Promise<ByteBuffer> {
-        const fileKeys = Object.keys(this.files);
-        const fileCount = fileKeys.length;
-        const fileSizes: number[] = new Array(fileCount);
-        const fileData: Buffer[] = new Array(fileCount);
+    public loadFileInfo(): void {
+        let filePaths: string[] = [];
+        let files: JSZipObject[] = [];
+        this.folder.forEach((filePath, file) => {
+            filePaths.push(filePath);
+            files.push(file);
+        });
 
-        for(let i = 0; i < fileCount; i++) {
-            const fileName = fileKeys[i];
-            const zippedFile = this.files[fileName] ?? this.files[fileName + '/'];
-            if(!zippedFile) {
-                fileSizes[i] = 0;
-            } else {
-                fileData[i] = await zippedFile.async('nodebuffer');
-                fileSizes[i] = fileData[i]?.length ?? 0;
-            }
+        this.files = files;
+        this.fileNames = filePaths;
+    }
+
+    public async packGroup(): Promise<ByteBuffer | null> {
+        const filePromises: Promise<Buffer>[] = new Array(this.fileCount);
+
+        for(let i = 0; i < this.fileCount; i++) {
+            filePromises[i] = this.files[i].async('nodebuffer');
         }
 
-        // Size of all individual files + 1 int (4 bytes) per file containing it's size + 1 byte at the end denoting number of chunks
-        const groupSize = fileSizes.reduce((a, c) => a + c) + (fileCount * 4) + 1;
+        const fileData: Buffer[] = await Promise.all(filePromises);
+        const fileSizes = fileData.map(data => data?.length ?? 0);
+
+        // Size of all individual files + 1 int (4 bytes) per file containing it's size + 1 byte at the end
+        // denoting number of chunks
+        const groupSize = fileSizes.reduce((a, c) => a + c) + (this.fileCount * 4) + 1;
 
         const groupBuffer = new ByteBuffer(groupSize);
 
         // Write individual file contents
-        for(const file of fileData) {
-            groupBuffer.putBytes(file);
+        for(let i = 0; i < this.fileCount; i++) {
+            groupBuffer.putBytes(fileData[i]);
         }
 
         // Write individual file sizes
@@ -54,20 +64,30 @@ export class IndexedFileGroup extends IndexedFile {
         // Write stripe count
         groupBuffer.put(1); // Stripe count should always be 1 because we're making a clean archive :)
 
-        return groupBuffer.flipWriter();
+        this.fileData = groupBuffer.flipWriter();
+
+        return this.fileData;
     }
 
-    public async compressGroup(): Promise<ByteBuffer> {
-        const buffer = await this.packGroup();
+    public async compressGroup(): Promise<ByteBuffer | null> {
+        try {
+            const buffer = await this.packGroup();
 
-        return compressVersionedFile({
-            buffer,
-            compression: this.fileCompression,
-            version: this.fileVersion
-        });
+            this._compressedFileData = compressVersionedFile({
+                buffer,
+                compression: this.fileCompression,
+                version: this.fileVersion
+            });
+
+            return this._compressedFileData;
+        } catch(error) {
+            logger.error(`Error compressing file group ${this.fileId} in index ${this.indexManifest.indexId}:`);
+            logger.error(error);
+            return null;
+        }
     }
 
-    public async getFile(fileIdOrName: number | string, extract: boolean = true): Promise<IndexedFile> {
+    /*public async getFile(fileIdOrName: number | string, extract: boolean = true): Promise<IndexedFile> {
         // @TODO manifests for file groups to auto-index files
         const fileName = typeof fileIdOrName === 'string' ? fileIdOrName :
             `${fileIdOrName}${this.indexManifest.fileExtension}`;
@@ -87,10 +107,14 @@ export class IndexedFileGroup extends IndexedFile {
 
         const fileData = extract ? new ByteBuffer(await this.files[fileName].async('nodebuffer')) : null;
         return new IndexedFile(this.indexManifest, fileIndex, fileData);
-    }
+    }*/
 
     public get fileCount(): number {
-        return Object.keys(this.files).length;
+         return this.files.length;
+    }
+
+    public get folder(): JSZip {
+        return this._folder;
     }
 
 }

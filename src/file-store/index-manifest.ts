@@ -77,15 +77,27 @@ export const getCompressionKey = (compression: FileCompression) =>
     compression === 'gzip' ? 2 : (compression === 'bzip' ? 1 : 0);
 
 
+export type IndexedFileMap = { [key: number]: FileMetadata };
+
+export type FileErrorMap = { [key: number]: FileError };
+
+
 export interface FileSettings {
     version?: number;
     crc?: number;
     sha256?: string;
 }
 
+export interface FileError extends FileSettings {
+    name?: string;
+    nameHash?: number;
+    errors: string[];
+}
+
 export interface FileMetadata extends FileSettings {
     file: string;
     realName: string;
+    fileSize: number;
     nameHash?: number;
     children?: string[];
 }

@@ -1,16 +1,15 @@
 import { FileStore } from '../file-store';
 import fs from 'fs';
 import path, { join } from 'path';
-import JSZip, { JSZipObject } from 'jszip';
+import JSZip from 'jszip';
 import { logger } from '@runejs/core';
 import { FileMetadata, getCompressionKey, getIndexId, IndexManifest, IndexName } from '../index-manifest';
-import { IndexedFile } from './indexed-file';
-import { IndexedFileGroup } from './indexed-file-group';
+import { FlatFile } from './flat-file';
+import { FileGroup } from './file-group';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { hashFileName } from '../../client-store';
-import * as CRC32 from 'crc-32';
-import { createHash } from 'crypto';
-import { compressVersionedFile } from '../../compression';
+import { compressFile } from '../../compression';
+import { IndexedFile } from './indexed-file';
 
 
 export class IndexedArchive {
@@ -97,7 +96,6 @@ export class IndexedArchive {
             const oldFileIndex: number = originalFileIndex(fileName, existingFileList);
             const oldFile: FileMetadata | null = oldFileIndex !== -1 ? this._manifest.files[oldFileIndex] ?? null : null;
             const fileIndex = oldFileIndex !== -1 ? oldFileIndex : newFileIndex++;
-            const hash = createHash('sha256');
 
             let nameHash: number | undefined;
             const actualFileName = fileName.replace(this.manifest.fileExtension, '')
@@ -106,63 +104,55 @@ export class IndexedArchive {
                 nameHash = /[a-z]/ig.test(actualFileName) ? hashFileName(actualFileName) : parseInt(actualFileName, 10);
             }
 
-            const fileVersion = oldFile?.version !== undefined ? oldFile.version : 0;
-
-            const newFile: FileMetadata = {
+            const newFile: FileMetadata = newManifest.files[fileIndex] = {
                 file: fileName,
                 realName: actualFileName,
-                fileSize: 0,
-                version: fileVersion,
-                nameHash: nameHash ?? undefined
+                nameHash: nameHash ?? undefined,
+                version: oldFile?.version ?? 0
             };
 
-            newManifest.files[fileIndex] = newFile;
-
-            if(!newFile.version) {
-                newFile.version = 0;
-            }
-
-            let fileDigest: string = '';
+            let indexedFile: IndexedFile;
 
             if(zippedFile.dir) {
                 const folder = storeZip.folder(fileName);
-                const folderFileNames: string[] = [];
-                folder.forEach(fileName => folderFileNames.push(fileName));
+                newFile.children = [];
 
-                newFile.children = folderFileNames;
+                folder.forEach(fileName => newFile.children.push(fileName));
 
-                const indexedGroup = new IndexedFileGroup(this._manifest, fileIndex, folder);
-                const groupFile = await indexedGroup.packGroup();
+                indexedFile = new FileGroup(this._manifest, fileIndex, folder);
 
-                fileDigest = hash.update(groupFile).digest('hex');
-                newFile.crc = CRC32.buf(groupFile);
-                newFile.fileSize = groupFile.length;
             } else {
                 const fileData = await zippedFile.async('nodebuffer');
-                const indexedFile = new IndexedFile(this._manifest, fileIndex, new ByteBuffer(fileData));
-                if(indexedFile.fileData) {
-                    fileDigest = hash.update(indexedFile.fileData).digest('hex');
-                    newFile.crc = CRC32.buf(indexedFile.fileData);
-                    newFile.fileSize = indexedFile.fileData.length;
+                indexedFile = new FlatFile(this._manifest, fileIndex, new ByteBuffer(fileData));
+            }
+
+            newFile.sha256 = await indexedFile.generateShaHash();
+            newFile.crc = await indexedFile.generateCrc32();
+            newFile.fileSize = await indexedFile.getCompressedFileLength();
+
+            if(!oldFile?.sha256) {
+                // Use CRC32 if SHA256 is not available for this file
+                if(oldFile?.crc !== newFile.crc) {
+                    newFile.version++;
                 }
-            }
-
-            if(fileDigest) {
-                newFile.sha256 = fileDigest;
-            }
-
-            if(oldFile?.sha256 && oldFile.sha256 !== fileDigest) {
+            } else if(oldFile.sha256 !== newFile.sha256) {
+                // Use the more modern SHA256 for comparison instead of CRC32
                 // Update the file's version number if it already existed and has changed
                 newFile.version++;
                 logger.info(`File ${fileIndex} version increased from ${newFile.version - 1} to ${newFile.version}`);
+            }
+
+            // Save space and don't include a version number for first-version files
+            if(newFile.version <= 0) {
+                delete newFile.version;
             }
         }
 
         this._manifest = newManifest;
 
         const indexData = await this.generateIndexFile();
-        this._manifest.crc = CRC32.buf(await this.fileStore.generateUpdateServerFile(255, this.indexId, indexData));
-        this._manifest.sha256 = createHash('sha256').update(indexData).digest('hex');
+        this._manifest.crc = await IndexedFile.generateCrc32(indexData);
+        this._manifest.sha256 = await IndexedFile.generateShaHash(indexData);
 
         storeZip.file(`.manifest.json`, JSON.stringify(this._manifest, null, 4));
 
@@ -204,16 +194,12 @@ export class IndexedArchive {
             }
 
             try {
+                let indexedFile: IndexedFile;
+
                 if(file.dir) {
                     // logger.info(`Loading file group ${index} children...`);
                     const zippedFolder = zipArchive.folder(fileName);
-                    const fileGroup = new IndexedFileGroup(this._manifest, index, zippedFolder);
-
-                    if(loadFileData) {
-                        await fileGroup.compressGroup();
-                    }
-
-                    this.files[index] = fileGroup;
+                    indexedFile = new FileGroup(this._manifest, index, zippedFolder);
                 } else {
                     // logger.info(`Loading file ${index} data...`);
                     let fileData: Buffer | null;
@@ -227,18 +213,14 @@ export class IndexedArchive {
                         }
                     }
 
-                    const indexedFile = new IndexedFile(this._manifest, index, fileData ? new ByteBuffer(fileData) : null);
-
-                    if(fileName === 'p11_full.dat') {
-                        console.log(fileData);
-                    }
-
-                    if(loadFileData) {
-                        indexedFile.compress();
-                    }
-
-                    this.files[index] = indexedFile;
+                    indexedFile = new FlatFile(this._manifest, index, fileData ? new ByteBuffer(fileData) : null);
                 }
+
+                if(loadFileData) {
+                    await indexedFile.compress();
+                }
+
+                this.files[index] = indexedFile;
             } catch(error) {
                 logger.error(`Error loading file ${index}:`);
                 logger.error(error);
@@ -340,7 +322,8 @@ export class IndexedArchive {
                             buffer.put(0, 'int');
                         } else {
                             const fileName = childFile.replace(this.manifest.fileExtension, '');
-                            const nameHash: number = /[a-z]/ig.test(fileName) ? hashFileName(fileName) : parseInt(fileName, 10);
+                            const nameHash: number = /[a-z]/ig.test(fileName) ?
+                                hashFileName(fileName) : parseInt(fileName, 10);
                             buffer.put(nameHash, 'int');
                         }
                     }
@@ -354,7 +337,7 @@ export class IndexedArchive {
 
         const compression = getCompressionKey(this.manifest.fileCompression);
 
-        return compressVersionedFile({
+        return compressFile({
             buffer: archiveData,
             compression
         });
@@ -368,7 +351,7 @@ export class IndexedArchive {
      * avoid the zip file being repeatedly loaded and unloaded for multi-file loading.
      */
     public async loadFile(fileId: number, loadFileData: boolean = true,
-                          zipArchive?: JSZip): Promise<IndexedFile | IndexedFileGroup | null> {
+                          zipArchive?: JSZip): Promise<FlatFile | FileGroup | null> {
         if(!this._manifest) {
             logger.error(`Index manifest not found - archive not yet loaded. ` +
                 `Please use loadArchive() before attempting to access files.`);
@@ -394,10 +377,10 @@ export class IndexedArchive {
 
         if(file.dir) {
             const folder = zipArchive.folder(fileEntry.file);
-            return new IndexedFileGroup(this._manifest, fileId, folder);
+            return new FileGroup(this._manifest, fileId, folder);
         } else {
             const fileData = loadFileData && file ? new ByteBuffer(file.nodeStream().read() as Buffer) : null;
-            return new IndexedFile(this._manifest, fileId, fileData);
+            return new FlatFile(this._manifest, fileId, fileData);
         }
     }
 

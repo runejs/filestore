@@ -1,0 +1,51 @@
+{
+    type: 'items',
+    '1':  [ 'widgetModel', 'short', 'unsigned' ],
+    '2':  [ 'name', 'string' ],
+    '4':  [ 'model2d.zoom', 'short' ],
+    '5':  [ 'model2d.rotationX', 'short' ],
+    '6':  [ 'model2d.rotationY', 'short' ],
+    '7':  [ 'model2d.offsetX', 'short' ],
+    '8':  [ 'model2d.offsetY', 'short' ],
+    '11': [ 'stackable' ],
+    '12': [ 'value', 'int', 'unsigned' ],
+    '16': [ 'members' ],
+    '23': [
+        [ 'model3d.maleModels[0]', 'short', 'unsigned' ],
+        [ 'model3d.maleModelOffset', 'byte' ],
+    ],
+    '24': [ 'model3d.maleModels[1]', 'short', 'unsigned' ],
+    '25': [
+        [ 'model3d.femaleModels[0]', 'short', 'unsigned' ],
+        [ 'model3d.femaleModelOffset', 'byte' ],
+    ],
+    '26': [ 'model3d.femaleModels[1]', 'short', 'unsigned' ],
+    '30-34': [ 'worldOptions', 'string' ],
+    '35-39': [ 'widgetOptions', 'string' ],
+    '40': [ 'replacedColors', [
+        [ 'oldColor', 'short', 'unsigned' ],
+        [ 'newColor', 'short', 'unsigned' ]
+    ] ],
+    '41': [ 'replacedTextures', [
+        [ 'oldTexture', 'short', 'unsigned' ],
+        [ 'newTexture', 'short', 'unsigned' ]
+    ] ],
+    '65': [ 'tradable' ],
+    '78': [ 'model3d.maleModels[2]', 'short', 'unsigned' ],
+    '79': [ 'model3d.femaleModels[2]', 'short', 'unsigned' ],
+    '90': [ 'model3d.maleHeadModels[2]', 'short', 'unsigned' ],
+    '91': [ 'model3d.femaleHeadModels[2]', 'short', 'unsigned' ],
+    '95': [ 'model2d.rotationZ', 'short', 'unsigned' ],
+    '97': [ 'bankNoteId', 'short', 'unsigned' ],
+    '98': [ 'bankNoteTemplate', 'short', 'unsigned' ],
+    '100-109': [
+        [ 'stackableIds', 'short', 'unsigned' ],
+        [ 'stackableAmounts', 'short', 'unsigned' ]
+    ],
+    '110': [ 'rendering.resizeX', 'short', 'unsigned' ],
+    '111': [ 'rendering.resizeY', 'short', 'unsigned' ],
+    '112': [ 'rendering.resizeZ', 'short', 'unsigned' ],
+    '113': [ 'rendering.ambient', 'byte' ],
+    '114': [ 'rendering.contrast', 'byte' ],
+    '115': [ 'teamId', 'byte', 'unsigned' ]
+}

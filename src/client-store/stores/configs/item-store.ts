@@ -147,7 +147,8 @@ export class ItemStore {
             putOpcode(16);
         }
 
-        if(item.model3d.maleModels[0] !== -1 || item.model3d.maleModelOffset !== undefined) {
+        if(item.model3d.maleModels[0] !== -1 ||
+            item.model3d.maleModelOffset !== undefined) {
             putOpcode(23)
                 .put(item.model3d.maleModels[0], 'SHORT')
                 .put(item.model3d.maleModelOffset);
@@ -158,7 +159,8 @@ export class ItemStore {
                 .put(item.model3d.maleModels[1], 'SHORT');
         }
 
-        if(item.model3d.femaleModels[0] !== -1 || item.model3d.femaleModelOffset !== undefined) {
+        if(item.model3d.femaleModels[0] !== -1 ||
+            item.model3d.femaleModelOffset !== undefined) {
             putOpcode(25)
                 .put(item.model3d.femaleModels[0], 'SHORT')
                 .put(item.model3d.femaleModelOffset);
@@ -191,7 +193,8 @@ export class ItemStore {
             putOpcode(40)
                 .put(item.replacedColors.length);
             for(const [ oldColor, newColor ] of item.replacedColors) {
-                buffer.put(oldColor, 'SHORT').put(newColor, 'SHORT');
+                buffer.put(oldColor, 'SHORT');
+                buffer.put(newColor, 'SHORT');
             }
         }
 

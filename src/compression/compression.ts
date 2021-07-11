@@ -12,13 +12,12 @@ export interface StoreFile {
 }
 
 
-export const compressVersionedFile = (file: StoreFile, keys?: number[]): ByteBuffer => {
+export const compressFile = (file: StoreFile): ByteBuffer => {
     let newFileData: ByteBuffer;
-    let newFileLength: number;
 
     if(file.compression === 0) {
         // uncompressed files
-        newFileData = new ByteBuffer(file.buffer.length + (file.version ? 7 : 5));
+        newFileData = new ByteBuffer(file.buffer.length + (file.version !== undefined ? 7 : 5));
 
         // indicate that no file compression is applied
         newFileData.put(0);
@@ -28,8 +27,6 @@ export const compressVersionedFile = (file: StoreFile, keys?: number[]): ByteBuf
 
         // write the uncompressed file data
         newFileData.putBytes(file.buffer);
-
-        newFileLength = file.buffer.length;
     } else {
         // compressed Bzip2 or Gzip file
 
@@ -38,7 +35,7 @@ export const compressVersionedFile = (file: StoreFile, keys?: number[]): ByteBuf
 
         const compressedLength: number = compressedData.length;
 
-        newFileData = new ByteBuffer(compressedData.length + (file.version ? 11 : 9));
+        newFileData = new ByteBuffer(compressedData.length + (file.version !== undefined ? 11 : 9));
 
         // indicate which type of file compression was used (1 or 2)
         newFileData.put(file.compression);
@@ -51,34 +48,22 @@ export const compressVersionedFile = (file: StoreFile, keys?: number[]): ByteBuf
 
         // write the compressed file data
         newFileData.putBytes(compressedData);
-
-        newFileLength = compressedLength;
     }
 
     if(!newFileData) {
         return null;
     }
 
-    // write the file version
-    if(file.version) {
+    // write the file version in the file footer (if supplied)
+    if(file.version !== undefined) {
         newFileData.put(file.version, 'short');
     }
 
-    if(Xtea.validKeys(keys)) {
-        // @TODO untested
-        const writerIndex = newFileData.writerIndex;
-        let lengthOffset = writerIndex;
-        if(newFileData.length - (newFileLength + writerIndex + 4) >= 2) {
-            lengthOffset += 2;
-        }
-        return Xtea.encrypt(newFileData, keys, newFileData.length - lengthOffset).flipWriter();
-    } else {
-        return newFileData.flipWriter();
-    }
+    return newFileData.flipWriter();
 };
 
 
-export const decompressVersionedFile = (buffer: ByteBuffer, keys?: number[]): StoreFile => {
+export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile => {
     buffer.readerIndex = 0;
 
     if(!buffer || buffer.length === 0) {
@@ -135,6 +120,7 @@ export const decompressVersionedFile = (buffer: ByteBuffer, keys?: number[]): St
             throw new Error(`Compression length mismatch`);
         }
 
+        // Read the file footer
         let version = 0;
         if(buffer.readable >= 2) {
             version = buffer.get('short');

@@ -19,7 +19,7 @@ import {
     IndexedFileMap, FileErrorMap
 } from '../file-store';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { decompressVersionedFile } from '../compression';
+import { decompressFile } from '../compression';
 
 
 const NAME_FLAG = 0x01;
@@ -202,7 +202,7 @@ export class FileIndex {
             return;
         }
 
-        const { compression, version, buffer } = decompressVersionedFile(indexEntry.dataFile);
+        const { compression, version, buffer } = decompressFile(indexEntry.dataFile);
         buffer.readerIndex = 0;
 
         this.version = version;
@@ -434,7 +434,7 @@ export class FileIndex {
 
         const indexEntry = extractIndexedFile(this.indexId, 255, this.filestoreChannels);
         indexEntry.dataFile.readerIndex = 0;
-        const indexData = decompressVersionedFile(indexEntry.dataFile).buffer;
+        const indexData = decompressFile(indexEntry.dataFile).buffer;
 
         const manifest: IndexManifest = {
             indexId: this.indexId,

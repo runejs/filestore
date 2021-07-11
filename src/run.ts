@@ -1,5 +1,7 @@
-import { FileStore } from './file-store';
+import { FileGroup, FileStore } from './file-store';
 import { logger } from '@runejs/core';
+import { FileCodec } from './codec/file-codec';
+import { ByteBuffer } from '@runejs/core/buffer';
 
 
 (async () => {
@@ -18,20 +20,34 @@ import { logger } from '@runejs/core';
 
 
 
-    const fileStore = new FileStore();
-
-    await fileStore.loadStoreArchives();
 
     const start = Date.now();
 
+    const fileStore = new FileStore();
+    await fileStore.loadStoreArchives();
+
+    await fileStore.indexedArchives.get(2).unpack();
+
+    const itemFile = fileStore.indexedArchives.get(2).files[10] as FileGroup;
+    const itemId = 1042;
+    const fileData = await itemFile.files[itemId].async('nodebuffer');
+
+    console.log(fileData);
+
+    const itemFileCodec = new FileCodec('item-codec-v3.json5');
+
+    itemFileCodec.decodeBinaryFile(itemId, new ByteBuffer(fileData));
+
     /*for(let i = 0; i < fileStore.indexedArchives.size; i++) {
         logger.info(`Indexing archive ${i}...`);
-        await fileStore.indexedArchives.get(i).indexArchiveFiles();
+        if(i === 5 || i === 7) {
+            await fileStore.indexedArchives.get(i).indexArchiveFiles();
+        }
     }*/
 
     // await fileStore.generateCrcTable();
 
-    await fileStore.indexedArchives.get(8).unpack();
+    // await fileStore.indexedArchives.get(8).unpack();
 
     const end = Date.now();
     const duration = end - start;

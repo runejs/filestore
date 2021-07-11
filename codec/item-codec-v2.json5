@@ -1,0 +1,11 @@
+[
+    null, // 0 unused
+    [ 'widgetModel', 'short', '?' ],
+    [ 'name', 'string', '?' ],
+    null, // 3 unused
+    [ 'model2d.zoom', 'short' ],
+    [ 'model2d.rotationX', 'short' ],
+    [ 'model2d.rotationY', 'short' ],
+    [ 'model2d.offsetX', 'short' ],
+    [ 'model2d.offsetY', 'short' ]
+]

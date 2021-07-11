@@ -3,7 +3,7 @@ import { ByteBuffer } from '@runejs/core/buffer';
 import { extractIndexedFile, ClientStoreChannel } from './data';
 import { FileIndex } from './file-index';
 import { getFileName } from './client-file-store';
-import { decompressVersionedFile } from '../compression';
+import { decompressFile } from '../compression';
 
 
 export class ClientFile {
@@ -83,7 +83,7 @@ export class ClientFile {
 
         this.decompressed = true;
         const archiveEntry = extractIndexedFile(this.fileId, this.index.indexId, this.filestoreChannels);
-        const { buffer } = decompressVersionedFile(archiveEntry?.dataFile, keys);
+        const { buffer } = decompressFile(archiveEntry?.dataFile, keys);
         this.content = buffer;
         return this.content;
     }

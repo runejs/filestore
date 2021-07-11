@@ -1,7 +1,7 @@
 /**
  * String representations of numeric index ids.
  */
-export type IndexName = 'configs' | 'sprites' | 'music' | 'jingles' | 'sounds' | 'binary' |
+export type IndexName = 'main' | 'configs' | 'sprites' | 'music' | 'jingles' | 'sounds' | 'binary' |
     'widgets' | 'regions' | 'models' | 'textures' | 'scripts' | 'frames' | 'skeletons';
 
 
@@ -21,7 +21,8 @@ export const indexIdMap: { [key: string]: number } = {
     'textures': 9,
     'binary': 10,
     'jingles': 11,
-    'scripts': 12
+    'scripts': 12,
+    'main': 255
 };
 
 
@@ -50,7 +51,8 @@ export const fileExtensions: { [key: string]: string } = {
     'textures': '.dat',
     'binary': '.dat',
     'jingles': '.ogg',
-    'scripts': '.dat'
+    'scripts': '.dat',
+    'main': '.dat'
 };
 
 
@@ -97,7 +99,7 @@ export interface FileError extends FileSettings {
 export interface FileMetadata extends FileSettings {
     file: string;
     realName: string;
-    fileSize: number;
+    fileSize?: number;
     nameHash?: number;
     children?: string[];
 }

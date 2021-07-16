@@ -1,7 +1,6 @@
-import { FileGroup, FileStore } from './file-store';
+import { FileStore, FlatFile } from './file-store';
 import { logger } from '@runejs/core';
-import { FileCodec } from './codec/file-codec';
-import { ByteBuffer } from '@runejs/core/buffer';
+import mapCodec from '../codec/map-codec';
 
 
 (async () => {
@@ -26,17 +25,20 @@ import { ByteBuffer } from '@runejs/core/buffer';
     const fileStore = new FileStore();
     await fileStore.loadStoreArchives();
 
-    await fileStore.indexedArchives.get(2).unpack();
+    // await fileStore.indexedArchives.get(5).unpack();
 
-    const itemFile = fileStore.indexedArchives.get(2).files[10] as FileGroup;
-    const itemId = 1042;
-    const fileData = await itemFile.files[itemId].async('nodebuffer');
+    const mapFile = await fileStore.indexedArchives.get(5).loadFile(382, true) as FlatFile;
 
-    console.log(fileData);
+    console.log(mapFile.fileData);
 
-    const itemFileCodec = new FileCodec('item-codec-v3.json5');
+    const mapData = mapCodec.decode(mapFile.fileData);
 
-    itemFileCodec.decodeBinaryFile(itemId, new ByteBuffer(fileData));
+    // console.log(mapData);
+
+    console.log(mapCodec.encode(mapData));
+
+    // const itemFileCodec = new FileCodec('item-codec-v3.json5');
+    // itemFileCodec.decodeBinaryFile(itemId, new ByteBuffer(fileData));
 
     /*for(let i = 0; i < fileStore.indexedArchives.size; i++) {
         logger.info(`Indexing archive ${i}...`);

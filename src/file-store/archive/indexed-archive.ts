@@ -379,7 +379,7 @@ export class IndexedArchive {
             const folder = zipArchive.folder(fileEntry.file);
             return new FileGroup(this._manifest, fileId, folder);
         } else {
-            const fileData = loadFileData && file ? new ByteBuffer(file.nodeStream().read() as Buffer) : null;
+            const fileData = loadFileData && file ? new ByteBuffer(await file.async('nodebuffer')) : null;
             return new FlatFile(this._manifest, fileId, fileData);
         }
     }

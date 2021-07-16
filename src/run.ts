@@ -1,6 +1,6 @@
 import { FileStore, FlatFile } from './file-store';
 import { logger } from '@runejs/core';
-import mapCodec from '../codec/map-codec';
+import mapCodec from './codec/maps/map-codec';
 
 
 (async () => {
@@ -23,11 +23,12 @@ import mapCodec from '../codec/map-codec';
     const start = Date.now();
 
     const fileStore = new FileStore();
-    await fileStore.loadStoreArchives();
+    // await fileStore.loadStoreArchives();
 
     // await fileStore.indexedArchives.get(5).unpack();
 
-    const mapFile = await fileStore.indexedArchives.get(5).loadFile(382, true) as FlatFile;
+    const mapArchive = await fileStore.getArchive(5);
+    const mapFile = await mapArchive.loadFile(382, true) as FlatFile;
 
     console.log(mapFile.fileData);
 

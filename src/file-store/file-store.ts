@@ -16,6 +16,22 @@ export class FileStore {
         this.fileStorePath = fileStorePath ?? './stores';
     }
 
+    public async getArchive(indexId: number | IndexName): Promise<IndexedArchive> {
+        let indexName: IndexName;
+        if(typeof indexId !== 'number') {
+            indexName = indexId;
+            indexId = indexIdMap[indexName];
+        } else {
+            indexName = getIndexName(indexId);
+        }
+
+        if(this.indexedArchives.has(indexId)) {
+            return this.indexedArchives.get(indexId);
+        } else {
+            return await this.loadStoreArchive(indexId, indexName);
+        }
+    }
+
     public async loadStoreArchive(indexId: number, indexName: IndexName): Promise<IndexedArchive> {
         const indexedArchive = new IndexedArchive(this, indexId, indexName);
         this.indexedArchives.set(indexId, indexedArchive);

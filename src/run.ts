@@ -1,18 +1,21 @@
 import { FileStore, FlatFile } from './file-store';
 import { logger } from '@runejs/core';
 import mapCodec from './codec/maps/map-codec';
+import { ClientFileStore, loadXteaRegionFiles } from './client-store';
 
 
 (async () => {
-    // const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
+    const start = Date.now();
 
-    /*const clientFileStore = new ClientFileStore('./packed', {
+    const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
+
+    const clientFileStore = new ClientFileStore('./packed', {
         configDir: './config',
         xteas: await xteaRegions()
-    });*/
+    });
 
     // Decode a packed client cache with this line vvv
-    // clientFileStore.getAllIndexes().forEach(index => index.generateArchive(true));
+    clientFileStore.getAllIndexes().forEach(index => index.generateArchive(false));
 
     // Decode a single packed client cache archive with this line vvv
     // await clientFileStore.getIndex(0).generateArchive();
@@ -20,9 +23,8 @@ import mapCodec from './codec/maps/map-codec';
 
 
 
-    const start = Date.now();
 
-    const fileStore = new FileStore();
+    /*const fileStore = new FileStore();
     // await fileStore.loadStoreArchives();
 
     // await fileStore.indexedArchives.get(5).unpack();
@@ -36,7 +38,7 @@ import mapCodec from './codec/maps/map-codec';
 
     // console.log(mapData);
 
-    console.log(mapCodec.encode(mapData));
+    // console.log(mapCodec.encode(mapData));*/
 
     // const itemFileCodec = new FileCodec('item-codec-v3.json5');
     // itemFileCodec.decodeBinaryFile(itemId, new ByteBuffer(fileData));
@@ -52,8 +54,8 @@ import mapCodec from './codec/maps/map-codec';
 
     // await fileStore.indexedArchives.get(8).unpack();
 
+
     const end = Date.now();
     const duration = end - start;
-
     logger.info(`Operations completed in ${duration / 1000} seconds.`);
 })();

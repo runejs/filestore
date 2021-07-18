@@ -63,7 +63,7 @@ export class RegionStore {
     private readonly regionIndex: FileIndex;
 
     public constructor(private fileStore: ClientFileStore, xteas?: { [p: number]: XteaDefinition }) {
-        this.regionIndex = this.fileStore.getIndex('regions');
+        this.regionIndex = this.fileStore.getIndex('maps');
         if(xteas) {
             this.xteas = xteas;
         } else {

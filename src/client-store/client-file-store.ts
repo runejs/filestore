@@ -1,13 +1,13 @@
 import { ClientStoreChannel, loadClientStore } from './data';
 import { FileIndex} from './file-index';
-import { getFileNames, XteaRegion } from './util';
+import { getFileNames } from './util';
 import {
     SpriteStore, MusicStore, BinaryStore, JingleStore, SoundStore,
     RegionStore, ConfigStore, ModelStore, WidgetStore, FontStore,
     TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition,
     VarbitStore
 } from './stores';
-import { indexIdMap, IndexName } from '../file-store/index-manifest';
+import { indexIdMap, IndexName } from '../file-store';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -74,7 +74,7 @@ export class ClientFileStore {
 
     /**
      * Fetches the specified File Index.
-     * @param indexId The string or numberic ID of the File Index to find.
+     * @param indexId The string or numeric ID of the File Index to find.
      */
     public getIndex(indexId: number | IndexName): FileIndex {
         if(typeof indexId !== 'number') {
@@ -96,6 +96,10 @@ export class ClientFileStore {
         const indexNames = Object.keys(indexIdMap);
         const indexes = new Array(indexNames.length) as FileIndex[];
         indexNames.forEach(indexName => {
+            if(indexName === 'main') {
+                return;
+            }
+
             const indexId: number = indexIdMap[indexName];
             indexes[indexId] = this.getIndex(indexId);
         });

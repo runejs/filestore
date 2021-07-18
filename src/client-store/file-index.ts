@@ -349,7 +349,8 @@ export class FileIndex {
                 const fileGroup = file as ClientFileGroup;
                 const folder = storeZip.folder(`${fileName}`);
                 fileGroup.decodeArchiveFiles();
-                const archiveFileCount = fileGroup.files.size;
+                const groupFileKeys = Array.from(fileGroup.files.keys());
+                const groupFileCount = groupFileKeys.length;
 
                 fileIndexMap[fileIndex] = {
                     file: `${fileName}/`,
@@ -359,22 +360,37 @@ export class FileIndex {
                     version: file.version || -1,
                     crc: CRC32.buf(fileGroup.content),
                     sha256: hash.update(fileGroup.content).digest('hex'),
-                    children: new Array(archiveFileCount)
+                    children: new Array(groupFileCount)
                 };
 
-                for(let archiveFileId = 0; archiveFileId < archiveFileCount; archiveFileId++) {
-                    const archiveFile = fileGroup.getFile(archiveFileId);
-                    const archiveFileName = archiveFileId + (archiveFile.nameHash ? '_' +
-                        getFileName(archiveFile.nameHash) : '');
+                let childArrayIndex = 0;
 
-                    if(!archiveFile?.content) {
-                        pushError(errors, fileIndex, file.name, file.nameHash, `File group ${fileIndex} not found`);
+                for(const fileKey of groupFileKeys) {
+                    const groupedFileIndex = Number(fileKey);
+                    if(isNaN(groupedFileIndex)) {
+                        childArrayIndex++;
+                        pushError(errors, groupedFileIndex, file.name, file.nameHash,
+                            `Grouped file ${groupedFileIndex} has an invalid index`);
                         continue;
                     }
 
-                    folder.file(archiveFileName + fileExt, Buffer.from(archiveFile.content));
+                    const groupedFile = fileGroup.getFile(groupedFileIndex);
+                    const groupedFileName = groupedFileIndex + (groupedFile.nameHash ? '_' +
+                        getFileName(groupedFile.nameHash) : '');
 
-                    fileIndexMap[fileIndex].children[archiveFileId] = archiveFileName + fileExt;
+                    if(!groupedFile?.content) {
+                        pushError(errors, groupedFileIndex, file.name, file.nameHash,
+                            `Grouped file ${groupedFileIndex} not found`);
+                        continue;
+                    }
+
+                    folder.file(groupedFileName + fileExt, Buffer.from(groupedFile.content));
+
+                    if(groupedFileIndex !== childArrayIndex) {
+                        logger.warn(`Grouped file ${childArrayIndex} is out of order - expected ${groupedFileIndex}`);
+                    }
+
+                    fileIndexMap[fileIndex].children[childArrayIndex++] = groupedFileName + fileExt;
                 }
             } else {
                 // Write single file

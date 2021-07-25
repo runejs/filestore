@@ -3,13 +3,12 @@ import fs from 'fs';
 import path, { join } from 'path';
 import JSZip from 'jszip';
 import { logger } from '@runejs/core';
-import { FileMetadata, getCompressionKey, getIndexId, IndexManifest, IndexName } from '../index-manifest';
-import { FlatFile } from './flat-file';
-import { FileGroup } from './file-group';
+import { FileMetadata, IndexManifest} from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { hashFileName } from '../../client-store';
 import { compressFile } from '../../compression';
-import { IndexedFile } from './indexed-file';
+import { IndexedFile, FlatFile, FileGroup } from '../file';
+import { compressionKey, IndexName } from './config';
 
 
 export class IndexedArchive {
@@ -37,11 +36,11 @@ export class IndexedArchive {
     public async indexArchiveFiles(): Promise<void> {
         await this.unpack(false);
 
-        const storeZip = await this.loadZip();
+        /*const storeZip = await this.loadZip();
 
         if(!storeZip) {
             return;
-        }
+        }*/
 
         logger.info(`Indexing ${this.filePath}...`);
         logger.info(`Original file count: ${Object.keys(this.files).length}`);
@@ -67,8 +66,11 @@ export class IndexedArchive {
         };
 
         const extension = this._manifest.fileExtension;
-        const fileNames = Object.keys(storeZip.files).filter(fileName => {
-            if(!fileName) {
+
+        const storeDirectory = fs.readdirSync(this.filePath);
+
+        const fileNames = storeDirectory.filter(fileName => {
+            if(!fileName || fileName === '.manifest.json' || fileName === '.errors.json') {
                 return false;
             }
 
@@ -92,7 +94,14 @@ export class IndexedArchive {
         let newFileIndex = this.createNewFileIndex();
 
         for(let fileName of fileNames) {
-            const zippedFile = storeZip.files[fileName];
+            // const zippedFile = storeZip.files[fileName];
+            const indexedFilePath = path.join(this.filePath, fileName);
+            if(!fs.existsSync(indexedFilePath)) {
+                logger.error(`File ${fileName} not found.`);
+                continue;
+            }
+
+            const fileStats = fs.statSync(indexedFilePath);
             const oldFileIndex: number = originalFileIndex(fileName, existingFileList);
             const oldFile: FileMetadata | null = oldFileIndex !== -1 ? this._manifest.files[oldFileIndex] ?? null : null;
             const fileIndex = oldFileIndex !== -1 ? oldFileIndex : newFileIndex++;
@@ -113,17 +122,13 @@ export class IndexedArchive {
 
             let indexedFile: IndexedFile;
 
-            if(zippedFile.dir) {
-                const folder = storeZip.folder(fileName);
-                newFile.children = [];
-
-                folder.forEach(fileName => newFile.children.push(fileName));
-
-                indexedFile = new FileGroup(this._manifest, fileIndex, folder);
-
+            if(fileStats.isDirectory()) {
+                // Read the child file names
+                newFile.children = fs.readdirSync(indexedFilePath);
+                indexedFile = new FileGroup(this, fileIndex, newFile);
+                await (indexedFile as FileGroup).loadFiles();
             } else {
-                const fileData = await zippedFile.async('nodebuffer');
-                indexedFile = new FlatFile(this._manifest, fileIndex, new ByteBuffer(fileData));
+                indexedFile = new FlatFile(this, fileIndex, new ByteBuffer(fs.readFileSync(indexedFilePath)));
             }
 
             newFile.sha256 = await indexedFile.generateShaHash();
@@ -138,8 +143,8 @@ export class IndexedArchive {
             } else if(oldFile.sha256 !== newFile.sha256) {
                 // Use the more modern SHA256 for comparison instead of CRC32
                 // Update the file's version number if it already existed and has changed
-                newFile.version++;
-                logger.info(`File ${fileIndex} version increased from ${newFile.version - 1} to ${newFile.version}`);
+                // newFile.version++;
+                // logger.info(`File ${fileIndex} version increased from ${newFile.version - 1} to ${newFile.version}`);
             }
 
             // Save space and don't include a version number for first-version files
@@ -154,16 +159,13 @@ export class IndexedArchive {
         this._manifest.crc = await IndexedFile.generateCrc32(indexData);
         this._manifest.sha256 = await IndexedFile.generateShaHash(indexData);
 
-        storeZip.file(`.manifest.json`, JSON.stringify(this._manifest, null, 4));
+        if(fs.existsSync(this.outputFilePath)) {
+            fs.rmSync(this.outputFilePath, { recursive: true });
+        }
 
-        await new Promise<void>(resolve => {
-            storeZip.generateNodeStream({ type: 'nodebuffer', streamFiles: true })
-                .pipe(fs.createWriteStream(this.outputFilePath))
-                .on('finish', () => {
-                    logger.info(`${this.outputFilePath} written.`);
-                    resolve();
-                });
-        });
+        fs.mkdirSync(this.outputFilePath);
+
+        fs.writeFileSync(path.join(this.outputFilePath, '.manifest.json'), JSON.stringify(this._manifest, null, 4));
     }
 
     /**
@@ -177,54 +179,15 @@ export class IndexedArchive {
                         compressFileData: boolean = true,
                         forceAsync: boolean = false): Promise<void> {
         const fileIndexes = Object.keys(this._manifest.files).map(indexStr => parseInt(indexStr, 10));
-        const zipArchive = await this.loadZip();
 
         for(const index of fileIndexes) {
-            const fileMetadata = this.manifest.files[index];
-            const fileName = fileMetadata?.file ?? '';
-            if(!fileName) {
-                logger.warn(`File ${index} was not found within the archive manifest file.`);
-                continue;
+            const indexedFile = await this.loadFile(index, loadFileData);
+
+            if(loadFileData && compressFileData) {
+                await indexedFile.compress();
             }
 
-            const file = zipArchive.files[fileName];
-            if(!file) {
-                logger.warn(`File ${index} was not found within the zip archive.`);
-                continue;
-            }
-
-            try {
-                let indexedFile: IndexedFile;
-
-                if(file.dir) {
-                    // logger.info(`Loading file group ${index} children...`);
-                    const zippedFolder = zipArchive.folder(fileName);
-                    indexedFile = new FileGroup(this._manifest, index, zippedFolder);
-                } else {
-                    // logger.info(`Loading file ${index} data...`);
-                    let fileData: Buffer | null;
-                    if(loadFileData) {
-                        if(fileMetadata.fileSize && !forceAsync) {
-                            fileData = loadFileData ? file.nodeStream().read(fileMetadata.fileSize) as Buffer : null;
-                        }
-
-                        if(!fileData || forceAsync) {
-                            fileData = await file.async('nodebuffer');
-                        }
-                    }
-
-                    indexedFile = new FlatFile(this._manifest, index, fileData ? new ByteBuffer(fileData) : null);
-                }
-
-                if(loadFileData) {
-                    await indexedFile.compress();
-                }
-
-                this.files[index] = indexedFile;
-            } catch(error) {
-                logger.error(`Error loading file ${index}:`);
-                logger.error(error);
-            }
+            this.files[index] = indexedFile;
         }
 
         this.loaded = true;
@@ -321,7 +284,8 @@ export class IndexedArchive {
                         if(!childFile) {
                             buffer.put(0, 'int');
                         } else {
-                            const fileName = childFile.replace(this.manifest.fileExtension, '');
+                            const fileName = this.manifest.fileExtension ?
+                                childFile.replace(this.manifest.fileExtension, '') : childFile;
                             const nameHash: number = /[a-z]/ig.test(fileName) ?
                                 hashFileName(fileName) : parseInt(fileName, 10);
                             buffer.put(nameHash, 'int');
@@ -335,7 +299,7 @@ export class IndexedArchive {
 
         const archiveData = buffer.flipWriter();
 
-        const compression = getCompressionKey(this.manifest.fileCompression);
+        const compression = compressionKey[this.manifest.fileCompression];
 
         return compressFile({
             buffer: archiveData,
@@ -345,12 +309,12 @@ export class IndexedArchive {
 
     /**
      * Loads the specified file from the zip archive on disc.
-     * @param fileId The index of the file to load.
+     * @param fileIndex The index of the file to load.
      * @param loadFileData Whether or not to load the file's data into memory automatically. Defaults to true.
      * @param zipArchive [optional] An active instance of the zip archive object from JSZip may be passed in to
      * avoid the zip file being repeatedly loaded and unloaded for multi-file loading.
      */
-    public async loadFile(fileId: number, loadFileData: boolean = true,
+    public async loadFile(fileIndex: number, loadFileData: boolean = true,
                           zipArchive?: JSZip): Promise<FlatFile | FileGroup | null> {
         if(!this._manifest) {
             logger.error(`Index manifest not found - archive not yet loaded. ` +
@@ -359,28 +323,41 @@ export class IndexedArchive {
         }
 
         if(!zipArchive) {
-            zipArchive = await this.loadZip();
+            // zipArchive = await this.loadZip();
         }
 
-        const fileEntry = this._manifest.files[`${fileId}`];
+        const fileEntry: FileMetadata = this._manifest.files[`${fileIndex}`];
         if(!fileEntry) {
-            logger.error(`File ${fileId} was not found within the archive manifest.`);
+            logger.error(`File ${fileIndex} was not found within the archive manifest.`);
             return null;
         }
 
-        const file = zipArchive.files[fileEntry.file] ?? zipArchive.files[fileEntry.file + '/'];
+        const filePath = path.join(this.filePath, fileEntry.file);
+
+        if(!fs.existsSync(filePath)) {
+            logger.error(`File ${fileIndex} was not found.`);
+            return null;
+        }
+
+        const fileStats = fs.statSync(filePath);
+
+        /*const file = zipArchive.files[fileEntry.file] ?? zipArchive.files[fileEntry.file + '/'];
 
         if(!file) {
             logger.error(`File ${fileEntry.file} was not found.`);
             return null;
-        }
+        }*/
 
-        if(file.dir) {
-            const folder = zipArchive.folder(fileEntry.file);
-            return new FileGroup(this._manifest, fileId, folder);
+        if(fileStats.isDirectory()) {
+            // const folder = zipArchive.folder(fileEntry.file);
+            const fileGroup = new FileGroup(this, fileIndex, fileEntry);
+            if(loadFileData) {
+                await fileGroup.loadFiles();
+            }
+            return fileGroup;
         } else {
-            const fileData = loadFileData && file ? new ByteBuffer(await file.async('nodebuffer')) : null;
-            return new FlatFile(this._manifest, fileId, fileData);
+            const fileData = loadFileData && fileStats ? new ByteBuffer(fs.readFileSync(filePath)) : null;
+            return new FlatFile(this, fileIndex, fileData);
         }
     }
 
@@ -388,12 +365,41 @@ export class IndexedArchive {
      * Loads the archive's manifest and error log files from the zip archive on disc.
      * @param force Force re-load the manifest if it is already loaded. Defaults to false.
      */
-    public async loadManifestFile(force: boolean = false): Promise<IndexManifest | null> {
+    public loadManifestFile(force: boolean = false): IndexManifest | null {
         if(this.loaded && !force) {
             return this._manifest ?? null;
         }
 
-        const zipArchive = await this.loadZip();
+        if(!fs.existsSync(this.filePath)) {
+            throw new Error(`${this.filePath} does not exist!`);
+        }
+
+        const manifestFilePath = path.join(this.filePath, '.manifest.json');
+
+        if(!fs.existsSync(manifestFilePath)) {
+            throw new Error(`No manifest file found for index ${this.indexName}!`);
+        }
+
+        const manifestFileContent = fs.readFileSync(manifestFilePath, 'utf-8');
+
+        if(manifestFileContent) {
+            this._manifest = JSON.parse(manifestFileContent);
+        }
+
+        const errorFilePath = path.join(this.filePath, '.errors.json');
+
+        if(fs.existsSync(errorFilePath)) {
+            const errorFileContent = fs.readFileSync(errorFilePath, 'utf-8');
+            if(errorFileContent) {
+                this._fileErrors = JSON.parse(errorFileContent);
+            }
+        }
+
+        if(!this._manifest) {
+            throw new Error(`Error loading manifest for index ${this.indexName}.`);
+        }
+
+        /*const zipArchive = await this.loadZip();
 
         if(!zipArchive) {
             logger.error(`Store zip not found.`);
@@ -418,14 +424,14 @@ export class IndexedArchive {
             return this._manifest ?? null;
         }
 
-        const errorLogFile = zipArchive.files['.error-log.json' ];
+        const errorLogFile = zipArchive.files['.errors.json' ];
         if(errorLogFile) {
             logger.info(`Error log found for index ${this.indexId}.`);
             const errorLogContent = await errorLogFile.async('string');
             this._fileErrors = JSON.parse(errorLogContent) as { [key: string]: string[] };
         }
 
-        this._manifest = JSON.parse(await manifestFile.async('string')) as IndexManifest;
+        this._manifest = JSON.parse(await manifestFile.async('string')) as IndexManifest;*/
         this.loaded = true;
 
         return this._manifest;
@@ -469,7 +475,7 @@ export class IndexedArchive {
     }
 
     public get archiveName(): string {
-        return getIndexId(this.indexId) as string;
+        return this._manifest?.name;
     }
 
     public get fileNames(): boolean {
@@ -477,11 +483,11 @@ export class IndexedArchive {
     }
 
     public get filePath(): string {
-        return join(this.fileStore.fileStorePath, `${this.indexId}_${this.indexName}.zip`);
+        return join(this.fileStore.fileStorePath, `${this.indexName}`);
     }
 
     public get outputFilePath(): string {
-        return join(this.storeOutputDir, `${this.indexId}_${this.indexName}.zip`);
+        return join(this.storeOutputDir, `${this.indexName}`);
     }
 
     public get storeOutputDir(): string {

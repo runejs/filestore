@@ -196,36 +196,36 @@ export class SpritePack {
             throw new Error(`Empty file content for Sprite Pack ${this.fileData.fileId}.`);
         } else {
             buffer.readerIndex = (buffer.length - 2);
-            const spriteCount = buffer.get('SHORT', 'UNSIGNED');
+            const spriteCount = buffer.get('short', 'unsigned');
             const sprites: Sprite[] = new Array(spriteCount);
 
             buffer.readerIndex = (buffer.length - 7 - spriteCount * 8);
-            const width = buffer.get('SHORT', 'UNSIGNED');
-            const height = buffer.get('SHORT', 'UNSIGNED');
-            const paletteLength = buffer.get('BYTE', 'UNSIGNED') + 1;
+            const width = buffer.get('short', 'unsigned');
+            const height = buffer.get('short', 'unsigned');
+            const paletteLength = buffer.get('byte', 'unsigned') + 1;
 
             for(let i = 0; i < spriteCount; i++) {
                 sprites[i] = new Sprite(i, width, height);
             }
 
             for(let i = 0; i < spriteCount; i++) {
-                sprites[i].offsetX = buffer.get('SHORT', 'UNSIGNED');
+                sprites[i].offsetX = buffer.get('short', 'unsigned');
             }
             for(let i = 0; i < spriteCount; i++) {
-                sprites[i].offsetY = buffer.get('SHORT', 'UNSIGNED');
+                sprites[i].offsetY = buffer.get('short', 'unsigned');
             }
             for(let i = 0; i < spriteCount; i++) {
-                sprites[i].width = buffer.get('SHORT', 'UNSIGNED');
+                sprites[i].width = buffer.get('short', 'unsigned');
             }
             for(let i = 0; i < spriteCount; i++) {
-                sprites[i].height = buffer.get('SHORT', 'UNSIGNED');
+                sprites[i].height = buffer.get('short', 'unsigned');
             }
 
             buffer.readerIndex = (buffer.length - 7 - spriteCount * 8 - (paletteLength - 1) * 3);
             const palette: number[] = new Array(paletteLength);
 
             for(let i = 1; i < paletteLength; i++) {
-                palette[i] = buffer.get('INT24');
+                palette[i] = buffer.get('int24');
 
                 if(palette[i] === 0) {
                     palette[i] = 1;

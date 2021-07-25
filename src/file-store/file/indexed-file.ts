@@ -1,9 +1,10 @@
-import { getCompressionKey, IndexManifest } from '../index-manifest';
+import { logger } from '@runejs/core';
 import { ByteBuffer } from '@runejs/core/buffer';
 import * as CRC32 from 'crc-32';
-import { compressFile } from '../../compression';
-import { logger } from '@runejs/core';
 import { createHash } from 'crypto';
+import { IndexManifest } from '../index-manifest';
+import { compressFile } from '../../compression';
+import { IndexedArchive, compressionKey } from '../archive';
 
 
 export interface FileCompressionOptions {
@@ -19,10 +20,10 @@ export abstract class IndexedFile {
 
     protected _fileDataCompressed: boolean = false;
 
-    public constructor(indexManifest: IndexManifest,
+    public constructor(public readonly archive: IndexedArchive,
                        fileId: number,
                        fileData?: ByteBuffer | undefined) {
-        this.indexManifest = indexManifest;
+        this.indexManifest = this.archive.manifest;
         this.fileId = fileId;
         this.fileData = fileData;
     }
@@ -123,7 +124,7 @@ export abstract class IndexedFile {
     }
 
     public get fileCompression(): number {
-        return getCompressionKey(this.indexManifest.fileCompression);
+        return compressionKey[this.indexManifest.fileCompression];
     }
 
     public get fileDataCompressed(): boolean {

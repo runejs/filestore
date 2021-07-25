@@ -1,8 +1,6 @@
-import { ClientFileStore } from '../client-store';
 import { logger } from '@runejs/core';
 import fs from 'fs';
-import { IndexedArchive, FileGroup } from './archive';
-import { getIndexName, indexIdMap, IndexName } from './index-manifest';
+import { IndexedArchive, getIndexName, IndexName, archiveConfig } from './archive';
 import { ByteBuffer } from '@runejs/core/buffer';
 import JSZip from 'jszip';
 
@@ -16,11 +14,11 @@ export class FileStore {
         this.fileStorePath = fileStorePath ?? './stores';
     }
 
-    public async getArchive(indexId: number | IndexName): Promise<IndexedArchive> {
+    public getArchive(indexId: number | IndexName): IndexedArchive {
         let indexName: IndexName;
         if(typeof indexId !== 'number') {
             indexName = indexId;
-            indexId = indexIdMap[indexName];
+            indexId = archiveConfig[indexName].index;
         } else {
             indexName = getIndexName(indexId);
         }
@@ -28,14 +26,14 @@ export class FileStore {
         if(this.indexedArchives.has(indexId)) {
             return this.indexedArchives.get(indexId);
         } else {
-            return await this.loadStoreArchive(indexId, indexName);
+            return this.loadStoreArchive(indexId, indexName);
         }
     }
 
-    public async loadStoreArchive(indexId: number, indexName: IndexName): Promise<IndexedArchive> {
+    public loadStoreArchive(indexId: number, indexName: IndexName): IndexedArchive {
         const indexedArchive = new IndexedArchive(this, indexId, indexName);
         this.indexedArchives.set(indexId, indexedArchive);
-        await indexedArchive.loadManifestFile();
+        indexedArchive.loadManifestFile();
         return indexedArchive;
     }
 
@@ -127,14 +125,13 @@ export class FileStore {
         const promises = [];
         const archiveFiles = fs.readdirSync(this.fileStorePath);
         for(const archivePath of archiveFiles) {
-            if(!archivePath || archivePath.indexOf('.zip') === -1) {
+            if(!archivePath) {
                 continue;
             }
 
             try {
-                const [ indexIdStr, indexName ] = archivePath
-                    .replace('.zip', '').split('_');
-                const indexId = parseInt(indexIdStr, 10);
+                const indexName = archivePath.replace('/', '');
+                const indexId = archiveConfig[indexName].index;
 
                 const indexedArchive = new IndexedArchive(this, indexId, indexName);
                 this.indexedArchives.set(indexId, indexedArchive);

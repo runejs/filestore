@@ -1,4 +1,4 @@
-import { FileStore, FlatFile } from './file-store';
+import { FileStore } from './file-store';
 import { logger } from '@runejs/core';
 import mapCodec from './codec/maps/map-codec';
 import { ClientFileStore, loadXteaRegionFiles } from './client-store';
@@ -15,45 +15,43 @@ import { ClientFileStore, loadXteaRegionFiles } from './client-store';
     });
 
     // Decode a packed client cache with this line vvv
-    clientFileStore.getAllIndexes().forEach(index => index.generateArchive(false));
+    clientFileStore.getAllIndexes().forEach(index => index.decompressArchive(false));
 
     // Decode a single packed client cache archive with this line vvv
-    // await clientFileStore.getIndex(0).generateArchive();
+    // await clientFileStore.getIndex(0).decompressArchive();
 
 
 
 
 
-    /*const fileStore = new FileStore();
-    // await fileStore.loadStoreArchives();
+    const fileStore = new FileStore();
+    await fileStore.loadStoreArchives();
 
     // await fileStore.indexedArchives.get(5).unpack();
 
-    const mapArchive = await fileStore.getArchive(5);
+    /*const mapArchive = await fileStore.getArchive(5);
     const mapFile = await mapArchive.loadFile(382, true) as FlatFile;
 
     console.log(mapFile.fileData);
 
     const mapData = mapCodec.decode(mapFile.fileData);
 
-    // console.log(mapData);
+    console.log(mapData);
 
-    // console.log(mapCodec.encode(mapData));*/
+    console.log(mapCodec.encode(mapData));*/
 
     // const itemFileCodec = new FileCodec('item-codec-v3.json5');
     // itemFileCodec.decodeBinaryFile(itemId, new ByteBuffer(fileData));
 
     /*for(let i = 0; i < fileStore.indexedArchives.size; i++) {
+        // logger.info(`Unpacking archive ${i}...`);
         logger.info(`Indexing archive ${i}...`);
-        if(i === 5 || i === 7) {
-            await fileStore.indexedArchives.get(i).indexArchiveFiles();
-        }
+        await fileStore.indexedArchives.get(i).indexArchiveFiles();
     }*/
 
     // await fileStore.generateCrcTable();
 
-    // await fileStore.indexedArchives.get(8).unpack();
-
+    // await fileStore.getArchive('configs').unpack(true, true);
 
     const end = Date.now();
     const duration = end - start;

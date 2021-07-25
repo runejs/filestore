@@ -7,7 +7,8 @@ import {
     TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition,
     VarbitStore
 } from './stores';
-import { indexIdMap, IndexName } from '../file-store';
+import { IndexName } from '../file-store/archive';
+import { archiveConfig } from '../file-store/archive';
 
 
 export let fileNames: { [ key: string ]: string | null };
@@ -78,7 +79,7 @@ export class ClientFileStore {
      */
     public getIndex(indexId: number | IndexName): FileIndex {
         if(typeof indexId !== 'number') {
-            indexId = indexIdMap[indexId];
+            indexId = archiveConfig[indexId].index;
         }
 
         if(!this.indexes.has(indexId)) {
@@ -93,14 +94,14 @@ export class ClientFileStore {
     }
 
     public getAllIndexes(): FileIndex[] {
-        const indexNames = Object.keys(indexIdMap);
+        const indexNames = Object.keys(archiveConfig);
         const indexes = new Array(indexNames.length) as FileIndex[];
         indexNames.forEach(indexName => {
             if(indexName === 'main') {
                 return;
             }
 
-            const indexId: number = indexIdMap[indexName];
+            const indexId: number = archiveConfig[indexName].index;
             indexes[indexId] = this.getIndex(indexId);
         });
 

@@ -12,14 +12,12 @@ import { ClientStoreChannel, ExtractedFile, extractIndexedFile } from './data';
 import { hashFileName } from './util';
 import { ClientFileStore, getFileName } from './client-file-store';
 import {
-    fileExtensions,
-    getIndexId,
     IndexManifest,
-    IndexName,
     IndexedFileMap, FileErrorMap
 } from '../file-store';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { decompressFile } from '../compression';
+import { getArchiveConfig, getIndexName, IndexName } from '../file-store/archive';
 
 
 const NAME_FLAG = 0x01;
@@ -294,7 +292,7 @@ export class FileIndex {
      * landscape file (if it has one) does not have any XTEA encryption keys. This helps with finding map files
      * that specifically have valid corresponding landscape files.
      */
-    public async generateArchive(matchMapFiles: boolean = false): Promise<void> {
+    public async decompressArchive(matchMapFiles: boolean = false): Promise<void> {
         if(fs.existsSync(this.storePath)) {
             fs.rmSync(this.storePath, {
                 force: true,
@@ -302,15 +300,23 @@ export class FileIndex {
             });
         }
 
-        if(!fs.existsSync(this.storeOutputDir)) {
-            fs.mkdirSync(this.storeOutputDir, { recursive: true });
-        }
+        fs.mkdirSync(this.storePath, { recursive: true });
 
         logger.info(`Writing ${this.storePath}...`);
 
-        const storeZip = new JSZip();
-        const fileCount = this.files.size;
-        const fileExt = fileExtensions[this.name];
+        const archiveConfig = getArchiveConfig(this.indexId);
+
+        // const storeZip = new JSZip();
+        const fileKeys = Array.from(this.files.keys());
+        const fileCount = fileKeys.length;
+        const fileExt = archiveConfig.fileExtension;
+        const flattenFileGroups = archiveConfig.flattenFileGroups;
+        const childNameMap = archiveConfig.children;
+        let childNames: { [key: number]: string } = {};
+
+        if(childNameMap && Object.keys(childNameMap).length) {
+            Object.keys(childNameMap).forEach(childName => childNames[childNameMap[childName]] = childName);
+        }
 
         logger.info(`${fileCount} files found within this index.`);
 
@@ -329,9 +335,14 @@ export class FileIndex {
             }
         }
 
-        const fileContents: Buffer[] = new Array(fileCount);
+        for(const fileKey of fileKeys) {
+            const fileIndex = Number(fileKey);
+            if(isNaN(fileIndex)) {
+                pushError(errors, fileIndex, undefined, undefined,
+                    `File ${fileIndex} has an invalid index`);
+                continue;
+            }
 
-        for(let fileIndex = 0; fileIndex < fileCount; fileIndex++) {
             const file = this.files.get(fileIndex);
 
             if(!file) {
@@ -339,15 +350,15 @@ export class FileIndex {
                 continue;
             }
 
-            const fileName = file.nameHash ? getFileName(file.nameHash) : fileIndex;
+            const fileName = file.nameHash ? getFileName(file.nameHash) : childNames[fileIndex] ?? fileIndex;
 
             const hash = createHash('sha256');
 
-            if(file instanceof ClientFileGroup) {
+            if(file instanceof ClientFileGroup && !flattenFileGroups) {
                 // Write sub-archive/folder
 
                 const fileGroup = file as ClientFileGroup;
-                const folder = storeZip.folder(`${fileName}`);
+                // const folder = storeZip.folder(`${fileName}`);
                 fileGroup.decodeArchiveFiles();
                 const groupFileKeys = Array.from(fileGroup.files.keys());
                 const groupFileCount = groupFileKeys.length;
@@ -365,8 +376,13 @@ export class FileIndex {
 
                 let childArrayIndex = 0;
 
-                for(const fileKey of groupFileKeys) {
-                    const groupedFileIndex = Number(fileKey);
+                const folderPath = path.join(this.storePath, `${fileName}`);
+                if(!fs.existsSync(folderPath)) {
+                    fs.mkdirSync(folderPath);
+                }
+
+                for(const groupedFileKey of groupFileKeys) {
+                    const groupedFileIndex = Number(groupedFileKey);
                     if(isNaN(groupedFileIndex)) {
                         childArrayIndex++;
                         pushError(errors, groupedFileIndex, file.name, file.nameHash,
@@ -384,13 +400,14 @@ export class FileIndex {
                         continue;
                     }
 
-                    folder.file(groupedFileName + fileExt, Buffer.from(groupedFile.content));
+                    // folder.file(groupedFileName + fileExt, Buffer.from(groupedFile.content));
+                    fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt), Buffer.from(groupedFile.content));
 
                     if(groupedFileIndex !== childArrayIndex) {
                         logger.warn(`Grouped file ${childArrayIndex} is out of order - expected ${groupedFileIndex}`);
                     }
 
-                    fileIndexMap[fileIndex].children[childArrayIndex++] = groupedFileName + fileExt;
+                    fileIndexMap[fileIndex].children[childArrayIndex++] = groupedFileName + (fileExt ?? '');
                 }
             } else {
                 // Write single file
@@ -410,83 +427,60 @@ export class FileIndex {
                     continue;
                 }
 
-                fileContents[fileIndex] = Buffer.from(decompressedFile ?? file.content);
+                const fileContents = Buffer.from(decompressedFile ?? file.content);
+                fs.writeFileSync(path.join(this.storePath, file.name + (fileExt ?? '')), fileContents);
 
                 fileIndexMap[fileIndex] = {
-                    file: fileName + fileExt,
+                    file: fileName + (fileExt ?? ''),
                     realName: `${fileName}`,
-                    fileSize: 0,
+                    fileSize: fileContents.length,
                     nameHash: file.nameHash ?? undefined,
-                    crc: CRC32.buf(fileContents[fileIndex]),
-                    sha256: hash.update(fileContents[fileIndex]).digest('hex'),
+                    crc: CRC32.buf(fileContents),
+                    sha256: hash.update(fileContents).digest('hex'),
                     version: file.version || -1
                 };
             }
         }
 
-        const errorLogEntries = Object.values(errors);
-
-        for(let fileIndex = 0; fileIndex < fileCount; fileIndex++) {
-            const fileContent = fileContents[fileIndex];
-            const file = this.files.get(fileIndex);
-            if(!fileContent || !file) {
-                continue;
-            }
-
-            if(matchMapFiles) {
-                const mapFileCoords = file.name.substr(1);
-                const errorLogCheck = errorLogEntries.find(error => error?.name && error.name.indexOf(mapFileCoords) !== -1);
-                if(!errorLogCheck) {
-                    fileIndexMap[fileIndex].fileSize = fileContent.length;
-                    storeZip.file(file.name + fileExt, fileContent);
-                } else {
-                    pushError(errors, fileIndex, file.name, file.nameHash, `Missing landscape file for map ${fileIndex}`);
-                }
-            } else {
-                fileIndexMap[fileIndex].fileSize = fileContent.length;
-                storeZip.file(file.name + fileExt, fileContent);
-            }
-        }
-
         const indexEntry = extractIndexedFile(this.indexId, 255, this.filestoreChannels);
-        indexEntry.dataFile.readerIndex = 0;
-        const indexData = decompressFile(indexEntry.dataFile).buffer;
 
         const manifest: IndexManifest = {
             indexId: this.indexId,
             name: this.name as IndexName,
             fileCompression: !this.compression ? 'uncompressed' : (this.compression === 1 ? 'bzip' : 'gzip'),
-            fileExtension: fileExt,
+            fileExtension: fileExt ?? undefined,
             format: this.format,
             version: this.version,
             settings: this.settings,
-            crc: CRC32.buf(indexData),
-            sha256: createHash('sha256').update(indexData).digest('hex'),
+            crc: CRC32.buf(indexEntry.dataFile),
+            sha256: createHash('sha256').update(indexEntry.dataFile).digest('hex'),
             files: fileIndexMap
         };
 
-        storeZip.file(`.manifest.json`, JSON.stringify(manifest, null, 4));
+        // storeZip.file(`.manifest.json`, JSON.stringify(manifest, null, 4));
+        fs.writeFileSync(path.join(this.storePath, `.manifest.json`), JSON.stringify(manifest, null, 4));
 
         if(Object.keys(errors).length) {
-            storeZip.file(`.error-log.json`, JSON.stringify(errors, null, 4));
+            // storeZip.file(`.error-log.json`, JSON.stringify(errors, null, 4));
+            fs.writeFileSync(path.join(this.storePath, `.errors.json`), JSON.stringify(errors, null, 4));
         }
 
-        await new Promise<void>(resolve => {
+        /*await new Promise<void>(resolve => {
             storeZip.generateNodeStream({ type: 'nodebuffer', streamFiles: true })
                 .pipe(fs.createWriteStream(this.storePath))
                 .on('finish', () => {
                     logger.info(`${this.storePath} written.`);
                     resolve();
                 });
-        });
+        });*/
     }
 
     public get name(): string {
-        return getIndexId(this.indexId) as string;
+        return getIndexName(this.indexId) as string;
     }
 
     public get storePath(): string {
-        return path.join(this.storeOutputDir, `${this.indexId}_${this.name}.zip`);
+        return path.join(this.storeOutputDir, `${this.name}`);
     }
 
     public get storeOutputDir(): string {

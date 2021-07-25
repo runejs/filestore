@@ -1,3 +1,95 @@
 {
-    
+    // The index index of all indexes
+    main: {
+        index: 255,
+        compression: 'uncompressed'
+    },
+    // Regular indexes
+    animations: {
+        index: 0,
+        fileExtension: '.dat',
+        compression: 'bzip',
+        flattenFileGroups: true
+    },
+    bases: {
+        index: 1,
+        fileExtension: '.dat',
+        compression: 'gzip'
+    },
+    configs: {
+        index: 2,
+        fileExtension: '.dat',
+        compression: 'bzip',
+        children: {
+            underlays: 1,
+            // 2?
+            identity_kit: 3,
+            overlays: 4,
+            inv: 5,
+            objects: 6,
+            // 7?
+            enums: 8,
+            npcs: 9,
+            items: 10,
+            params: 11,
+            sequences: 12,
+            spot_anims: 13,
+            varbits: 14,
+            // 15?
+            player_vars: 16,
+            // 17?
+            // 18?
+            // ...?
+        }
+    },
+    widgets: {
+        index: 3,
+        fileExtension: '.dat',
+        compression: 'bzip'
+    },
+    sounds: {
+        index: 4,
+        fileExtension: '.wav',
+        compression: 'gzip'
+    },
+    maps: {
+        index: 5,
+        fileExtension: '.dat',
+        compression: 'bzip'
+    },
+    music: {
+        index: 6,
+        fileExtension: '.mid',
+        compression: 'gzip'
+    },
+    models: {
+        index: 7,
+        fileExtension: '.dat',
+        compression: 'gzip'
+    },
+    sprites: {
+        index: 8,
+        fileExtension: '.dat',
+        compression: 'gzip',
+        flattenFileGroups: true
+    },
+    textures: {
+        index: 9,
+        fileExtension: '.dat',
+        compression: 'gzip'
+    },
+    binary: {
+        index: 10,
+        compression: 'uncompressed'
+    },
+    jingles: {
+        index: 11,
+        fileExtension: '.ogg',
+        compression: 'gzip'
+    },
+    scripts: {
+        index: 12,
+        fileExtension: '.dat',
+        compression: 'gzip'
+    }
 }

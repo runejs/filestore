@@ -200,12 +200,12 @@ export class SpritePack {
             const sprites: Sprite[] = new Array(spriteCount);
 
             buffer.readerIndex = (buffer.length - 7 - spriteCount * 8);
-            const width = buffer.get('short', 'unsigned');
-            const height = buffer.get('short', 'unsigned');
+            const overallWidth = buffer.get('short', 'unsigned');
+            const overallHeight = buffer.get('short', 'unsigned');
             const paletteLength = buffer.get('byte', 'unsigned') + 1;
 
             for(let i = 0; i < spriteCount; i++) {
-                sprites[i] = new Sprite(i, width, height);
+                sprites[i] = new Sprite(i, overallWidth, overallHeight);
             }
 
             for(let i = 0; i < spriteCount; i++) {

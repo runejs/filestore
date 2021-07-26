@@ -7,7 +7,7 @@ import {
     TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition,
     VarbitStore
 } from './stores';
-import { IndexName } from '../file-store/archive';
+import { ArchiveName, IndexName } from '../file-store/archive';
 import { archiveConfig } from '../file-store/archive';
 
 
@@ -93,19 +93,16 @@ export class ClientFileStore {
         }
     }
 
+    public async decompressArchives(matchMapFiles: boolean = false): Promise<void> {
+        const indexes = this.getAllIndexes();
+        for(const index of indexes) {
+            await index.decompressArchive(matchMapFiles);
+        }
+    }
+
     public getAllIndexes(): FileIndex[] {
-        const indexNames = Object.keys(archiveConfig);
-        const indexes = new Array(indexNames.length) as FileIndex[];
-        indexNames.forEach(indexName => {
-            if(indexName === 'main') {
-                return;
-            }
-
-            const indexId: number = archiveConfig[indexName].index;
-            indexes[indexId] = this.getIndex(indexId);
-        });
-
-        return indexes;
+        const archiveNames: ArchiveName[] = Object.keys(archiveConfig).filter(name => name !== 'main') as ArchiveName[];
+        return archiveNames.map(archiveName => this.getIndex(archiveConfig[archiveName].index));
     }
 
     public get itemStore(): ItemStore {

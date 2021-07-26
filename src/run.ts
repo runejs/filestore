@@ -1,7 +1,12 @@
 import { FileStore } from './file-store';
 import { logger } from '@runejs/core';
-import mapCodec from './codec/maps/map-codec';
+import spriteCodec from './codec/archives/sprite.codec';
 import { ClientFileStore, loadXteaRegionFiles } from './client-store';
+import * as fs from 'fs';
+import path from 'path';
+import { PNG } from 'pngjs';
+import { ByteBuffer } from '@runejs/core/buffer';
+import { IndexedFile } from './file-store/file';
 
 
 (async () => {
@@ -14,8 +19,8 @@ import { ClientFileStore, loadXteaRegionFiles } from './client-store';
         xteas: await xteaRegions()
     });
 
-    // Decode a packed client cache with this line vvv
-    clientFileStore.getAllIndexes().forEach(index => index.decompressArchive(false));
+    // Decode a packed client cache with this vvv
+    await clientFileStore.decompressArchives(false);
 
     // Decode a single packed client cache archive with this line vvv
     // await clientFileStore.getIndex(0).decompressArchive();
@@ -25,7 +30,7 @@ import { ClientFileStore, loadXteaRegionFiles } from './client-store';
 
 
     const fileStore = new FileStore();
-    await fileStore.loadStoreArchives();
+    // await fileStore.loadStoreArchives();
 
     // await fileStore.indexedArchives.get(5).unpack();
 
@@ -51,7 +56,36 @@ import { ClientFileStore, loadXteaRegionFiles } from './client-store';
 
     // await fileStore.generateCrcTable();
 
-    // await fileStore.getArchive('configs').unpack(true, true);
+    /*
+    @TODO vvv Cleanup Sprite Codec Testing
+    await fileStore.getArchive('sprites').unpack(true, false);
+
+    const spriteArchive = fileStore.getArchive('sprites');
+    const spriteKeys = Object.keys(spriteArchive.files);
+
+    const spritesDir = path.join('output', 'sprites');
+    if(fs.existsSync(spritesDir)) {
+        fs.rmSync(spritesDir, { recursive: true });
+    }
+
+    fs.mkdirSync(spritesDir, { recursive: true });
+
+    for(const spriteKey of spriteKeys) {
+        const sprite: IndexedFile = spriteArchive.files[spriteKey];
+        if(sprite.fileData) {
+            const image = spriteCodec.decode(sprite.fileData);
+
+            try {
+                image.pack();
+
+                const pngBuffer = PNG.sync.write(image);
+                fs.writeFileSync(path.join(spritesDir, `${sprite.fileName}.png`), pngBuffer);
+            } catch(error) {
+                logger.error(`Error writing sprite ${spriteKey}.`);
+            }
+        }
+    }
+    const sprite = fileStore.getArchive('sprites').files[494].fileData;*/
 
     const end = Date.now();
     const duration = end - start;

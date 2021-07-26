@@ -69,7 +69,7 @@
     },
     sprites: {
         index: 8,
-        fileExtension: '.dat',
+        fileExtension: '.png',
         compression: 'gzip',
         flattenFileGroups: true
     },

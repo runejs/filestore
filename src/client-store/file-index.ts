@@ -17,7 +17,8 @@ import {
 } from '../file-store';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { decompressFile } from '../compression';
-import { getArchiveConfig, getIndexName, IndexName } from '../file-store/archive';
+import { ArchiveName, getArchiveConfig, getIndexName, IndexName } from '../file-store/archive';
+import { decode, encode } from '../codec/archives';
 
 
 const NAME_FLAG = 0x01;
@@ -324,7 +325,7 @@ export class FileIndex {
         const errors: FileErrorMap = {};
 
         const pushError = (errors: FileErrorMap, fileIdx: number, name: string, nameHash: number, error) => {
-            logger.error(error);
+            // logger.error(error);
 
             if(errors[fileIdx]) {
                 errors[fileIdx].errors.push(error);
@@ -334,6 +335,8 @@ export class FileIndex {
                 };
             }
         }
+
+        const archiveName = getIndexName(this.indexId) as ArchiveName;
 
         for(const fileKey of fileKeys) {
             const fileIndex = Number(fileKey);
@@ -401,7 +404,8 @@ export class FileIndex {
                     }
 
                     // folder.file(groupedFileName + fileExt, Buffer.from(groupedFile.content));
-                    fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt), Buffer.from(groupedFile.content));
+                    fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt),
+                        decode(archiveName, groupedFile.content));
 
                     if(groupedFileIndex !== childArrayIndex) {
                         logger.warn(`Grouped file ${childArrayIndex} is out of order - expected ${groupedFileIndex}`);
@@ -422,13 +426,21 @@ export class FileIndex {
                     }
                 }
 
-                if(!(decompressedFile ?? file.content)) {
+                const fileContents = decompressedFile ?? file.content;
+
+                if(!fileContents) {
                     pushError(errors, fileIndex, file.name, file.nameHash, `File not found`);
                     continue;
                 }
 
-                const fileContents = Buffer.from(decompressedFile ?? file.content);
-                fs.writeFileSync(path.join(this.storePath, file.name + (fileExt ?? '')), fileContents);
+                const decodedContent = decode(archiveName, fileContents);
+
+                if(!decodedContent) {
+                    pushError(errors, fileIndex, file.name, file.nameHash, `Error decoding file content`);
+                    continue;
+                }
+
+                fs.writeFileSync(path.join(this.storePath, file.name + (fileExt ?? '')), decodedContent);
 
                 fileIndexMap[fileIndex] = {
                     file: fileName + (fileExt ?? ''),

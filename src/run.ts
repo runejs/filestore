@@ -20,10 +20,10 @@ import { IndexedFile } from './file-store/file';
     });
 
     // Decode a packed client cache with this vvv
-    await clientFileStore.decompressArchives(false);
+    // await clientFileStore.decompressArchives(false);
 
     // Decode a single packed client cache archive with this line vvv
-    // await clientFileStore.getIndex(0).decompressArchive();
+    await clientFileStore.getIndex('sprites').decompressArchive();
 
 
 

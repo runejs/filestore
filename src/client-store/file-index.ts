@@ -404,8 +404,8 @@ export class FileIndex {
                     }
 
                     // folder.file(groupedFileName + fileExt, Buffer.from(groupedFile.content));
-                    fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt),
-                        decode(archiveName, groupedFile.content));
+
+                    fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt), decode(archiveName, groupedFile.content) as Buffer);
 
                     if(groupedFileIndex !== childArrayIndex) {
                         logger.warn(`Grouped file ${childArrayIndex} is out of order - expected ${groupedFileIndex}`);
@@ -435,12 +435,31 @@ export class FileIndex {
 
                 const decodedContent = decode(archiveName, fileContents);
 
-                if(!decodedContent) {
+                if(!decodedContent?.length) {
                     pushError(errors, fileIndex, file.name, file.nameHash, `Error decoding file content`);
                     continue;
                 }
 
-                fs.writeFileSync(path.join(this.storePath, file.name + (fileExt ?? '')), decodedContent);
+                if(decodedContent[0] !== undefined && decodedContent[0] instanceof Buffer && decodedContent.length > 1) {
+                    const groupDir = path.join(this.storePath, file.name);
+                    fs.mkdirSync(groupDir);
+
+                    for(let i = 0; i < decodedContent.length; i++) {
+                        const groupedFile = decodedContent[i] as Buffer | null;
+                        if(!groupedFile) {
+                            continue;
+                        }
+
+                        fs.writeFileSync(path.join(groupDir, i + (fileExt ?? '')), groupedFile);
+                    }
+                } else {
+                    try {
+                        fs.writeFileSync(path.join(this.storePath, file.name + (fileExt ?? '')),
+                            decodedContent[0] instanceof Buffer ? decodedContent[0] : decodedContent as Buffer);
+                    } catch(error) {
+                        logger.error(`Error writing file:`, error, decodedContent);
+                    }
+                }
 
                 fileIndexMap[fileIndex] = {
                     file: fileName + (fileExt ?? ''),

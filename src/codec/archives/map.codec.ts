@@ -53,7 +53,7 @@ export default {
     archive: 'maps',
     revision: '414-458',
 
-    decode: buffer => {
+    decode: (buffer: ByteBuffer) => {
         buffer.readerIndex = 0;
 
         const mapData = new MapData().forEach((mapData, plane, x, y) => {

@@ -12,7 +12,7 @@ export const fileCodecs: { [key in ArchiveName]?: FileCodec } = {
     sprites: spriteCodec
 };
 
-export function decode(archiveName: ArchiveName, buffer: ByteBuffer): Buffer | string {
+export function decode(archiveName: ArchiveName, buffer: ByteBuffer): Buffer | Buffer[] | string {
     if(fileCodecs[archiveName]) {
         return fileCodecs[archiveName].decode(buffer);
     } else {
@@ -20,13 +20,21 @@ export function decode(archiveName: ArchiveName, buffer: ByteBuffer): Buffer | s
     }
 }
 
-export function encode(archiveName: ArchiveName, jsonData: string): ByteBuffer | null;
-export function encode(archiveName: ArchiveName, buffer: Buffer): ByteBuffer;
-export function encode(archiveName: ArchiveName, buffer: Buffer | string): ByteBuffer | null {
+export function encode(archiveName: ArchiveName, jsonData: string): ByteBuffer | ByteBuffer[] | null;
+export function encode(archiveName: ArchiveName, buffer: Buffer | Buffer[]): ByteBuffer | ByteBuffer[];
+export function encode(archiveName: ArchiveName, buffer: Buffer | Buffer[] | string): ByteBuffer | ByteBuffer[] | null {
     if(fileCodecs[archiveName]) {
         return fileCodecs[archiveName].encode(buffer);
     } else if(typeof buffer !== 'string') {
-        return new ByteBuffer(buffer);
+        if(buffer?.length && buffer[0] !== undefined) {
+            if(typeof buffer[0] !== 'number') {
+                return (buffer as Buffer[]).map(ByteBuffer.fromNodeBuffer) as ByteBuffer[];
+            } else {
+                return new ByteBuffer(buffer as Buffer);
+            }
+        } else {
+            return null;
+        }
     } else {
         return null;
     }

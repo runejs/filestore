@@ -3,6 +3,7 @@ import FileCodec from '../file-codec';
 import { PNG } from 'pngjs';
 import { toRgb } from '../../client-store';
 import { logger } from '@runejs/core';
+import { argbToRgba } from '../../util/colors';
 
 
 /**
@@ -60,6 +61,14 @@ export class Sprite {
         this.spriteSheet = spriteSheet;
     }
 
+    public getAlpha(pixelIndex: number): number {
+        if(this.hasAlpha) {
+            return this.pixels[pixelIndex] >> 24;
+        }
+
+        return this.paletteIndices[pixelIndex] !== 0 ? 0xff : 0
+    }
+
     public get storageMethod(): SpriteStorageMethod {
         return (this.settings & 0b01) === 0 ? 'row-major' : 'column-major';
     }
@@ -73,6 +82,7 @@ export class Sprite {
 
 function decodeSprite(fileBuffer: ByteBuffer, sprite: Sprite): PNG {
     const { width, height, offsetX, offsetY } = sprite;
+    const { maxWidth, maxHeight } = sprite.spriteSheet;
     const spriteArea: number = width * height;
 
     sprite.settings = fileBuffer.get('byte', 'unsigned');
@@ -115,12 +125,8 @@ function decodeSprite(fileBuffer: ByteBuffer, sprite: Sprite): PNG {
 
     for(let i = 0; i < spriteArea; i++) {
         const pixel = sprite.pixels[i];
-        const paletteIndex = sprite.paletteIndices[i];
-        const [ r, g, b ] = toRgb(pixel);
-        pngData.put(r, 'byte');
-        pngData.put(g, 'byte');
-        pngData.put(b, 'byte');
-        pngData.put(sprite.hasAlpha ? pixel >> 24 : paletteIndex !== 0 ? 0xff : 0, 'byte');
+        const rgba = argbToRgba(pixel, sprite.getAlpha(i));
+        pngData.put(rgba, 'int');
     }
 
     pngData.flipWriter();
@@ -179,7 +185,7 @@ export default {
             spriteSheet.palette[i] = buffer.get('int24');
 
             if(spriteSheet.palette[i] === 0) {
-                // spriteSheet.palette[i] = 1;
+                spriteSheet.palette[i] = 1;
             }
         }
 

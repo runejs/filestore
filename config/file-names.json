@@ -1404,5 +1404,14 @@
     "1787935731": "quill_oblique_large",
     "-365283881": "quill_caps_large",
     "1157777820": "lunar_alphabet",
-    "24702590": "lunar_alphabet_lrg"
+    "24702590": "lunar_alphabet_lrg",
+    "628358452": "mapfunction",
+    "-4663199": "cargonet",
+    "10513154": "elfbrick",
+    "133611307": "stone_tiles",
+    "246946718": "pebblefloor",
+    "-723306808": "combatboxes_special_attack",
+    "-809898746": "combatboxes_large,1",
+    "-809898747": "combatboxes_large,0",
+    "-848591323": "gungywater"
 }

@@ -440,24 +440,27 @@ export class FileIndex {
                     continue;
                 }
 
-                if(decodedContent[0] !== undefined && decodedContent[0] instanceof Buffer && decodedContent.length > 1) {
+                const isArray = typeof decodedContent[0] !== 'number';
+
+                if(isArray && decodedContent.length > 1) {
                     const groupDir = path.join(this.storePath, file.name);
                     fs.mkdirSync(groupDir);
 
                     for(let i = 0; i < decodedContent.length; i++) {
                         const groupedFile = decodedContent[i] as Buffer | null;
-                        if(!groupedFile) {
-                            continue;
+                        if(groupedFile?.length) {
+                            fs.writeFileSync(path.join(groupDir, i + (fileExt ?? '')), groupedFile);
                         }
-
-                        fs.writeFileSync(path.join(groupDir, i + (fileExt ?? '')), groupedFile);
                     }
                 } else {
                     try {
-                        fs.writeFileSync(path.join(this.storePath, file.name + (fileExt ?? '')),
-                            decodedContent[0] instanceof Buffer ? decodedContent[0] : decodedContent as Buffer);
+                        const content = decodedContent[0] instanceof Buffer ? decodedContent[0] : decodedContent as any[];
+                        if(content?.length) {
+                            fs.writeFileSync(path.join(this.storePath, file.name + (fileExt ?? '')),
+                                Buffer.from(content));
+                        }
                     } catch(error) {
-                        logger.error(`Error writing file:`, error, decodedContent);
+                        logger.error(`Error writing file:`, error);
                     }
                 }
 

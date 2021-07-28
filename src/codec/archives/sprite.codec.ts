@@ -142,8 +142,16 @@ export default {
         buffer.readerIndex = 0;
 
         return sprites.map(sprite => {
-            const decodedSprite = decodeSprite(buffer, palette, sprite);
-            return decodedSprite ? PNG.sync.write(decodedSprite) : null
+            if(!sprite) {
+                return null;
+            }
+
+            try {
+                const decodedSprite = decodeSprite(buffer, palette, sprite);
+                return decodedSprite ? PNG.sync.write(decodedSprite) : null;
+            } catch(error) {
+                return null;
+            }
         }) as Buffer[];
     },
 
@@ -153,9 +161,10 @@ export default {
         }
 
         if(data[0] instanceof Buffer) {
-            const sprites = data as Buffer[];
+            const images = data as Buffer[];
         } else {
-            const sprite = data as Buffer;
+            const image = data as Buffer;
+            const png = PNG.sync.read(image);
         }
 
         const buffer = new ByteBuffer(100000);

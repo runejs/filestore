@@ -53,7 +53,7 @@ export default {
     archive: 'maps',
     revision: '414-458',
 
-    decode: (buffer: ByteBuffer) => {
+    decode: (file, buffer: ByteBuffer) => {
         buffer.readerIndex = 0;
 
         const mapData = new MapData().forEach((mapData, plane, x, y) => {
@@ -81,7 +81,7 @@ export default {
         return JSON.stringify(mapData, null, 4);
     },
 
-    encode: (mapDataFile: string) => {
+    encode: (file, mapDataFile: string) => {
         const mapData: MapData = JSON.parse(mapDataFile);
 
         const buffer = new ByteBuffer(100000);

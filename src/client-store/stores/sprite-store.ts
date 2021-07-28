@@ -6,11 +6,11 @@ import { ClientFileStore, getFileName } from '../client-file-store';
 import { ClientFile } from '../client-file';
 
 
-export function toRgb(num: number): number[] {
-    num >>>= 0;
-    const b = num & 0xFF,
-        g = (num & 0xFF00) >>> 8,
-        r = (num & 0xFF0000) >>> 16;
+export function toRgb(color: number): [ number, number, number ] {
+    color >>>= 0;
+    const b = color & 0xFF,
+        g = (color & 0xFF00) >>> 8,
+        r = (color & 0xFF0000) >>> 16;
     return [ r, g, b ];
 }
 

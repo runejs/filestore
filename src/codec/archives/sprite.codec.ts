@@ -2,96 +2,136 @@ import { ByteBuffer } from '@runejs/core/buffer';
 import FileCodec from '../file-codec';
 import { PNG } from 'pngjs';
 import { toRgb } from '../../client-store';
+import { logger } from '@runejs/core';
 
 
-export class Sprite {
-    height: number;
-    offsetX: number;
-    palette: number[];
-    offsetY: number;
-    width: number;
-    paletteIndices: number[];
-    pixels: number[];
+/**
+ * The method with which pixel data is stored for a single Sprite within a SpriteSheet.
+ *
+ * `'row-major'`: Pixel data is stored "horizontally", with values moving along the x-axis before
+ * running out of space and moving down to the next y-axis "row" within the array.
+ *
+ * `'column-major'`: Pixel data is stored "vertically", with values moving downwards along the y-axis "rows"
+ * within the array, before moving onto the next x-axis "column" when the last y value is reached.
+ *
+ * @see https://en.wikipedia.org/wiki/Row-_and_column-major_order
+ */
+export type SpriteStorageMethod = 'row-major' | 'column-major';
 
-    public constructor(public readonly index: number,
-                       public readonly overallWidth: number,
-                       public readonly overallHeight: number) {
+
+export class SpriteSheet {
+
+    public readonly fileIndex: number;
+
+    public sprites: Sprite[];
+    public maxWidth: number;
+    public maxHeight: number;
+    public palette: number[];
+
+    public constructor(fileIndex: number,
+                       maxWidth: number,
+                       maxHeight: number,
+                       spriteCount: number) {
+        this.fileIndex = fileIndex;
+        this.maxWidth = maxWidth;
+        this.maxHeight = maxHeight;
+        this.sprites = new Array(spriteCount);
     }
+
 }
 
 
-function decodeSprite(buffer: ByteBuffer, palette: number[], sprite: Sprite): PNG {
-    const { width, height, offsetX, offsetY } = sprite;
-    const dimension = width * height;
-    const pixelPaletteIndices: number[] = new Array(dimension);
-    const pixelAlphas: number[] = new Array(dimension);
-    sprite.palette = palette;
+export class Sprite {
 
-    const flags = buffer.get('byte', 'unsigned');
+    public readonly spriteIndex: number;
+    public readonly spriteSheet: SpriteSheet;
 
-    if((flags & 0b01) === 0) {
-        for(let j = 0; j < dimension; j++) {
-            pixelPaletteIndices[j] = buffer.get('byte');
-        }
-    } else {
-        for(let x = 0; x < width; x++) {
-            for(let y = 0; y < height; y++) {
-                pixelPaletteIndices[width * y + x] = buffer.get('byte');
-            }
-        }
+    public width: number;
+    public height: number;
+    public offsetX: number;
+    public offsetY: number;
+    public pixels: number[];
+    public paletteIndices: number[];
+    public settings: number;
+
+    public constructor(spriteIndex: number,
+                       spriteSheet: SpriteSheet) {
+        this.spriteIndex = spriteIndex;
+        this.spriteSheet = spriteSheet;
     }
 
-    if((flags & 0b10) === 0) {
-        for(let j = 0; j < dimension; j++) {
-            const index = pixelPaletteIndices[j];
-            if(index !== 0) {
-                pixelAlphas[j] = 0xff;
+    public get storageMethod(): SpriteStorageMethod {
+        return (this.settings & 0b01) === 0 ? 'row-major' : 'column-major';
+    }
+
+    public get hasAlpha(): boolean {
+        return (this.settings & 0b10) !== 0;
+    }
+
+}
+
+
+function decodeSprite(fileBuffer: ByteBuffer, sprite: Sprite): PNG {
+    const { width, height, offsetX, offsetY } = sprite;
+    const spriteArea: number = width * height;
+
+    sprite.settings = fileBuffer.get('byte', 'unsigned');
+    sprite.pixels = new Array(spriteArea);
+    sprite.paletteIndices = new Array(spriteArea);
+
+    if(sprite.storageMethod === 'row-major') {
+        // row-major (horizontal)
+
+        for(let i = 0; i < spriteArea; i++) {
+            const paletteIndex = sprite.paletteIndices[i] = fileBuffer.get('byte');
+            sprite.pixels[i] = sprite.spriteSheet.palette[paletteIndex];
+        }
+
+        if(sprite.hasAlpha) {
+            for(let i = 0; i < spriteArea; i++) {
+                sprite.pixels[i] = sprite.pixels[i] | (fileBuffer.get('byte') << 24);
             }
         }
     } else {
-        if((flags & 0b01) === 0) {
-            for(let j = 0; j < dimension; j++) {
-                pixelAlphas[j] = buffer.get('byte');
+        // column-major (vertical)
+
+        for(let x = 0; x < width; x++) {
+            for(let y = 0; y < height; y++) {
+                const paletteIndex = sprite.paletteIndices[width * y + x] = fileBuffer.get('byte');
+                sprite.pixels[width * y + x] = sprite.spriteSheet.palette[paletteIndex];
             }
-        } else {
+        }
+
+        if(sprite.hasAlpha) {
             for(let x = 0; x < width; x++) {
                 for(let y = 0; y < height; y++) {
-                    pixelAlphas[width * y + x] = buffer.get('byte');
+                    sprite.pixels[width * y + x] = sprite.pixels[width * y + x] | (fileBuffer.get('byte') << 24);
                 }
             }
         }
     }
 
-    sprite.paletteIndices = pixelPaletteIndices;
-    sprite.pixels = new Array(dimension);
+    const pngData = new ByteBuffer(spriteArea * 4);
+
+    for(let i = 0; i < spriteArea; i++) {
+        const pixel = sprite.pixels[i];
+        const paletteIndex = sprite.paletteIndices[i];
+        const [ r, g, b ] = toRgb(pixel);
+        pngData.put(r, 'byte');
+        pngData.put(g, 'byte');
+        pngData.put(b, 'byte');
+        pngData.put(sprite.hasAlpha ? pixel >> 24 : paletteIndex !== 0 ? 0xff : 0, 'byte');
+    }
+
+    pngData.flipWriter();
 
     const png = new PNG({ width, height, filterType: -1 });
-    let spriteX: number = 0;
-    let spriteY: number = 0;
-
-    for(let d = 0; d < dimension; d++) {
-        const index = pixelPaletteIndices[d] & 0xff;
-        const pixel = palette[index] | (pixelAlphas[d] << 24);
-        sprite.pixels[d] = pixel;
-        const [ r, g, b ] = toRgb(pixel);
-
-        const pngIndex = (width * spriteY + spriteX) << 2;
-        png.data[pngIndex] = r;
-        png.data[pngIndex + 1] = g;
-        png.data[pngIndex + 2] = b;
-        png.data[pngIndex + 3] = pixel >> 24;
-
-        if(spriteX < width - 1) {
-            spriteX++;
-        } else {
-            spriteX = 0;
-            spriteY++;
-        }
-    }
+    pngData.copy(png.data, 0, 0);
 
     try {
         return png.pack();
     } catch(error) {
+        logger.error(`Error packing PNG sprite:`, error);
         return null;
     }
 }
@@ -101,61 +141,62 @@ export default {
     archive: 'sprites',
     revision: '414-458',
 
-    decode: (buffer: ByteBuffer) => {
+    decode: (file, buffer: ByteBuffer) => {
         buffer.readerIndex = (buffer.length - 2);
+
         const spriteCount = buffer.get('short', 'unsigned');
-        const sprites: Sprite[] = new Array(spriteCount);
 
         buffer.readerIndex = (buffer.length - 7 - spriteCount * 8);
+
         const maxWidth = buffer.get('short', 'unsigned');
         const maxHeight = buffer.get('short', 'unsigned');
         const paletteLength = buffer.get('byte', 'unsigned') + 1;
 
+        const spriteSheet = new SpriteSheet(file.fileIndex, maxWidth, maxHeight, spriteCount);
+
         for(let i = 0; i < spriteCount; i++) {
-            sprites[i] = new Sprite(i, maxWidth, maxHeight);
+            spriteSheet.sprites[i] = new Sprite(i, spriteSheet);
         }
 
         for(let i = 0; i < spriteCount; i++) {
-            sprites[i].offsetX = buffer.get('short', 'unsigned');
+            spriteSheet.sprites[i].offsetX = buffer.get('short', 'unsigned');
         }
         for(let i = 0; i < spriteCount; i++) {
-            sprites[i].offsetY = buffer.get('short', 'unsigned');
+            spriteSheet.sprites[i].offsetY = buffer.get('short', 'unsigned');
         }
         for(let i = 0; i < spriteCount; i++) {
-            sprites[i].width = buffer.get('short', 'unsigned');
+            spriteSheet.sprites[i].width = buffer.get('short', 'unsigned');
         }
         for(let i = 0; i < spriteCount; i++) {
-            sprites[i].height = buffer.get('short', 'unsigned');
+            spriteSheet.sprites[i].height = buffer.get('short', 'unsigned');
         }
 
         buffer.readerIndex = (buffer.length - 7 - spriteCount * 8 - (paletteLength - 1) * 3);
-        const palette: number[] = new Array(paletteLength);
+
+        spriteSheet.palette = new Array(paletteLength);
 
         for(let i = 1; i < paletteLength; i++) {
-            palette[i] = buffer.get('int24');
+            spriteSheet.palette[i] = buffer.get('int24');
 
-            if(palette[i] === 0) {
-                palette[i] = 1;
+            if(spriteSheet.palette[i] === 0) {
+                // spriteSheet.palette[i] = 1;
             }
         }
 
         buffer.readerIndex = 0;
 
-        return sprites.map(sprite => {
-            if(!sprite) {
-                return null;
-            }
-
+        return spriteSheet.sprites.map(sprite => {
             try {
-                const decodedSprite = decodeSprite(buffer, palette, sprite);
+                const decodedSprite = decodeSprite(buffer, sprite);
                 return decodedSprite ? PNG.sync.write(decodedSprite) : null;
             } catch(error) {
+                // logger.error(`Error decoding sprite:`, error);
                 return null;
             }
         }) as Buffer[];
     },
 
-    encode: (data: Buffer | Buffer[]) => {
+    encode: (file, data: Buffer | Buffer[]) => {
         if(!data?.length || !data[0]) {
             return null;
         }

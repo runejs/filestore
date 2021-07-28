@@ -405,7 +405,8 @@ export class FileIndex {
 
                     // folder.file(groupedFileName + fileExt, Buffer.from(groupedFile.content));
 
-                    fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt), decode(archiveName, groupedFile.content) as Buffer);
+                    fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt),
+                        decode(archiveName, { fileIndex: groupedFileIndex }, groupedFile.content) as Buffer);
 
                     if(groupedFileIndex !== childArrayIndex) {
                         logger.warn(`Grouped file ${childArrayIndex} is out of order - expected ${groupedFileIndex}`);
@@ -433,7 +434,7 @@ export class FileIndex {
                     continue;
                 }
 
-                const decodedContent = decode(archiveName, fileContents);
+                const decodedContent = decode(archiveName, { fileIndex }, fileContents);
 
                 if(!decodedContent?.length) {
                     pushError(errors, fileIndex, file.name, file.nameHash, `Error decoding file content`);

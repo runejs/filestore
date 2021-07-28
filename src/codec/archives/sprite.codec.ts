@@ -121,17 +121,31 @@ function decodeSprite(fileBuffer: ByteBuffer, sprite: Sprite): PNG {
         }
     }
 
-    const pngData = new ByteBuffer(spriteArea * 4);
+    if(width === 0 || height === 0) {
+        return null;
+    }
 
-    for(let i = 0; i < spriteArea; i++) {
-        const pixel = sprite.pixels[i];
-        const rgba = argbToRgba(pixel, sprite.getAlpha(i));
-        pngData.put(rgba, 'int');
+    const pngData = new ByteBuffer((maxWidth * maxHeight) * 4);
+
+    for(let y = 0; y < maxHeight; y++) {
+        for(let x = 0; x < maxWidth; x++) {
+            const spriteX = x - offsetX;
+            const spriteY = y - offsetY;
+
+            if(spriteX < 0 || spriteY < 0 || spriteX >= width || spriteY >= height) {
+                pngData.put(0 & 0x00FFFFFF, 'int');
+            } else {
+                const i = width * spriteY + spriteX;
+                const pixel = sprite.pixels[i];
+                const rgba = argbToRgba(pixel, sprite.getAlpha(i));
+                pngData.put(rgba, 'int');
+            }
+        }
     }
 
     pngData.flipWriter();
 
-    const png = new PNG({ width, height, filterType: -1 });
+    const png = new PNG({ width: maxWidth, height: maxHeight, filterType: -1 });
     pngData.copy(png.data, 0, 0);
 
     try {

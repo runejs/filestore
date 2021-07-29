@@ -4,6 +4,7 @@ import { PNG } from 'pngjs';
 import { toRgb } from '../../client-store';
 import { logger } from '@runejs/core';
 import { argbToRgba } from '../../util/colors';
+import { buf } from 'crc-32';
 
 
 /**
@@ -30,12 +31,8 @@ export class SpriteSheet {
     public palette: number[];
 
     public constructor(fileIndex: number,
-                       maxWidth: number,
-                       maxHeight: number,
                        spriteCount: number) {
         this.fileIndex = fileIndex;
-        this.maxWidth = maxWidth;
-        this.maxHeight = maxHeight;
         this.sprites = new Array(spriteCount);
     }
 
@@ -162,49 +159,46 @@ export default {
     revision: '414-458',
 
     decode: (file, buffer: ByteBuffer) => {
-        buffer.readerIndex = (buffer.length - 2);
+        // Reverse the buffer so we can pull the sprite information from the footer
+        const reversedBuffer = new ByteBuffer(new ByteBuffer(buffer).reverse());
 
-        const spriteCount = buffer.get('short', 'unsigned');
+        // Read the number of sprites in this pack
+        const spriteCount = reversedBuffer.get('short', 'unsigned', 'le');
 
-        buffer.readerIndex = (buffer.length - 7 - spriteCount * 8);
+        const spriteSheet = new SpriteSheet(file.fileIndex, spriteCount);
 
-        const maxWidth = buffer.get('short', 'unsigned');
-        const maxHeight = buffer.get('short', 'unsigned');
-        const paletteLength = buffer.get('byte', 'unsigned') + 1;
-
-        const spriteSheet = new SpriteSheet(file.fileIndex, maxWidth, maxHeight, spriteCount);
-
-        for(let i = 0; i < spriteCount; i++) {
+        // Individual sprite metadata - height, width, offsetY, offsetX
+        for(let i = spriteCount - 1; i >= 0; i--) {
             spriteSheet.sprites[i] = new Sprite(i, spriteSheet);
+            spriteSheet.sprites[i].height = reversedBuffer.get('short', 'unsigned', 'le');
+        }
+        for(let i = spriteCount - 1; i >= 0; i--) {
+            spriteSheet.sprites[i].width = reversedBuffer.get('short', 'unsigned', 'le');
+        }
+        for(let i = spriteCount - 1; i >= 0; i--) {
+            spriteSheet.sprites[i].offsetY = reversedBuffer.get('short', 'unsigned', 'le');
+        }
+        for(let i = spriteCount - 1; i >= 0; i--) {
+            spriteSheet.sprites[i].offsetX = reversedBuffer.get('short', 'unsigned', 'le');
         }
 
-        for(let i = 0; i < spriteCount; i++) {
-            spriteSheet.sprites[i].offsetX = buffer.get('short', 'unsigned');
-        }
-        for(let i = 0; i < spriteCount; i++) {
-            spriteSheet.sprites[i].offsetY = buffer.get('short', 'unsigned');
-        }
-        for(let i = 0; i < spriteCount; i++) {
-            spriteSheet.sprites[i].width = buffer.get('short', 'unsigned');
-        }
-        for(let i = 0; i < spriteCount; i++) {
-            spriteSheet.sprites[i].height = buffer.get('short', 'unsigned');
-        }
+        // Sprite pack color count and max height + width
+        const paletteLength = reversedBuffer.get('byte', 'unsigned');
+        spriteSheet.maxHeight = reversedBuffer.get('short', 'unsigned', 'le');
+        spriteSheet.maxWidth = reversedBuffer.get('short', 'unsigned', 'le');
 
-        buffer.readerIndex = (buffer.length - 7 - spriteCount * 8 - (paletteLength - 1) * 3);
+        spriteSheet.palette = new Array(paletteLength + 1);
 
-        spriteSheet.palette = new Array(paletteLength);
-
-        for(let i = 1; i < paletteLength; i++) {
-            spriteSheet.palette[i] = buffer.get('int24');
+        // Parse all of the colors used in the pack
+        for(let i = paletteLength; i > 0; i--) {
+            spriteSheet.palette[i] = reversedBuffer.get('int24', 'signed', 'le');
 
             if(spriteSheet.palette[i] === 0) {
                 spriteSheet.palette[i] = 1;
             }
         }
 
-        buffer.readerIndex = 0;
-
+        // Now read the individual sprites from the beginning of the file
         return spriteSheet.sprites.map(sprite => {
             try {
                 const decodedSprite = decodeSprite(buffer, sprite);

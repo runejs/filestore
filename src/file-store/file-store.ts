@@ -1,8 +1,9 @@
 import { logger } from '@runejs/core';
 import fs from 'fs';
-import { IndexedArchive, getIndexName, IndexName, archiveConfig } from './archive';
+import { archiveConfig, getIndexName, IndexedArchive, IndexName } from './archive';
 import { ByteBuffer } from '@runejs/core/buffer';
 import JSZip from 'jszip';
+import { clearFileNames, fileNames } from '../client-store';
 
 
 export class FileStore {
@@ -12,6 +13,28 @@ export class FileStore {
 
     public constructor(fileStorePath?: string) {
         this.fileStorePath = fileStorePath ?? './stores';
+        this.loadFileNames();
+    }
+
+    public loadFileNames(): void {
+        // @TODO make async and on-demand
+
+        clearFileNames();
+
+        const nameMasterFile = fs.readFileSync('./config/names.tsv', 'utf-8');
+        const lines = nameMasterFile.split('\n');
+
+        for(let i = 0; i < lines.length; i++) {
+            const data = lines[i]?.split('\t');
+
+            if(data?.length !== 5) {
+                continue;
+            }
+
+            const crc: string = data[3];
+
+            fileNames[crc] = data[4];
+        }
     }
 
     public getArchive(indexId: number | IndexName): IndexedArchive {

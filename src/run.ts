@@ -30,6 +30,7 @@ import { IndexedFile } from './file-store/file';
 
 
     const fileStore = new FileStore();
+
     // await fileStore.loadStoreArchives();
 
     // await fileStore.indexedArchives.get(5).unpack();

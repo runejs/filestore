@@ -1,6 +1,5 @@
 import { ClientStoreChannel, loadClientStore } from './data';
 import { FileIndex} from './file-index';
-import { getFileNames } from './util';
 import {
     SpriteStore, MusicStore, BinaryStore, JingleStore, SoundStore,
     RegionStore, ConfigStore, ModelStore, WidgetStore, FontStore,
@@ -11,7 +10,11 @@ import { ArchiveName, IndexName } from '../file-store/archive';
 import { archiveConfig } from '../file-store/archive';
 
 
-export let fileNames: { [ key: string ]: string | null };
+export let fileNames: { [ key: string ]: string | null } = require('../../config/file-names.json');
+
+export const clearFileNames = () => {
+    fileNames = {};
+};
 
 export const getFileName = (nameHash: number): string | null => {
     if(!nameHash) {
@@ -55,8 +58,6 @@ export class ClientFileStore {
         this.configDir = options?.configDir || filestoreDir;
         this.xteas = options?.xteas || {};
         this.channels = loadClientStore(filestoreDir);
-
-        fileNames = getFileNames(this.configDir);
 
         this.binaryStore = new BinaryStore(this);
         this.configStore = new ConfigStore(this);

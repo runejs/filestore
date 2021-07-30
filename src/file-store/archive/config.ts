@@ -20,6 +20,7 @@ export type IndexName = 'main' | ArchiveName;
 
 
 export type FileCompression = 'uncompressed' | 'bzip' | 'gzip';
+export type ArchiveContentType = 'files' | 'encoded';
 
 export const compressionKey: { [key in FileCompression]: number } = {
     uncompressed: 0,
@@ -29,8 +30,12 @@ export const compressionKey: { [key in FileCompression]: number } = {
 
 export interface ArchiveConfig {
     index: number;
-    compression: FileCompression;
+    name?: IndexName;
     fileExtension?: string;
+    compression: FileCompression;
+    format?: number;
+    filesNamed?: boolean;
+    content?: ArchiveContentType;
     flattenFileGroups?: boolean;
     children?: { [key: string]: number };
 }
@@ -49,5 +54,10 @@ export const getArchiveConfig = (indexId: number): ArchiveConfig | undefined => 
     if(!indexName) {
         return undefined;
     }
-    return archiveConfig[indexName as IndexName];
+    const config = archiveConfig[indexName as IndexName];
+    if(!config) {
+        return undefined;
+    } else {
+        return { name: indexName, ...config };
+    }
 };

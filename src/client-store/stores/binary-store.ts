@@ -1,8 +1,9 @@
 import { logger } from '@runejs/core';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
-import { ClientFileStore, getFileName } from '../client-file-store';
+import { ClientFileStore} from '../client-file-store';
 import { ClientFile } from '../client-file';
+import { getFileName } from '../file-naming';
 
 
 /**

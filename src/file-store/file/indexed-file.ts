@@ -14,7 +14,6 @@ export interface FileCompressionOptions {
 
 export abstract class IndexedFile {
 
-    public readonly indexManifest: IndexManifest;
     public readonly fileId: number;
     public fileData: ByteBuffer | undefined;
 
@@ -23,7 +22,6 @@ export abstract class IndexedFile {
     public constructor(public readonly archive: IndexedArchive,
                        fileId: number,
                        fileData?: ByteBuffer | undefined) {
-        this.indexManifest = this.archive.manifest;
         this.fileId = fileId;
         this.fileData = fileData;
     }
@@ -56,7 +54,7 @@ export abstract class IndexedFile {
             this._fileDataCompressed = true;
             return this.fileData;
         } catch(error) {
-            logger.error(`Error compressing file ${this.fileId} within index ${this.indexManifest.indexId}:`);
+            logger.error(`Error compressing file ${this.fileId} within index ${this.indexManifest.index}:`);
             logger.error(error);
             this._fileDataCompressed = false;
             return null;
@@ -110,13 +108,17 @@ export abstract class IndexedFile {
         return hash.update(fileData).digest('hex');
     }
 
+    public get indexManifest(): IndexManifest {
+        return this.archive.manifest;
+    }
+
     public get fullFileName(): string {
-        return this.indexManifest?.files[this.fileId]?.file ?? '';
+        return this.indexManifest?.files[this.fileId]?.name ?? '';
     }
 
     public get fileName(): string {
-        return (this.indexManifest?.files[this.fileId]?.file ?? '')
-            .replace(this.indexManifest.fileExtension, '');
+        return (this.indexManifest?.files[this.fileId]?.name ?? '')
+            .replace(this.archive.config.fileExtension, '');
     }
 
     public get fileVersion(): number | undefined {
@@ -124,7 +126,7 @@ export abstract class IndexedFile {
     }
 
     public get fileCompression(): number {
-        return compressionKey[this.indexManifest.fileCompression];
+        return compressionKey[this.archive.config.compression];
     }
 
     public get fileDataCompressed(): boolean {

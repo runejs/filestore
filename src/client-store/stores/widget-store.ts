@@ -214,7 +214,7 @@ export class WidgetStore {
         const file = this.widgetFileIndex.files.get(id);
         if(file.type === 'file') {
             return this.decodeWidgetFile(id, file);
-        } else if(file.type === 'archive') {
+        } else if(file.type === 'group') {
             const widgetParent = new ParentWidget(id);
             const archive: ClientFileGroup = file as ClientFileGroup;
             archive.decodeArchiveFiles();

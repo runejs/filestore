@@ -204,7 +204,9 @@ export default {
                 const decodedSprite = decodeSprite(buffer, sprite);
                 return decodedSprite ? PNG.sync.write(decodedSprite) : null;
             } catch(error) {
-                // logger.error(`Error decoding sprite:`, error);
+                if(buffer?.length) {
+                    logger.error(`Error decoding sprite:`, error);
+                }
                 return null;
             }
         }) as Buffer[];

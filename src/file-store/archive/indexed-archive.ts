@@ -8,16 +8,17 @@ import { ByteBuffer } from '@runejs/core/buffer';
 import { hashFileName } from '../../client-store';
 import { compressFile } from '../../compression';
 import { IndexedFile, FlatFile, FileGroup } from '../file';
-import { compressionKey, IndexName } from './config';
+import { ArchiveConfig, compressionKey, getArchiveConfig, IndexName } from './config';
 
 
 export class IndexedArchive {
 
     public files: { [key: number]: IndexedFile } = {};
+    public readonly fileStore: FileStore;
+    public readonly config: ArchiveConfig;
+    public readonly indexId: number;
+    public readonly indexName: IndexName;
 
-    private readonly fileStore: FileStore;
-    private indexId: number;
-    private indexName: IndexName;
     private loaded: boolean = false;
     private _manifest: IndexManifest;
     private _fileErrors: { [key: string]: string[] };
@@ -28,6 +29,7 @@ export class IndexedArchive {
         if(indexName) {
             this.indexName = indexName as IndexName;
         }
+        this.config = getArchiveConfig(this.indexId);
     }
 
     /**
@@ -45,16 +47,13 @@ export class IndexedArchive {
         logger.info(`Indexing ${this.filePath}...`);
         logger.info(`Original file count: ${Object.keys(this.files).length}`);
 
+        const originalManifestErrors = this._manifest.errors;
+
         const newManifest: IndexManifest = {
-            indexId: this.indexId,
-            name: this.indexName,
-            fileCompression: this._manifest.fileCompression,
-            fileExtension: this._manifest.fileExtension,
-            format: this._manifest.format ?? undefined,
-            version: this._manifest.version ?? undefined,
-            settings: this._manifest.settings ?? undefined,
+            index: this.indexId,
             crc: 0,
             sha256: '',
+            version: this._manifest.version ?? undefined,
             files: {}
         };
 
@@ -65,12 +64,12 @@ export class IndexedArchive {
             return originalFile?.fileId ?? -1;
         };
 
-        const extension = this._manifest.fileExtension;
+        const extension = this.config.fileExtension;
 
         const storeDirectory = fs.readdirSync(this.filePath);
 
         const fileNames = storeDirectory.filter(fileName => {
-            if(!fileName || fileName === '.manifest.json' || fileName === '.errors.json') {
+            if(!fileName || fileName === '.index') {
                 return false;
             }
 
@@ -107,15 +106,14 @@ export class IndexedArchive {
             const fileIndex = oldFileIndex !== -1 ? oldFileIndex : newFileIndex++;
 
             let nameHash: number | undefined;
-            const actualFileName = fileName.replace(this.manifest.fileExtension, '')
+            const actualFileName = fileName.replace(this.config.fileExtension, '')
                 .replace('/', '');
-            if(this.fileNames) {
+            if(this.config.filesNamed) {
                 nameHash = /[a-z]/ig.test(actualFileName) ? hashFileName(actualFileName) : parseInt(actualFileName, 10);
             }
 
             const newFile: FileMetadata = newManifest.files[fileIndex] = {
-                file: fileName,
-                realName: actualFileName,
+                name: fileName,
                 nameHash: nameHash ?? undefined,
                 version: oldFile?.version ?? 0
             };
@@ -133,7 +131,7 @@ export class IndexedArchive {
 
             newFile.sha256 = await indexedFile.generateShaHash();
             newFile.crc = await indexedFile.generateCrc32();
-            newFile.fileSize = await indexedFile.getCompressedFileLength();
+            newFile.size = await indexedFile.getCompressedFileLength();
 
             if(!oldFile?.sha256) {
                 // Use CRC32 if SHA256 is not available for this file
@@ -158,6 +156,7 @@ export class IndexedArchive {
         const indexData = await this.generateIndexFile();
         this._manifest.crc = await IndexedFile.generateCrc32(indexData);
         this._manifest.sha256 = await IndexedFile.generateShaHash(indexData);
+        this._manifest.errors = originalManifestErrors;
 
         if(fs.existsSync(this.outputFilePath)) {
             fs.rmSync(this.outputFilePath, { recursive: true });
@@ -165,7 +164,7 @@ export class IndexedArchive {
 
         fs.mkdirSync(this.outputFilePath);
 
-        fs.writeFileSync(path.join(this.outputFilePath, '.manifest.json'), JSON.stringify(this._manifest, null, 4));
+        fs.writeFileSync(path.join(this.outputFilePath, '.index'), JSON.stringify(this._manifest, null, 4));
     }
 
     /**
@@ -208,8 +207,8 @@ export class IndexedArchive {
         let writtenFileIndex = 0;
 
         // Write index file header
-        buffer.put(this.manifest.format ?? 5);
-        buffer.put(this.manifest.settings ?? 0);
+        buffer.put(this.config.format ?? 5);
+        buffer.put(this.config.filesNamed ? 1 : 0);
         buffer.put(fileCount, 'short');
 
         // Write file indexes
@@ -219,16 +218,11 @@ export class IndexedArchive {
         }
 
         // Write name hashes (if applicable)
-        if(this.fileNames) {
+        if(this.config.filesNamed) {
             logger.info(`Writing file names for archive ${this.indexId}.`);
 
             for(const fileIndex of fileIndexes) {
-                const file = files[fileIndex];
-                if(!file?.file) {
-                    buffer.put(0, 'int');
-                } else {
-                    buffer.put(file.nameHash ?? 0, 'int');
-                }
+                buffer.put(files[fileIndex]?.nameHash ?? 0, 'int');
             }
         }
 
@@ -275,7 +269,7 @@ export class IndexedArchive {
 
         // Write child name hashes (if applicable)
         // @TODO Single child files need a name of blank string?
-        if(this.fileNames) {
+        if(this.config.filesNamed) {
             for(const fileIndex of fileIndexes) {
                 const file = files[fileIndex];
                 if(file?.children) {
@@ -284,8 +278,8 @@ export class IndexedArchive {
                         if(!childFile) {
                             buffer.put(0, 'int');
                         } else {
-                            const fileName = this.manifest.fileExtension ?
-                                childFile.replace(this.manifest.fileExtension, '') : childFile;
+                            const fileName = this.config.fileExtension ?
+                                childFile.replace(this.config.fileExtension, '') : childFile;
                             const nameHash: number = /[a-z]/ig.test(fileName) ?
                                 hashFileName(fileName) : parseInt(fileName, 10);
                             buffer.put(nameHash, 'int');
@@ -299,7 +293,7 @@ export class IndexedArchive {
 
         const archiveData = buffer.flipWriter();
 
-        const compression = compressionKey[this.manifest.fileCompression];
+        const compression = compressionKey[this.config.compression];
 
         return compressFile({
             buffer: archiveData,
@@ -332,7 +326,7 @@ export class IndexedArchive {
             return null;
         }
 
-        const filePath = path.join(this.filePath, fileEntry.file);
+        const filePath = path.join(this.filePath, fileEntry.name);
 
         if(!fs.existsSync(filePath)) {
             logger.error(`File ${fileIndex} was not found.`);
@@ -475,11 +469,7 @@ export class IndexedArchive {
     }
 
     public get archiveName(): string {
-        return this._manifest?.name;
-    }
-
-    public get fileNames(): boolean {
-        return (this._manifest.settings & 0x01) !== 0
+        return this.config?.name;
     }
 
     public get filePath(): string {

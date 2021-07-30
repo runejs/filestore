@@ -2,8 +2,8 @@ import { ByteBuffer } from '@runejs/core/buffer';
 
 import { extractIndexedFile, ClientStoreChannel } from './data';
 import { FileIndex } from './file-index';
-import { getFileName } from './client-file-store';
 import { decompressFile } from '../compression';
+import { getFileName } from './file-naming';
 
 
 export class ClientFile {
@@ -21,7 +21,7 @@ export class ClientFile {
     /**
      * A numeric hash of the file's name.
      */
-    public nameHash: number;
+    public nameHash?: number;
 
     /**
      * A buffer of the file's raw data.
@@ -32,11 +32,6 @@ export class ClientFile {
      * CRC value of the file's data.
      */
     public crc: number;
-
-    /**
-     * Whirlpool value of the file's data.
-     */
-    public whirlpool: ByteBuffer = new ByteBuffer(64);
 
     /**
      * Version number of the file.
@@ -51,7 +46,7 @@ export class ClientFile {
     /**
      * The type of file, either an `archive` or a plain `file`.
      */
-    public type: 'archive' | 'file' = 'file';
+    public type: 'group' | 'file' = 'file';
 
     protected readonly filestoreChannels: ClientStoreChannel;
     private decompressed: boolean = false;

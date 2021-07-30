@@ -1,5 +1,5 @@
 {
-    // The index index of all indexes
+    // The index of all indexes
     main: {
         index: 255,
         compression: 'uncompressed'
@@ -31,7 +31,7 @@
             enums: 8,
             npcs: 9,
             items: 10,
-            params: 11,
+            item_attributes: 11,
             sequences: 12,
             spot_anims: 13,
             varbits: 14,
@@ -55,12 +55,14 @@
     maps: {
         index: 5,
         fileExtension: '.dat',
-        compression: 'bzip'
+        compression: 'bzip',
+        filesNamed: true
     },
     music: {
         index: 6,
         fileExtension: '.mid',
-        compression: 'gzip'
+        compression: 'gzip',
+        filesNamed: true
     },
     models: {
         index: 7,
@@ -70,7 +72,9 @@
     sprites: {
         index: 8,
         fileExtension: '.png',
-        compression: 'gzip'
+        compression: 'gzip',
+        filesNamed: true,
+        content: 'encoded'
     },
     textures: {
         index: 9,
@@ -79,7 +83,8 @@
     },
     binary: {
         index: 10,
-        compression: 'uncompressed'
+        compression: 'uncompressed',
+        filesNamed: true
     },
     jingles: {
         index: 11,
@@ -89,6 +94,7 @@
     scripts: {
         index: 12,
         fileExtension: '.dat',
-        compression: 'gzip'
+        compression: 'gzip',
+        filesNamed: true
     }
 }

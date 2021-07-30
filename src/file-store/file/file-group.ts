@@ -79,7 +79,7 @@ export class FileGroup extends IndexedFile {
                 continue;
             }
 
-            const filePath = path.join(this.archive.filePath, this.fileEntry.file, fileName);
+            const filePath = path.join(this.archive.filePath, this.fileEntry.name, fileName);
             if(!fs.existsSync(filePath)) {
                 continue;
             }

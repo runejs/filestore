@@ -1,27 +1,24 @@
 import { ClientStoreChannel, loadClientStore } from './data';
-import { FileIndex} from './file-index';
+import { FileIndex } from './file-index';
 import {
-    SpriteStore, MusicStore, BinaryStore, JingleStore, SoundStore,
-    RegionStore, ConfigStore, ModelStore, WidgetStore, FontStore,
-    TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition,
-    VarbitStore
+    BinaryStore,
+    ConfigStore,
+    FontStore,
+    ItemStore,
+    JingleStore,
+    ModelStore,
+    MusicStore,
+    NpcStore,
+    ObjectStore,
+    RegionStore,
+    SoundStore,
+    SpriteStore,
+    TextureStore,
+    VarbitStore,
+    WidgetStore,
+    XteaDefinition
 } from './stores';
-import { ArchiveName, IndexName } from '../file-store/archive';
-import { archiveConfig } from '../file-store/archive';
-
-
-export let fileNames: { [ key: string ]: string | null } = require('../../config/file-names.json');
-
-export const clearFileNames = () => {
-    fileNames = {};
-};
-
-export const getFileName = (nameHash: number): string | null => {
-    if(!nameHash) {
-        return null;
-    }
-    return fileNames[nameHash.toString()] || nameHash.toString();
-};
+import { archiveConfig, ArchiveName, IndexName } from '../file-store/archive';
 
 
 export class ClientFileStore {

@@ -7,6 +7,7 @@ import path from 'path';
 import { PNG } from 'pngjs';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { IndexedFile } from './file-store/file';
+import { ArchiveDecompressor } from './client-store/decompression/archive-decompressor';
 
 
 (async () => {
@@ -20,16 +21,17 @@ import { IndexedFile } from './file-store/file';
     });
 
     // Decode a packed client cache with this vvv
-    // await clientFileStore.decompressArchives(false);
+    await clientFileStore.decompressArchives(false);
+    // await ArchiveDecompressor.writeFileNames();
 
     // Decode a single packed client cache archive with this line vvv
-    await clientFileStore.getIndex('sprites').decompressArchive();
+    // await clientFileStore.getIndex('sprites').decompressArchive();
 
 
 
 
 
-    const fileStore = new FileStore();
+    // const fileStore = new FileStore();
 
     // await fileStore.loadStoreArchives();
 

@@ -16,7 +16,7 @@ export class ClientFileGroup extends ClientFile {
     /**
      * The type of file, either an `archive` or a plain `file`.
      */
-    public type: 'archive' | 'file' = 'archive';
+    public type: 'group' | 'file' = 'group';
 
     public groupCompressedSize: number = 0;
 
@@ -43,11 +43,10 @@ export class ClientFileGroup extends ClientFile {
 
         if(typeof idOrFileData !== 'number') {
             const fileData = idOrFileData as ClientFile;
-            const { content, nameHash, crc, whirlpool, version, compression } = fileData;
+            const { content, nameHash, crc, version, compression } = fileData;
             this.content = content;
             this.nameHash = nameHash;
             this.crc = crc;
-            this.whirlpool = whirlpool;
             this.version = version;
             this.compression = compression;
         }

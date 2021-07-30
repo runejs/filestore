@@ -1,37 +1,31 @@
-import { FileCompression, IndexName } from './archive';
-
-
-export type IndexedFileMap = { [key: number]: FileMetadata };
-
-export type FileErrorMap = { [key: number]: FileError };
-
-
-export interface FileSettings {
+export interface IndexMetadata {
     version?: number;
     crc?: number;
     sha256?: string;
 }
 
-export interface FileError extends FileSettings {
+
+export interface FileError extends IndexMetadata {
     name?: string;
     nameHash?: number;
     errors: string[];
 }
 
-export interface FileMetadata extends FileSettings {
-    file: string;
-    realName: string;
-    fileSize?: number;
+export type FileErrorMap = { [key: number]: FileError };
+
+
+export interface FileMetadata extends IndexMetadata {
+    name: string;
     nameHash?: number;
+    size?: number;
     children?: string[];
 }
 
-export interface  IndexManifest extends FileSettings {
-    indexId: number;
-    name: IndexName;
-    fileCompression: FileCompression;
-    fileExtension?: string;
-    format?: number;
-    settings?: number;
-    files: { [key: number]: FileMetadata }; // file index within the archive => IndexedFileEntry
+export type IndexedFileMap = { [key: number]: FileMetadata };
+
+
+export interface IndexManifest extends IndexMetadata {
+    index: number;
+    files: IndexedFileMap;
+    errors?: FileErrorMap;
 }

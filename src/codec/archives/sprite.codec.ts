@@ -3,7 +3,7 @@ import FileCodec from '../file-codec';
 import { PNG } from 'pngjs';
 import { toRgb } from '../../client-store';
 import { logger } from '@runejs/core';
-import { argbToRgba } from '../../util/colors';
+import { argbToRgba, rgbaToArgb } from '../../util/colors';
 import { buf } from 'crc-32';
 
 
@@ -217,12 +217,89 @@ export default {
             return null;
         }
 
+        let images: PNG[];
+
         if(data[0] instanceof Buffer) {
-            const images = data as Buffer[];
+            images = (data as Buffer[]).map((b, i) => {
+                try {
+                    return PNG.sync.read(b);
+                } catch(error) {
+                    logger.error(`Error encoding sprite[${i}]:`, file, error);
+                    return null;
+                }
+            })?.filter(png => png?.data?.length ?? 0 > 0);
         } else {
-            const image = data as Buffer;
-            const png = PNG.sync.read(image);
+            try {
+                images = [ PNG.sync.read(data as Buffer) ];
+            } catch(error) {
+                logger.error(`Error encoding sprite:`, file, error);
+                return null;
+            }
         }
+
+        if(!images?.length) {
+            logger.error(`Unable to encode sprite file.`);
+            return null;
+        }
+
+        const palette: number[] = [];
+
+        images.forEach(png => {
+            const { width: maxWidth, height: maxHeight, data } = png;
+            const area = maxHeight * maxWidth;
+            const buffer = new ByteBuffer(data);
+
+            const paletteIndices: number[] = new Array(area);
+            const alphaValues: number[] = new Array(area);
+
+            let x = 0;
+            let y = 0;
+            let offsetX = 0;
+            let offsetY = 0;
+            let contentFound = false;
+            let startIndex = 0;
+            let lastIndex = 0;
+
+            for(let i = 0; i < area; i++) {
+                const rgba = buffer.get('int');
+                const [ rgb, alpha ] = rgbaToArgb(rgba);
+
+                if(alpha === 0xff) {
+                    // fully transparent
+                } else if(!contentFound) {
+                    startIndex = i;
+                    offsetX = x;
+                    offsetY = y;
+                    contentFound = true;
+                } else {
+                    lastIndex = i;
+                }
+
+                let paletteIndex = palette.indexOf(rgb);
+                if(palette.indexOf(rgb) === -1) {
+                    paletteIndex = palette.push(rgb) - 1;
+                }
+
+                paletteIndices[i] = paletteIndex;
+                alphaValues[i] = alpha;
+
+                x++;
+                if(x >= maxWidth) {
+                    x = 0;
+                    y++;
+                }
+            }
+
+            // @TODO resize palette and alpha arrays to match the offset and last pixel positions
+            // @TODO write footer data
+            // @TODO test
+        });
+
+        const spriteCount = images.length;
+        const spriteWidths: number[] = images.map(png => png.width);
+        const spriteHeights: number[] = images.map(png => png.height);
+        const maxWidth = Math.max(...spriteWidths);
+        const maxHeight = Math.max(...spriteHeights);
 
         const buffer = new ByteBuffer(100000);
 

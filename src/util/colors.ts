@@ -1,8 +1,9 @@
-export const argbToRgba = (rgb: number, alpha: number): number => {
-    rgb >>>= 0;
-    const b = rgb & 0xFF,
-        g = (rgb & 0xFF00) >>> 8,
-        r = (rgb & 0xFF0000) >>> 16;
+export const argbToRgba = (argb: number, alpha: number): number => {
+    argb >>>= 0;
+    const b = argb & 0xFF,
+        g = (argb & 0xFF00) >>> 8,
+        r = (argb & 0xFF0000) >>> 16;//,
+        // a = (argb & 0xFF0000) >>> 24;
 
     return (r << 24) + (g << 16) + (b << 8) + (alpha);
 };
@@ -13,6 +14,8 @@ export const rgbaToArgb = (rgba: number): [ number, number ] => {
     const b = ((rgba      ) & 0xff) / 255;
     const a = ((rgba >> 24) & 0xff) / 255;
 
-    const color: number = ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
+
+
+    const color: number = 0xFF000000 | (r << 16) & 0x00FF0000 | (g << 8) & 0x0000FF00 | b & 0x000000FF;
     return [ color, a ];
 };

@@ -244,62 +244,143 @@ export default {
 
         const palette: number[] = [];
 
+        const spriteCount = images.length;
+        const maxWidth = images[0].width;
+        const maxHeight = images[0].height;
+
         images.forEach(png => {
             const { width: maxWidth, height: maxHeight, data } = png;
             const area = maxHeight * maxWidth;
-            const buffer = new ByteBuffer(data);
+            const pngData = new ByteBuffer(data);
 
-            const paletteIndices: number[] = new Array(area);
-            const alphaValues: number[] = new Array(area);
+            const pixels: number[][] = new Array(maxHeight);
+            const paletteIndices: number[][] = new Array(maxHeight);
+            const alphaValues: number[][] = new Array(maxHeight);
+            let minX = -1, minY = -1, maxX = -1, maxY = -1;
 
-            let x = 0;
-            let y = 0;
-            let offsetX = 0;
-            let offsetY = 0;
-            let contentFound = false;
-            let startIndex = 0;
-            let lastIndex = 0;
+            // PNG image pixels are read in row-major order
+            for(let y = 0; y < maxHeight; y++) {
+                pixels[y] = new Array(maxWidth);
+                paletteIndices[y] = new Array(maxWidth);
+                alphaValues[y] = new Array(maxWidth);
 
-            for(let i = 0; i < area; i++) {
-                const rgba = buffer.get('int');
-                const [ rgb, alpha ] = rgbaToArgb(rgba);
+                for(let x = 0; x < maxWidth; x++) {
+                    const rgb = pngData.get('int24', 'u');
+                    const alpha = pngData.get('byte', 'u');
+                    // const [ rgb, alpha ] = rgbaToArgb(rgba);
 
-                if(alpha === 0xff) {
-                    // fully transparent
-                } else if(!contentFound) {
-                    startIndex = i;
-                    offsetX = x;
-                    offsetY = y;
-                    contentFound = true;
-                } else {
-                    lastIndex = i;
-                }
+                    if(rgb !== 0 || alpha !== 0) {
+                        // console.log(rgb, alpha);
 
-                let paletteIndex = palette.indexOf(rgb);
-                if(palette.indexOf(rgb) === -1) {
-                    paletteIndex = palette.push(rgb) - 1;
-                }
+                        if(minX === -1 || x < minX) {
+                            minX = x;
+                        }
+                        if(minY === -1 || y < minY) {
+                            minY = y;
+                        }
+                        if(x > maxX) {
+                            maxX = x;
+                        }
+                        if(y > maxY) {
+                            maxY = y;
+                        }
 
-                paletteIndices[i] = paletteIndex;
-                alphaValues[i] = alpha;
+                        if(palette.indexOf(rgb) === -1) {
+                            palette.push(rgb);
+                        }
 
-                x++;
-                if(x >= maxWidth) {
-                    x = 0;
-                    y++;
+                        pixels[y][x] = rgb;
+                        alphaValues[y][x] = alpha;
+                    }
                 }
             }
 
-            // @TODO resize palette and alpha arrays to match the offset and last pixel positions
+            palette.sort((a, b) => a - b);
+
+            console.log(palette);
+
+            for(let y = 0; y < maxHeight; y++) {
+                for(let x = 0; x < maxWidth; x++) {
+                    const pixel = pixels[y][x];
+                    if(pixel === undefined) {
+                        continue;
+                    }
+
+                    const paletteIndex = palette.indexOf(pixel);
+                    if(paletteIndex === -1) {
+                        continue;
+                    }
+
+                    paletteIndices[y][x] = paletteIndex;
+                }
+            }
+
+
+            // @TODO determine if image is row-major or column-major
+            // Graham: I think I'd encode them both ways, compress both and then see which is smaller
+            // ^ It appears they do this and pick the smallest file size in order to save space/bandwidth
+
+
+            const actualWidth = maxX - minX;
+            const actualHeight = maxY - minY;
+            const actualArea = actualWidth * actualHeight;
+            const offsetX = minX;
+            const offsetY = minY;
+
+            const columnMajorResized: number[] = new Array(actualArea);
+            const rowMajorResized: number[] = new Array(actualArea);
+
+            let resizedIdx = 0;
+            let columnMajorDiff: number = 0;
+            let rowMajorDiff: number = 0;
+
+            let previousDiff = 0;
+            for(let x = offsetX; x < actualWidth + offsetX; x++) {
+                let previousPaletteIdx = 0;
+                let diff = 0;
+
+                for(let y = offsetY; y < actualHeight + offsetY; y++) {
+                    const paletteIdx = paletteIndices[y][x] ?? 0;
+                    diff += paletteIdx;
+                    previousPaletteIdx = paletteIdx;
+                    columnMajorResized[resizedIdx++] = paletteIdx;
+                }
+
+                columnMajorDiff += diff - previousDiff;
+                previousDiff = diff;
+            }
+
+            resizedIdx = 0;
+            previousDiff = 0;
+
+            for(let y = offsetY; y < actualHeight + offsetY; y++) {
+                let previousPaletteIdx = 0;
+                let diff = 0;
+
+                for(let x = offsetX; x < actualWidth + offsetX; x++) {
+                    const paletteIdx = paletteIndices[y][x] ?? 0;
+                    diff += paletteIdx;
+                    previousPaletteIdx = paletteIdx;
+                    rowMajorResized[resizedIdx++] = paletteIdx;
+                }
+
+                rowMajorDiff += diff - previousDiff;
+                previousDiff = diff;
+            }
+
+            const storageMethod: SpriteStorageMethod = rowMajorDiff < columnMajorDiff ? 'row-major' : 'column-major';
+
+            console.log(`column diff:\t` + columnMajorDiff);
+            console.log(`row diff:\t` + rowMajorDiff);
+            console.log(`\nDetected Method: ${storageMethod}`);
+            // console.log(columnMajorResized);
+            // console.log(rowMajorResized);
+
             // @TODO write footer data
             // @TODO test
         });
 
-        const spriteCount = images.length;
-        const spriteWidths: number[] = images.map(png => png.width);
-        const spriteHeights: number[] = images.map(png => png.height);
-        const maxWidth = Math.max(...spriteWidths);
-        const maxHeight = Math.max(...spriteHeights);
+        const paletteLength = palette.length;
 
         const buffer = new ByteBuffer(100000);
 

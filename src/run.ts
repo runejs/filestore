@@ -21,15 +21,25 @@ import { ArchiveDecompressor } from './client-store/decompression/archive-decomp
     });
 
     // Decode a packed client cache with this vvv
-    await clientFileStore.decompressArchives(false);
+    // await clientFileStore.decompressArchives(false);
     // await ArchiveDecompressor.writeFileNames();
 
     // Decode a single packed client cache archive with this line vvv
     // await clientFileStore.getIndex('sprites').decompressArchive();
 
 
-
-
+    ([
+        [ 781, 'sideicons_interface,7', 'column' ],
+        [ 460, 'painting2', 'row' ],
+        [ 213, 'staticons,16', 'column' ],
+        [ 203, 'staticons,6', 'row' ]
+    ] as [ number, string, string ][]).forEach(file => {
+        const [ fileIndex, fileName, storageType ] = file;
+        console.log(`Original Method: ${storageType}-major\n`);
+        const spriteFile: Buffer = fs.readFileSync(`./stores/sprites/${fileName}.png`);
+        spriteCodec.encode({ fileIndex, fileName }, spriteFile);
+        console.log('\n');
+    });
 
     // const fileStore = new FileStore();
 

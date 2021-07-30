@@ -250,13 +250,14 @@ export default {
 
         images.forEach(png => {
             const { width: maxWidth, height: maxHeight, data } = png;
-            const area = maxHeight * maxWidth;
             const pngData = new ByteBuffer(data);
 
             const pixels: number[][] = new Array(maxHeight);
             const paletteIndices: number[][] = new Array(maxHeight);
             const alphaValues: number[][] = new Array(maxHeight);
             let minX = -1, minY = -1, maxX = -1, maxY = -1;
+
+            // Read all pixel and color data from the original PNG image file
 
             // PNG image pixels are read in row-major order
             for(let y = 0; y < maxHeight; y++) {
@@ -295,9 +296,12 @@ export default {
                 }
             }
 
-            palette.sort((a, b) => a - b);
+            // Sort the color palette array to make the file compress more efficiently
 
+            palette.sort((a, b) => a - b);
             console.log(palette);
+
+            // Now find the color palette index for each individual image pixel within the sorted palette array
 
             for(let y = 0; y < maxHeight; y++) {
                 for(let x = 0; x < maxWidth; x++) {
@@ -316,10 +320,11 @@ export default {
             }
 
 
-            // @TODO determine if image is row-major or column-major
-            // Graham: I think I'd encode them both ways, compress both and then see which is smaller
-            // ^ It appears they do this and pick the smallest file size in order to save space/bandwidth
-
+            // Determine whether to store the palette indices in row-major or column-major order
+            // To figure this out, we loop through each version of the file and diff the sum
+            // of each individual column or row. The resulting diffs of each type are then compared
+            // and the smallest one is used to store the pixel index data. In the event of a tie,
+            // column-major is used by default.
 
             const actualWidth = maxX - minX;
             const actualHeight = maxY - minY;
@@ -327,12 +332,12 @@ export default {
             const offsetX = minX;
             const offsetY = minY;
 
-            const columnMajorResized: number[] = new Array(actualArea);
-            const rowMajorResized: number[] = new Array(actualArea);
+            const columnResized: number[] = new Array(actualArea);
+            const rowResized: number[] = new Array(actualArea);
 
             let resizedIdx = 0;
-            let columnMajorDiff: number = 0;
-            let rowMajorDiff: number = 0;
+            let columnDiff: number = 0;
+            let rowDiff: number = 0;
 
             let previousDiff = 0;
             for(let x = offsetX; x < actualWidth + offsetX; x++) {
@@ -343,10 +348,10 @@ export default {
                     const paletteIdx = paletteIndices[y][x] ?? 0;
                     diff += paletteIdx;
                     previousPaletteIdx = paletteIdx;
-                    columnMajorResized[resizedIdx++] = paletteIdx;
+                    columnResized[resizedIdx++] = paletteIdx;
                 }
 
-                columnMajorDiff += diff - previousDiff;
+                columnDiff += diff - previousDiff;
                 previousDiff = diff;
             }
 
@@ -361,20 +366,18 @@ export default {
                     const paletteIdx = paletteIndices[y][x] ?? 0;
                     diff += paletteIdx;
                     previousPaletteIdx = paletteIdx;
-                    rowMajorResized[resizedIdx++] = paletteIdx;
+                    rowResized[resizedIdx++] = paletteIdx;
                 }
 
-                rowMajorDiff += diff - previousDiff;
+                rowDiff += diff - previousDiff;
                 previousDiff = diff;
             }
 
-            const storageMethod: SpriteStorageMethod = rowMajorDiff < columnMajorDiff ? 'row-major' : 'column-major';
+            const storageMethod: SpriteStorageMethod = rowDiff < columnDiff ? 'row-major' : 'column-major';
 
-            console.log(`column diff:\t` + columnMajorDiff);
-            console.log(`row diff:\t` + rowMajorDiff);
+            console.log(`column diff:\t` + columnDiff);
+            console.log(`row diff:\t` + rowDiff);
             console.log(`\nDetected Method: ${storageMethod}`);
-            // console.log(columnMajorResized);
-            // console.log(rowMajorResized);
 
             // @TODO write footer data
             // @TODO test

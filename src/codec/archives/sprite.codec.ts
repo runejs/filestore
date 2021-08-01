@@ -1,10 +1,8 @@
 import { ByteBuffer } from '@runejs/core/buffer';
 import FileCodec from '../file-codec';
 import { PNG } from 'pngjs';
-import { toRgb } from '../../client-store';
 import { logger } from '@runejs/core';
-import { argbToRgba, rgbaToArgb } from '../../util/colors';
-import { buf } from 'crc-32';
+import { argbToRgba } from '../../util/colors';
 
 
 /**
@@ -154,6 +152,11 @@ function decodeSprite(fileBuffer: ByteBuffer, sprite: Sprite): PNG {
 }
 
 
+export let codecMode: SpriteStorageMethod;
+export let codecTotals = [ 0, 0 ];
+export const setCodecMode = (mode: SpriteStorageMethod) => codecMode = mode;
+
+
 export default {
     archive: 'sprites',
     revision: '414-458',
@@ -187,15 +190,21 @@ export default {
         spriteSheet.maxHeight = reversedBuffer.get('short', 'unsigned', 'le');
         spriteSheet.maxWidth = reversedBuffer.get('short', 'unsigned', 'le');
 
-        spriteSheet.palette = new Array(paletteLength + 1);
+        spriteSheet.palette = new Array(paletteLength + 1).fill(0);
 
         // Parse all of the colors used in the pack
         for(let i = paletteLength; i > 0; i--) {
             spriteSheet.palette[i] = reversedBuffer.get('int24', 'signed', 'le');
 
-            if(spriteSheet.palette[i] === 0) {
+            if(spriteSheet.palette[i] === 0) { // does this store the color white as '0'?
                 spriteSheet.palette[i] = 1;
             }
+        }
+
+        if(file.fileIndex === 781) {
+            console.log(`\n${file.fileIndex}`);
+            console.log(...spriteSheet.palette);
+            console.log(`\n`);
         }
 
         // Now read the individual sprites from the beginning of the file
@@ -247,23 +256,267 @@ export default {
         const spriteCount = images.length;
         const maxWidth = images[0].width;
         const maxHeight = images[0].height;
+        const maxArea = maxWidth * maxHeight;
 
-        images.forEach(png => {
+        const sprite = images[0];
+        const pngData = new ByteBuffer(sprite.data);
+        let minX = -1, minY = -1, maxX = -1, maxY = -1;
+        let ix = 0, iy = 0;
+        let pixels: number[][] = new Array(maxHeight);
+        let alphaValues: number[][] = new Array(maxHeight);
+        let hasAlpha: boolean = false;
+
+        for(let i = 0; i < maxArea; i++) {
+            let rgb = pngData.get('int24', 'u');
+            const alpha = pngData.get('byte', 'u');
+
+            if(ix === 0) {
+                pixels[iy] = new Array(maxWidth).fill(0);
+                alphaValues[iy] = new Array(maxWidth).fill(255);
+            }
+
+            if(rgb !== 0 || alpha !== 0) {
+                if(minX === -1 || ix < minX) {
+                    minX = ix;
+                }
+                if(minY === -1 || iy < minY) {
+                    minY = iy;
+                }
+                if(ix > maxX) {
+                    maxX = ix;
+                }
+                if(iy > maxY) {
+                    maxY = iy;
+                }
+
+                const paletteMapIdx = palette.indexOf(rgb);
+                if(paletteMapIdx === -1) {
+                    palette.push(rgb);
+                }
+
+                pixels[iy][ix] = rgb ?? 0;
+                alphaValues[iy][ix] = alpha ?? 255;
+            }
+
+            if(!hasAlpha && alphaValues[iy][ix] !== 255) {
+                hasAlpha = true;
+            }
+
+            ix++;
+            if(ix >= maxWidth) {
+                ix = 0;
+                iy++;
+            }
+        }
+
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const actualArea = width * height;
+        const offsetX = minX;
+        const offsetY = minY;
+
+        const rowRanges: { rgb: number, count: number }[][] = new Array(height);
+        const columnRanges: { rgb: number, count: number }[][] = new Array(width);
+
+        const rowAlphaRanges: { alpha: number, count: number }[][] = new Array(height);
+        const columnAlphaRanges: { alpha: number, count: number }[][] = new Array(width);
+
+        // row-major order
+        for(let y = 0; y < height; y++) {
+            for(let x = 0; x < width; x++) {
+                const rgb = pixels[y + offsetY][x + offsetX];
+                const alpha = alphaValues[y + offsetY][x + offsetX];
+
+                if(!rowRanges[y]?.length) {
+                    rowRanges[y] = [ { rgb, count: 1 } ];
+                    rowAlphaRanges[y] = [ { alpha, count: 1 } ];
+                } else {
+                    const lastEntry = rowRanges[y][rowRanges[y].length - 1];
+                    if(lastEntry && lastEntry.rgb === rgb) {
+                        lastEntry.count++;
+                    } else {
+                        rowRanges[y].push({ rgb, count: 1 });
+                    }
+
+                    const lastAlphaEntry = rowAlphaRanges[y][rowAlphaRanges[y].length - 1];
+                    if(lastAlphaEntry && lastAlphaEntry.alpha === alpha) {
+                        lastAlphaEntry.count++;
+                    } else {
+                        rowAlphaRanges[y].push({ alpha, count: 1 });
+                    }
+                }
+            }
+        }
+
+        // column-major order
+        for(let x = 0; x < width; x++) {
+            for(let y = 0; y < height; y++) {
+                const rgb = pixels[y + offsetY][x + offsetX];
+                const alpha = alphaValues[y + offsetY][x + offsetX];
+
+                if(!columnRanges[x]?.length) {
+                    columnRanges[x] = [ { rgb, count: 1 } ];
+                    columnAlphaRanges[x] = [ { alpha, count: 1 } ];
+                } else {
+                    const lastEntry = columnRanges[x][columnRanges[x].length - 1];
+                    if(lastEntry && lastEntry.rgb === rgb) {
+                        lastEntry.count++;
+                    } else {
+                        columnRanges[x].push({ rgb, count: 1 });
+                    }
+                }
+
+                const lastAlphaEntry = columnAlphaRanges[x][columnAlphaRanges[x].length - 1];
+                if(lastAlphaEntry && lastAlphaEntry.alpha === alpha) {
+                    lastAlphaEntry.count++;
+                } else {
+                    columnAlphaRanges[x].push({ alpha, count: 1 });
+                }
+            }
+        }
+
+        const rowPaletteMap: { [key: number]: number } = {};
+        const columnPaletteMap: { [key: number]: number } = {};
+
+        // Count the number of ranges that each color appears in for row-major order
+        rowRanges.forEach(row => {
+            row.forEach(range => {
+                if(!rowPaletteMap[range.rgb]) {
+                    rowPaletteMap[range.rgb] = 1;
+                } else {
+                    rowPaletteMap[range.rgb]++;
+                }
+            })
+        });
+
+        // Count the number of ranges that each color appears in for column-major order
+        columnRanges.forEach(column => {
+            column.forEach(range => {
+                if(!columnPaletteMap[range.rgb]) {
+                    columnPaletteMap[range.rgb] = 1;
+                } else {
+                    columnPaletteMap[range.rgb]++;
+                }
+            })
+        });
+
+        const rowPalette = Object.keys(rowPaletteMap)
+            .sort((a, b) => rowPaletteMap[a] - rowPaletteMap[b])
+            .map(s => Number(s));
+        const columnPalette = Object.keys(columnPaletteMap)
+            .sort((a, b) => columnPaletteMap[a] - columnPaletteMap[b])
+            .map(s => Number(s));
+
+        if(rowPalette.indexOf(1) !== -1) {
+            rowPalette.splice(rowPalette.indexOf(1), 1);
+            rowPalette.unshift(1);
+        }
+        if(rowPalette.indexOf(0) !== -1) {
+            rowPalette.splice(rowPalette.indexOf(0), 1);
+            rowPalette.unshift(0);
+        }
+        if(columnPalette.indexOf(1) !== -1) {
+            columnPalette.splice(columnPalette.indexOf(1), 1);
+            columnPalette.unshift(1);
+        }
+        if(columnPalette.indexOf(0) !== -1) {
+            columnPalette.splice(columnPalette.indexOf(0), 1);
+            columnPalette.unshift(0);
+        }
+
+        const rowRangeCounts: number[] = rowRanges.map(row => row?.length ?? 0);
+        const columnRangeCounts: number[] = columnRanges.map(column => column?.length ?? 0);
+
+        const rowAlphaRangeCounts: number[] = rowAlphaRanges.map(row => row?.length ?? 0);
+        const columnAlphaRangeCounts: number[] = columnAlphaRanges.map(column => column?.length ?? 0);
+
+        const rowRangeTotal = rowRangeCounts.reduce((a, b) => a + b);
+        const columnRangeTotal = columnRangeCounts.reduce((a, b) => a + b);
+
+        const rowAlphaTotal = hasAlpha ? rowAlphaRangeCounts.reduce((a, b) => a + b) : 0;
+        const columnAlphaTotal = hasAlpha ? columnAlphaRangeCounts.reduce((a, b) => a + b) : 0;
+
+        const rowTotal = rowRangeTotal + rowAlphaTotal;
+        const columnTotal = columnRangeTotal + columnAlphaTotal;
+
+        let columnDiff: number = 0;
+        let rowDiff: number = 0;
+        let previousPaletteIdx = 0;
+
+        // Build the array of palette indices for row-major order
+        for(let y = 0; y < height; y++) {
+            for(let x = 0; x < width; x++) {
+                const pixel = pixels[y + offsetY][x + offsetX];
+                let paletteIdx = rowPalette.indexOf(pixel);
+                if(paletteIdx < 0) {
+                    paletteIdx = 0;
+                }
+                rowDiff += paletteIdx - previousPaletteIdx;
+                previousPaletteIdx = paletteIdx;
+            }
+        }
+
+        previousPaletteIdx = 0;
+
+        // Build the array of palette indices for column-major order
+        for(let x = 0; x < width; x++) {
+            for(let y = 0; y < height; y++) {
+                const pixel = pixels[y + offsetY][x + offsetX];
+                let paletteIdx = columnPalette.indexOf(pixel);
+                if(paletteIdx < 0) {
+                    paletteIdx = 0;
+                }
+                columnDiff += paletteIdx - previousPaletteIdx;
+                previousPaletteIdx = paletteIdx;
+            }
+        }
+
+        rowDiff = Math.abs(rowDiff);
+        columnDiff = Math.abs(columnDiff);
+
+        const rowGrandTotal = (rowDiff + rowTotal);
+        const columnGrandTotal = (columnDiff + columnTotal);
+
+        const storageMethod: SpriteStorageMethod = rowGrandTotal <= columnGrandTotal ? 'row-major' : 'column-major';
+
+        if(!codecMode || (codecMode && codecMode !== storageMethod)) {
+            // console.error(`\nDetected: ${storageMethod}`);
+            // console.log(`\nRow:\t total:${rowTotal} diff:${rowDiff}`);
+            //console.log(rowPalette);
+            // console.log(`\nColumn:\t total:${columnTotal} diff:${columnDiff}`);
+            //console.log(columnPalette);
+            codecTotals[1]++;
+        } else {
+            codecTotals[0]++;
+        }
+
+        /*let pixels: number[][][] = new Array(spriteCount);
+        let paletteIndices: number[][][] = new Array(spriteCount);
+        let alphaValues: number[][][] = new Array(spriteCount);
+        let minX = -1, minY = -1, maxX = -1, maxY = -1;
+
+        for(let spriteIdx = 0; spriteIdx < spriteCount; spriteIdx++) {
+            const png = images[spriteIdx];
             const { width: maxWidth, height: maxHeight, data } = png;
             const pngData = new ByteBuffer(data);
 
-            const pixels: number[][] = new Array(maxHeight);
-            const paletteIndices: number[][] = new Array(maxHeight);
-            const alphaValues: number[][] = new Array(maxHeight);
-            let minX = -1, minY = -1, maxX = -1, maxY = -1;
+            pixels[spriteIdx] = new Array(maxHeight);
+            paletteIndices[spriteIdx] = new Array(maxHeight);
+            alphaValues[spriteIdx] = new Array(maxHeight);
+
+            minX = -1;
+            minY = -1;
+            maxX = -1;
+            maxY = -1;
 
             // Read all pixel and color data from the original PNG image file
 
+            let previousIdx = -1;
+            let consecutive = 0;
             // PNG image pixels are read in row-major order
             for(let y = 0; y < maxHeight; y++) {
-                pixels[y] = new Array(maxWidth);
-                paletteIndices[y] = new Array(maxWidth);
-                alphaValues[y] = new Array(maxWidth);
+                pixels[spriteIdx][y] = new Array(maxWidth);
+                alphaValues[spriteIdx][y] = new Array(maxWidth).fill(0);
 
                 for(let x = 0; x < maxWidth; x++) {
                     const rgb = pngData.get('int24', 'u');
@@ -286,36 +539,56 @@ export default {
                             maxY = y;
                         }
 
-                        if(palette.indexOf(rgb) === -1) {
-                            palette.push(rgb);
+                        const paletteMapIdx = paletteMap.findIndex(p => p.color === rgb);
+                        if(paletteMapIdx === -1) {
+                            paletteMap.push({ color: rgb, weight: 1 });
+                        } else {
+                            paletteMap[paletteMapIdx].weight++;
                         }
 
-                        pixels[y][x] = rgb;
-                        alphaValues[y][x] = alpha;
+                        if(paletteMapIdx !== -1 && previousIdx === paletteMapIdx) {
+                            consecutive++;
+                            paletteMap[paletteMapIdx].weight += consecutive;
+                        } else {
+                            consecutive = 0;
+                        }
+
+                        previousIdx = paletteMapIdx;
+
+                        pixels[spriteIdx][y][x] = rgb ?? 0;
+                        alphaValues[spriteIdx][y][x] = alpha ?? 255;
+                    } else {
+                        pixels[spriteIdx][y][x] = 0;
+                        alphaValues[spriteIdx][y][x] = 0;
+                        consecutive = 0;
                     }
                 }
             }
+        }
 
-            // Sort the color palette array to make the file compress more efficiently
+        // Sort the color palette array to make the file compress more efficiently
 
-            palette.sort((a, b) => a - b);
-            console.log(palette);
+        const palette = paletteMap
+            .sort((a, b) => {
+                if(a.color === 1) {
+                    return -1;
+                } else if(b.color === 1) {
+                    return 1;
+                }
 
+                return b.weight - a.weight;
+            }).map(p => p.color);
+        palette.unshift(0);
+
+        for(let spriteIdx = 0; spriteIdx < spriteCount; spriteIdx++) {
             // Now find the color palette index for each individual image pixel within the sorted palette array
 
             for(let y = 0; y < maxHeight; y++) {
+                paletteIndices[spriteIdx][y] = new Array(maxWidth).fill(0);
+
                 for(let x = 0; x < maxWidth; x++) {
-                    const pixel = pixels[y][x];
-                    if(pixel === undefined) {
-                        continue;
-                    }
-
-                    const paletteIndex = palette.indexOf(pixel);
-                    if(paletteIndex === -1) {
-                        continue;
-                    }
-
-                    paletteIndices[y][x] = paletteIndex;
+                    const pixel = pixels[spriteIdx][y][x] ?? 0;
+                    paletteIndices[spriteIdx][y][x] = palette.indexOf(pixel);
                 }
             }
 
@@ -345,10 +618,10 @@ export default {
                 let diff = 0;
 
                 for(let y = offsetY; y < actualHeight + offsetY; y++) {
-                    const paletteIdx = paletteIndices[y][x] ?? 0;
+                    const paletteIdx = paletteIndices[spriteIdx][y][x] ?? 0;
+                    columnResized[resizedIdx++] = paletteIdx;
                     diff += paletteIdx;
                     previousPaletteIdx = paletteIdx;
-                    columnResized[resizedIdx++] = paletteIdx;
                 }
 
                 columnDiff += diff - previousDiff;
@@ -363,29 +636,38 @@ export default {
                 let diff = 0;
 
                 for(let x = offsetX; x < actualWidth + offsetX; x++) {
-                    const paletteIdx = paletteIndices[y][x] ?? 0;
+                    const paletteIdx = paletteIndices[spriteIdx][y][x] ?? 0;
+                    rowResized[resizedIdx++] = paletteIdx;
                     diff += paletteIdx;
                     previousPaletteIdx = paletteIdx;
-                    rowResized[resizedIdx++] = paletteIdx;
                 }
 
                 rowDiff += diff - previousDiff;
                 previousDiff = diff;
             }
 
-            const storageMethod: SpriteStorageMethod = rowDiff < columnDiff ? 'row-major' : 'column-major';
+            rowDiff = Math.abs(rowDiff);
+            columnDiff = Math.abs(columnDiff);
 
-            console.log(`column diff:\t` + columnDiff);
-            console.log(`row diff:\t` + rowDiff);
-            console.log(`\nDetected Method: ${storageMethod}`);
+            const storageMethod: SpriteStorageMethod = columnDiff < rowDiff ? 'column-major' : 'row-major';
+
+            //if(codecMode && codecMode !== storageMethod) {
+                console.log(`File Name:\t${file.fileName}`);
+                console.warn(`Detected:\t${storageMethod}`);
+                console.log(`Column Diff:\t${columnDiff}`);
+                console.log(`Row Diff:\t${rowDiff}`);
+                console.log('Palette:\t' + palette.join(' '));
+                // console.log('Alphas:\t' + alphaValues.join(' '));
+                console.log('\n');
+            //}
 
             // @TODO write footer data
             // @TODO test
-        });
+        }
 
         const paletteLength = palette.length;
 
-        const buffer = new ByteBuffer(100000);
+        const buffer = new ByteBuffer(100000);*/
 
         return null;
     }

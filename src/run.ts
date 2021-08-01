@@ -1,6 +1,6 @@
 import { FileStore } from './file-store';
 import { logger } from '@runejs/core';
-import spriteCodec from './codec/archives/sprite.codec';
+import spriteCodec, { codecTotals, setCodecMode } from './codec/archives/sprite.codec';
 import { ClientFileStore, loadXteaRegionFiles } from './client-store';
 import * as fs from 'fs';
 import path from 'path';
@@ -28,18 +28,63 @@ import { ArchiveDecompressor } from './client-store/decompression/archive-decomp
     // await clientFileStore.getIndex('sprites').decompressArchive();
 
 
-    ([
+    /*([
         [ 781, 'sideicons_interface,7', 'column' ],
         [ 460, 'painting2', 'row' ],
         [ 213, 'staticons,16', 'column' ],
         [ 203, 'staticons,6', 'row' ]
     ] as [ number, string, string ][]).forEach(file => {
         const [ fileIndex, fileName, storageType ] = file;
-        console.log(`Original Method: ${storageType}-major\n`);
+        console.log(`Original: ${storageType}-major`);
         const spriteFile: Buffer = fs.readFileSync(`./stores/sprites/${fileName}.png`);
         spriteCodec.encode({ fileIndex, fileName }, spriteFile);
         console.log('\n');
+    });*/
+
+    console.log('\n\nChecking column-major files...');
+
+    setCodecMode('column-major');
+
+    let spriteFiles = fs.readdirSync(`D:/rsdev/sprites-column-major`).filter(fileName => {
+        return fileName.endsWith('.png');
     });
+    for(let i = 0; i < spriteFiles.length; i++) {
+        const spriteFile: Buffer = fs.readFileSync(`D:/rsdev/sprites-column-major/${spriteFiles[i]}`);
+        spriteCodec.encode({
+            fileIndex: i,
+            fileName: spriteFiles[i].replace('.png', '')
+        }, spriteFile);
+    }
+
+    const [ columnCorrect, columnIncorrect ] = codecTotals;
+    const columnTotal = columnCorrect + columnIncorrect;
+    const columnPercentRight = Math.round((columnCorrect / columnTotal) * 100);
+
+    console.log('\n\nChecking row-major files...');
+
+    codecTotals[0] = 0;
+    codecTotals[1] = 0;
+    setCodecMode('row-major');
+
+    spriteFiles = fs.readdirSync(`D:/rsdev/sprites-row-major`).filter(fileName => {
+        return fileName.endsWith('.png');
+    });
+    for(let i = 0; i < spriteFiles.length; i++) {
+        const spriteFile: Buffer = fs.readFileSync(`D:/rsdev/sprites-row-major/${spriteFiles[i]}`);
+        spriteCodec.encode({
+            fileIndex: i,
+            fileName: spriteFiles[i].replace('.png', '')
+        }, spriteFile);
+    }
+
+    const [ rowCorrect, rowIncorrect ] = codecTotals;
+    const rowTotal = rowCorrect + rowIncorrect;
+    const rowPercentRight = Math.round((rowCorrect / rowTotal) * 100);
+
+    console.log('');
+    console.log(`Row-Major: ${rowPercentRight}% (${rowCorrect}:${rowIncorrect} of ${rowTotal})`);
+    console.log(`Column-Major: ${columnPercentRight}% (${columnCorrect}:${columnIncorrect} of ${columnTotal})`);
+    console.log('');
 
     // const fileStore = new FileStore();
 

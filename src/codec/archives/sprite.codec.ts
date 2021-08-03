@@ -2,8 +2,22 @@ import { ByteBuffer } from '@runejs/core/buffer';
 import FileCodec from '../file-codec';
 import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
-import { argbToRgba } from '../../util/colors';
+import { HSB, RGB, RGBA } from '../../util/colors';
 
+const pad = (i, amt): string => {
+    if(i === 0) {
+        return new Array(amt).fill(' ').join('');
+    }
+    const s = `${i}`;
+    if(s.length < amt) {
+        return new Array(amt - s.length).fill(' ').join('') + s;
+    }
+    return s;
+};
+
+function similarHue(hue1, hue2, interval = 30): boolean {
+    return (Math.floor(hue1 / interval) === Math.floor(hue2 / interval));
+}
 
 /**
  * The method with which pixel data is stored for a single Sprite within a SpriteSheet.
@@ -132,7 +146,7 @@ function decodeSprite(fileBuffer: ByteBuffer, sprite: Sprite): PNG {
             } else {
                 const i = width * spriteY + spriteX;
                 const pixel = sprite.pixels[i];
-                const rgba = argbToRgba(pixel, sprite.getAlpha(i));
+                const rgba = RGBA.fromRgbInt(pixel, sprite.getAlpha(i)).toInt();
                 pngData.put(rgba, 'int');
             }
         }
@@ -197,20 +211,30 @@ export default {
             spriteSheet.palette[i] = reversedBuffer.get('int24', 'signed', 'le');
 
             if(spriteSheet.palette[i] === 0) { // does this store the color white as '0'?
-                spriteSheet.palette[i] = 1;
+                // spriteSheet.palette[i] = 1;
             }
-        }
-
-        if(file.fileIndex === 781) {
-            console.log(`\n${file.fileIndex}`);
-            console.log(...spriteSheet.palette);
-            console.log(`\n`);
         }
 
         // Now read the individual sprites from the beginning of the file
         return spriteSheet.sprites.map(sprite => {
             try {
                 const decodedSprite = decodeSprite(buffer, sprite);
+                if(file.fileIndex === 780 || file.fileIndex === 781) {
+                    console.log(`\n${file.fileIndex}`);
+                    console.log(...spriteSheet.palette.slice(1));
+                    console.log(`\n`);
+
+                    for(let y = 0; y < sprite.height; y++) {
+                        let row = ``;
+                        for(let x = 0; x < sprite.width; x++) {
+                            const i = sprite.width * y + x;
+                            row += pad(sprite.paletteIndices[i], 2) + ' ';
+                        }
+                        console.log(row);
+                    }
+
+                    console.log(`\n`);
+                }
                 return decodedSprite ? PNG.sync.write(decodedSprite) : null;
             } catch(error) {
                 if(buffer?.length) {
@@ -268,14 +292,30 @@ export default {
 
         for(let i = 0; i < maxArea; i++) {
             let rgb = pngData.get('int24', 'u');
-            const alpha = pngData.get('byte', 'u');
+            let alpha = pngData.get('byte', 'u');
 
             if(ix === 0) {
-                pixels[iy] = new Array(maxWidth).fill(0);
-                alphaValues[iy] = new Array(maxWidth).fill(255);
+                pixels[iy] = new Array(maxWidth);
+                alphaValues[iy] = new Array(maxWidth);
             }
 
-            if(rgb !== 0 || alpha !== 0) {
+            if(rgb === 0 || alpha === 0) {
+                rgb = alpha === 0 ? 0 : 1;
+            }
+
+            const paletteMapIdx = palette.indexOf(rgb);
+            if(paletteMapIdx === -1) {
+                palette.push(rgb);
+            }
+
+            pixels[iy][ix] = rgb;
+            alphaValues[iy][ix] = alpha;
+
+            if(!hasAlpha && alpha !== 255) {
+                hasAlpha = true;
+            }
+
+            if(rgb !== 0) {
                 if(minX === -1 || ix < minX) {
                     minX = ix;
                 }
@@ -288,18 +328,6 @@ export default {
                 if(iy > maxY) {
                     maxY = iy;
                 }
-
-                const paletteMapIdx = palette.indexOf(rgb);
-                if(paletteMapIdx === -1) {
-                    palette.push(rgb);
-                }
-
-                pixels[iy][ix] = rgb ?? 0;
-                alphaValues[iy][ix] = alpha ?? 255;
-            }
-
-            if(!hasAlpha && alphaValues[iy][ix] !== 255) {
-                hasAlpha = true;
             }
 
             ix++;
@@ -309,17 +337,17 @@ export default {
             }
         }
 
-        const width = maxX - minX;
-        const height = maxY - minY;
+        const width = maxX - minX + 1;
+        const height = maxY - minY + 1;
         const actualArea = width * height;
         const offsetX = minX;
         const offsetY = minY;
 
-        const rowRanges: { rgb: number, count: number }[][] = new Array(height);
-        const columnRanges: { rgb: number, count: number }[][] = new Array(width);
+        const rowRanges: { rgb: number, pixels: number }[] = [];
+        const columnRanges: { rgb: number, pixels: number }[] = [];
 
-        const rowAlphaRanges: { alpha: number, count: number }[][] = new Array(height);
-        const columnAlphaRanges: { alpha: number, count: number }[][] = new Array(width);
+        const rowAlphaRanges: { alpha: number, count: number }[] = [];
+        const columnAlphaRanges: { alpha: number, count: number }[] = [];
 
         // row-major order
         for(let y = 0; y < height; y++) {
@@ -327,22 +355,22 @@ export default {
                 const rgb = pixels[y + offsetY][x + offsetX];
                 const alpha = alphaValues[y + offsetY][x + offsetX];
 
-                if(!rowRanges[y]?.length) {
-                    rowRanges[y] = [ { rgb, count: 1 } ];
-                    rowAlphaRanges[y] = [ { alpha, count: 1 } ];
+                if(!rowRanges?.length) {
+                    rowRanges.push({ rgb, pixels: 1 });
+                    rowAlphaRanges.push({ alpha, count: 1 });
                 } else {
-                    const lastEntry = rowRanges[y][rowRanges[y].length - 1];
+                    const lastEntry = rowRanges[rowRanges.length - 1];
                     if(lastEntry && lastEntry.rgb === rgb) {
-                        lastEntry.count++;
+                        lastEntry.pixels++;
                     } else {
-                        rowRanges[y].push({ rgb, count: 1 });
+                        rowRanges.push({ rgb, pixels: 1 });
                     }
 
-                    const lastAlphaEntry = rowAlphaRanges[y][rowAlphaRanges[y].length - 1];
+                    const lastAlphaEntry = rowAlphaRanges[rowAlphaRanges.length - 1];
                     if(lastAlphaEntry && lastAlphaEntry.alpha === alpha) {
                         lastAlphaEntry.count++;
                     } else {
-                        rowAlphaRanges[y].push({ alpha, count: 1 });
+                        rowAlphaRanges.push({ alpha, count: 1 });
                     }
                 }
             }
@@ -354,96 +382,154 @@ export default {
                 const rgb = pixels[y + offsetY][x + offsetX];
                 const alpha = alphaValues[y + offsetY][x + offsetX];
 
-                if(!columnRanges[x]?.length) {
-                    columnRanges[x] = [ { rgb, count: 1 } ];
-                    columnAlphaRanges[x] = [ { alpha, count: 1 } ];
+                if(!columnRanges?.length) {
+                    columnRanges.push({ rgb, pixels: 1 });
+                    columnAlphaRanges.push({ alpha, count: 1 });
                 } else {
-                    const lastEntry = columnRanges[x][columnRanges[x].length - 1];
+                    const lastEntry = columnRanges[columnRanges.length - 1];
                     if(lastEntry && lastEntry.rgb === rgb) {
-                        lastEntry.count++;
+                        lastEntry.pixels++;
                     } else {
-                        columnRanges[x].push({ rgb, count: 1 });
+                        columnRanges.push({ rgb, pixels: 1 });
                     }
                 }
 
-                const lastAlphaEntry = columnAlphaRanges[x][columnAlphaRanges[x].length - 1];
+                const lastAlphaEntry = columnAlphaRanges[columnAlphaRanges.length - 1];
                 if(lastAlphaEntry && lastAlphaEntry.alpha === alpha) {
                     lastAlphaEntry.count++;
                 } else {
-                    columnAlphaRanges[x].push({ alpha, count: 1 });
+                    columnAlphaRanges.push({ alpha, count: 1 });
                 }
             }
         }
 
-        const rowPaletteMap: { [key: number]: number } = {};
-        const columnPaletteMap: { [key: number]: number } = {};
+        const rowPaletteMap: { [key: number]: { ranges: number, total: number } } = {};
+        const columnPaletteMap: { [key: number]: { ranges: number, total: number } } = {};
+        let rowPalette: number[] = [];
+        let columnPalette: number[] = [];
+
+        const paletteBuilder = (ranges: { rgb: number, pixels: number }[],
+                                paletteMap: { [key: number]: { ranges: number, total: number } },
+                                palette: number[]): void => {
+            ranges.forEach(range => {
+                const entry = paletteMap[range.rgb];
+                if(!entry) {
+                    palette.push(range.rgb);
+                    paletteMap[range.rgb] = { ranges: 1, total: range.pixels };
+                } else {
+                    entry.ranges++;
+                    entry.total += range.pixels;
+                }
+            });
+
+            palette.sort((firstRgb, secondRgb) => {
+                // return firstRgb - secondRgb;
+                const a = HSB.fromRgbInt(firstRgb);
+                const b = HSB.fromRgbInt(secondRgb);
+
+                if(a.hue === b.hue) {
+                    console.log('same hue: ' + firstRgb + ' ' + secondRgb);
+                }
+
+                return a.hue - b.hue;
+
+                /*if(!similarHue(a.h, b.h, 20)) {
+                    if(a.h < b.h) {
+                        return -1;
+                    }
+                    if(a.h > b.h) {
+                        return 1;
+                    }
+                }
+                if(a.s < b.s) {
+                    return 1;
+                }
+                if(a.s > b.s) {
+                    return -1;
+                }
+                if(a.v < b.v) {
+                    return -1;
+                }
+                if(a.v > b.v) {
+                    return 1;
+                }
+                return 0;*/
+
+                /*if(hsb1[0] === hsb2[0]) {
+                    if(hsb1[1] === hsb2[1]) {
+                        return hsb2[2] - hsb1[2];
+                    } else {
+                        return hsb1[1] - hsb2[1];
+                    }
+                }
+
+                return hsb1[0] - hsb2[0];*/
+            });//.reverse();
+        };
 
         // Count the number of ranges that each color appears in for row-major order
-        rowRanges.forEach(row => {
-            row.forEach(range => {
-                if(!rowPaletteMap[range.rgb]) {
-                    rowPaletteMap[range.rgb] = 1;
-                } else {
-                    rowPaletteMap[range.rgb]++;
-                }
-            })
-        });
+        paletteBuilder(rowRanges, rowPaletteMap, rowPalette);
 
         // Count the number of ranges that each color appears in for column-major order
-        columnRanges.forEach(column => {
-            column.forEach(range => {
-                if(!columnPaletteMap[range.rgb]) {
-                    columnPaletteMap[range.rgb] = 1;
-                } else {
-                    columnPaletteMap[range.rgb]++;
-                }
-            })
+        paletteBuilder(columnRanges, columnPaletteMap, columnPalette);
+
+        /*rowPalette = rowPalette.sort((a, b) => {
+            const [ aH, aS, aL ] = argbToHsvValues(a);
+            const [ bH, bS, bL ] = argbToHsvValues(b);
+
+            if(aL === bL) {
+                return aH !== bH ? bH - aH : bS - aS;
+            }
+
+            return bL - aL;
         });
 
-        const rowPalette = Object.keys(rowPaletteMap)
-            .sort((a, b) => rowPaletteMap[a] - rowPaletteMap[b])
-            .map(s => Number(s));
-        const columnPalette = Object.keys(columnPaletteMap)
-            .sort((a, b) => columnPaletteMap[a] - columnPaletteMap[b])
-            .map(s => Number(s));
+        columnPalette = columnPalette.sort((a, b) => {
+            const [ aH, aS, aL ] = argbToHsvValues(a);
+            const [ bH, bS, bL ] = argbToHsvValues(b);
 
+            if(aL === bL) {
+                return aH !== bH ? aH - bH : aS - bS;
+            }
+
+            return aL - bL;
+        });*/
         if(rowPalette.indexOf(1) !== -1) {
             rowPalette.splice(rowPalette.indexOf(1), 1);
             rowPalette.unshift(1);
         }
-        if(rowPalette.indexOf(0) !== -1) {
-            rowPalette.splice(rowPalette.indexOf(0), 1);
-            rowPalette.unshift(0);
-        }
         if(columnPalette.indexOf(1) !== -1) {
             columnPalette.splice(columnPalette.indexOf(1), 1);
             columnPalette.unshift(1);
+        }
+        if(rowPalette.indexOf(0) !== -1) {
+            rowPalette.splice(rowPalette.indexOf(0), 1);
+            rowPalette.unshift(0);
         }
         if(columnPalette.indexOf(0) !== -1) {
             columnPalette.splice(columnPalette.indexOf(0), 1);
             columnPalette.unshift(0);
         }
 
-        const rowRangeCounts: number[] = rowRanges.map(row => row?.length ?? 0);
-        const columnRangeCounts: number[] = columnRanges.map(column => column?.length ?? 0);
 
-        const rowAlphaRangeCounts: number[] = rowAlphaRanges.map(row => row?.length ?? 0);
-        const columnAlphaRangeCounts: number[] = columnAlphaRanges.map(column => column?.length ?? 0);
+        const rowRangeCounts: number = rowRanges.length;
+        const columnRangeCounts: number = columnRanges.length;
 
-        const rowRangeTotal = rowRangeCounts.reduce((a, b) => a + b);
-        const columnRangeTotal = columnRangeCounts.reduce((a, b) => a + b);
+        const rowAlphaRangeCounts: number = hasAlpha ? rowAlphaRanges.length : 0;
+        const columnAlphaRangeCounts: number = hasAlpha ? columnAlphaRanges.length : 0;
 
-        const rowAlphaTotal = hasAlpha ? rowAlphaRangeCounts.reduce((a, b) => a + b) : 0;
-        const columnAlphaTotal = hasAlpha ? columnAlphaRangeCounts.reduce((a, b) => a + b) : 0;
-
-        const rowTotal = rowRangeTotal + rowAlphaTotal;
-        const columnTotal = columnRangeTotal + columnAlphaTotal;
+        const rowRangeTotal = rowRangeCounts + rowAlphaRangeCounts;
+        const columnRangeTotal = columnRangeCounts + columnAlphaRangeCounts;
 
         let columnDiff: number = 0;
         let rowDiff: number = 0;
         let previousPaletteIdx = 0;
 
+        const rowPaletteIndices: number[] = new Array(actualArea);
+        const columnPaletteIndices: number[] = new Array(actualArea);
+
         // Build the array of palette indices for row-major order
+        let ri = 0;
         for(let y = 0; y < height; y++) {
             for(let x = 0; x < width; x++) {
                 const pixel = pixels[y + offsetY][x + offsetX];
@@ -451,7 +537,8 @@ export default {
                 if(paletteIdx < 0) {
                     paletteIdx = 0;
                 }
-                rowDiff += paletteIdx - previousPaletteIdx;
+                rowPaletteIndices[ri++] = paletteIdx;
+                rowDiff = paletteIdx - previousPaletteIdx;
                 previousPaletteIdx = paletteIdx;
             }
         }
@@ -466,7 +553,8 @@ export default {
                 if(paletteIdx < 0) {
                     paletteIdx = 0;
                 }
-                columnDiff += paletteIdx - previousPaletteIdx;
+                columnPaletteIndices[width * y + x] = paletteIdx;
+                columnDiff = paletteIdx - previousPaletteIdx;
                 previousPaletteIdx = paletteIdx;
             }
         }
@@ -474,21 +562,45 @@ export default {
         rowDiff = Math.abs(rowDiff);
         columnDiff = Math.abs(columnDiff);
 
-        const rowGrandTotal = (rowDiff + rowTotal);
-        const columnGrandTotal = (columnDiff + columnTotal);
+        const rowGrandTotal = (rowRangeTotal + rowDiff);
+        const columnGrandTotal = (columnRangeTotal + columnDiff);
 
         const storageMethod: SpriteStorageMethod = rowGrandTotal <= columnGrandTotal ? 'row-major' : 'column-major';
 
         if(!codecMode || (codecMode && codecMode !== storageMethod)) {
-            // console.error(`\nDetected: ${storageMethod}`);
-            // console.log(`\nRow:\t total:${rowTotal} diff:${rowDiff}`);
-            //console.log(rowPalette);
-            // console.log(`\nColumn:\t total:${columnTotal} diff:${columnDiff}`);
-            //console.log(columnPalette);
+            console.error(`\nDetected: ${storageMethod}`);
+            console.log(`\nRow:\t ranges:${rowRangeTotal} indicesDiff:${rowDiff} total:${rowGrandTotal}`);
+            // console.log(`\nRow:\t`, rowRanges);
+            console.log(`\nColumn:\t ranges:${columnRangeTotal} indicesDiff:${columnDiff} total:${columnGrandTotal}`);
+            // console.log(`\nColumn:\t`, columnRanges);
             codecTotals[1]++;
         } else {
             codecTotals[0]++;
         }
+
+        if(codecMode === 'row-major') {
+            console.log(...rowPalette);
+            for(let y = 0; y < height; y++) {
+                let row = ``;
+                for(let x = 0; x < width; x++) {
+                    const i = width * y + x;
+                    row += pad(rowPaletteIndices[i], 2) + ' ';
+                }
+                console.log(row);
+            }
+        } else {
+            console.log(...columnPalette);
+            for(let y = 0; y < height; y++) {
+                let row = ``;
+                for(let x = 0; x < width; x++) {
+                    const i = width * y + x;
+                    row += pad(columnPaletteIndices[i], 2) + ' ';
+                }
+                console.log(row);
+            }
+        }
+
+        console.log(`\n`);
 
         /*let pixels: number[][][] = new Array(spriteCount);
         let paletteIndices: number[][][] = new Array(spriteCount);

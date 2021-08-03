@@ -1,6 +1,6 @@
 import { FileStore } from './file-store';
 import { logger } from '@runejs/core';
-import spriteCodec, { codecTotals, setCodecMode } from './codec/archives/sprite.codec';
+import spriteCodec, { codecTotals, setCodecMode, SpriteStorageMethod } from './codec/archives/sprite.codec';
 import { ClientFileStore, loadXteaRegionFiles } from './client-store';
 import * as fs from 'fs';
 import path from 'path';
@@ -10,37 +10,7 @@ import { IndexedFile } from './file-store/file';
 import { ArchiveDecompressor } from './client-store/decompression/archive-decompressor';
 
 
-(async () => {
-    const start = Date.now();
-
-    const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
-
-    const clientFileStore = new ClientFileStore('./packed', {
-        configDir: './config',
-        xteas: await xteaRegions()
-    });
-
-    // Decode a packed client cache with this vvv
-    // await clientFileStore.decompressArchives(false);
-    // await ArchiveDecompressor.writeFileNames();
-
-    // Decode a single packed client cache archive with this line vvv
-    // await clientFileStore.getIndex('sprites').decompressArchive();
-
-
-    /*([
-        [ 781, 'sideicons_interface,7', 'column' ],
-        [ 460, 'painting2', 'row' ],
-        [ 213, 'staticons,16', 'column' ],
-        [ 203, 'staticons,6', 'row' ]
-    ] as [ number, string, string ][]).forEach(file => {
-        const [ fileIndex, fileName, storageType ] = file;
-        console.log(`Original: ${storageType}-major`);
-        const spriteFile: Buffer = fs.readFileSync(`./stores/sprites/${fileName}.png`);
-        spriteCodec.encode({ fileIndex, fileName }, spriteFile);
-        console.log('\n');
-    });*/
-
+function validateSpriteFormats(): void {
     console.log('\n\nChecking column-major files...');
 
     setCodecMode('column-major');
@@ -85,6 +55,42 @@ import { ArchiveDecompressor } from './client-store/decompression/archive-decomp
     console.log(`Row-Major: ${rowPercentRight}% (${rowCorrect}:${rowIncorrect} of ${rowTotal})`);
     console.log(`Column-Major: ${columnPercentRight}% (${columnCorrect}:${columnIncorrect} of ${columnTotal})`);
     console.log('');
+}
+
+(async () => {
+    const start = Date.now();
+
+    const xteaRegions = async () => loadXteaRegionFiles('config/xteas');
+
+    const clientFileStore = new ClientFileStore('./packed', {
+        configDir: './config',
+        xteas: await xteaRegions()
+    });
+
+    // Decode a packed client cache with this vvv
+    // await clientFileStore.decompressArchives(false);
+    // await ArchiveDecompressor.writeFileNames();
+
+    // Decode a single packed client cache archive with this line vvv
+    // await clientFileStore.getIndex('sprites').decompressArchive(false, true);
+
+
+    // validateSpriteFormats();
+
+    ([
+        [ 780, 'sideicons_interface,6', 'row-major' ],
+        [ 781, 'sideicons_interface,7', 'column-major' ],
+        // [ 460, 'painting2', 'row-major' ],
+        // [ 213, 'staticons,16', 'column-major' ],
+        // [ 203, 'staticons,6', 'row-major' ]
+    ] as [ number, string, SpriteStorageMethod ][]).forEach(file => {
+        const [ fileIndex, fileName, storageType ] = file;
+        setCodecMode(storageType);
+        console.log(`Original: ${storageType}`);
+        const spriteFile: Buffer = fs.readFileSync(`./stores/sprites/${fileName}.png`);
+        spriteCodec.encode({ fileIndex, fileName }, spriteFile);
+        console.log('\n');
+    });
 
     // const fileStore = new FileStore();
 

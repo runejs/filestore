@@ -32,15 +32,17 @@ export class ArchiveDecompressor {
 
     // @TODO automated file verification/validation system
 
-    public async decompressArchive(matchMapFiles: boolean = false): Promise<void> {
-        if(fs.existsSync(this.storePath)) {
-            fs.rmSync(this.storePath, {
-                force: true,
-                recursive: true
-            });
-        }
+    public async decompressArchive(matchMapFiles: boolean = false, debug: boolean = false): Promise<void> {
+        if(!debug) {
+            if(fs.existsSync(this.storePath)) {
+                fs.rmSync(this.storePath, {
+                    force: true,
+                    recursive: true
+                });
+            }
 
-        fs.mkdirSync(this.storePath, { recursive: true });
+            fs.mkdirSync(this.storePath, { recursive: true });
+        }
 
         logger.info(`Writing ${this.storePath}...`);
 
@@ -121,7 +123,7 @@ export class ArchiveDecompressor {
                 let childArrayIndex = 0;
 
                 const folderPath = path.join(this.storePath, `${fileName}`);
-                if(!fs.existsSync(folderPath)) {
+                if(!debug && !fs.existsSync(folderPath)) {
                     fs.mkdirSync(folderPath);
                 }
 
@@ -146,8 +148,10 @@ export class ArchiveDecompressor {
 
                     // folder.file(groupedFileName + fileExt, Buffer.from(groupedFile.content));
 
-                    fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt),
-                        decode(archiveName, { fileIndex: groupedFileIndex }, groupedFile.content) as Buffer);
+                    if(!debug) {
+                        fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt),
+                            decode(archiveName, { fileIndex: groupedFileIndex }, groupedFile.content) as Buffer);
+                    }
 
                     if(groupedFileIndex !== childArrayIndex) {
                         logger.warn(`Grouped file ${childArrayIndex} is out of order - expected ${groupedFileIndex}`);
@@ -183,28 +187,29 @@ export class ArchiveDecompressor {
                 }
 
                 const isArray: boolean = typeof decodedContent[0] !== 'number';
-                let isGroup: boolean = false;
+                let isGroup: boolean = isArray && decodedContent.length > 1;
 
-                if(isArray && decodedContent.length > 1) {
-                    isGroup = true;
-                    const groupDir = path.join(this.storePath, file.name);
-                    fs.mkdirSync(groupDir);
+                if(!debug) {
+                    if(isGroup) {
+                        const groupDir = path.join(this.storePath, file.name);
+                        fs.mkdirSync(groupDir);
 
-                    for(let i = 0; i < decodedContent.length; i++) {
-                        const groupedFile = decodedContent[i] as Buffer | null;
-                        if(groupedFile?.length) {
-                            fs.writeFileSync(path.join(groupDir, i + (fileExt ?? '')), groupedFile);
+                        for(let i = 0; i < decodedContent.length; i++) {
+                            const groupedFile = decodedContent[i] as Buffer | null;
+                            if(groupedFile?.length) {
+                                fs.writeFileSync(path.join(groupDir, i + (fileExt ?? '')), groupedFile);
+                            }
                         }
-                    }
-                } else {
-                    try {
-                        const content = decodedContent[0] instanceof Buffer ? decodedContent[0] : decodedContent as any[];
-                        if(content?.length) {
-                            fs.writeFileSync(path.join(this.storePath, file.name + (fileExt ?? '')),
-                                Buffer.from(content));
+                    } else {
+                        try {
+                            const content = decodedContent[0] instanceof Buffer ? decodedContent[0] : decodedContent as any[];
+                            if(content?.length) {
+                                fs.writeFileSync(path.join(this.storePath, file.name + (fileExt ?? '')),
+                                    Buffer.from(content));
+                            }
+                        } catch(error) {
+                            logger.error(`Error writing file:`, error);
                         }
-                    } catch(error) {
-                        logger.error(`Error writing file:`, error);
                     }
                 }
 

@@ -280,10 +280,13 @@ export class FileIndex {
      * landscape files. Setting this to true will remove all map files (mX_Y.dat) for which the corresponding
      * landscape file (if it has one) does not have any XTEA encryption keys. This helps with finding map files
      * that specifically have valid corresponding landscape files.
+     * @param debug Whether or not to run the decompressor tools in debug mode - this will prevent files from
+     * being written to the disk and will only run the decompression and file conversion code. Debug mode will
+     * still write .index files to /output/stores.
      */
-    public async decompressArchive(matchMapFiles: boolean = false): Promise<void> {
+    public async decompressArchive(matchMapFiles: boolean = false, debug: boolean = false): Promise<void> {
         const decompressor = new ArchiveDecompressor(this);
-        await decompressor.decompressArchive(matchMapFiles);
+        await decompressor.decompressArchive(matchMapFiles, debug);
     }
 
     public get name(): string {

@@ -1,4 +1,4 @@
-import { SpriteSheet } from './sprite.codec';
+import { SpriteSheet } from './sprite-sheet';
 
 
 export const encodeSpriteSheet = (spriteSheet: SpriteSheet): void => {

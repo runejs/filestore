@@ -2,7 +2,6 @@ import { FileStore } from './file-store';
 import { logger } from '@runejs/core';
 import spriteCodec, {
     setSpriteCodecMode,
-    SpriteStorageMethod,
     spriteCodecDebugSettings
 } from './codec/sprites/sprite.codec';
 import { ClientFileStore, loadXteaRegionFiles } from './client-store';

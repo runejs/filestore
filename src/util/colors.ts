@@ -9,11 +9,11 @@ export interface RGBAValues extends RGBValues {
     a: number;
 }
 
-function decodeRgbInteger(rgbInteger: number): RGBValues {
-    rgbInteger >>>= 0;
-    const b = rgbInteger & 0xFF,
-        g = (rgbInteger & 0xFF00) >>> 8,
-        r = (rgbInteger & 0xFF0000) >>> 16;
+function decodeRgbInt24(rgb24: number): RGBValues {
+    rgb24 >>>= 0;
+    const b = rgb24 & 0xFF,
+        g = (rgb24 & 0xFF00) >>> 8,
+        r = (rgb24 & 0xFF0000) >>> 16;
 
     return { r, g, b };
 }
@@ -38,8 +38,8 @@ export class HSB extends HS {
         this.brightness = brightness;
     }
 
-    public static fromRgbInt(rgbInteger: number): HSB {
-        const { r, g, b } = RGB.fromRgbInt(rgbInteger).toDecimals();
+    public static fromRgb(rgb: RGB): HSB {
+        const { r, g, b } = rgb.toDecimals();
 
         const rgbMin = Math.min(r, g, b);
         const rgbMax = Math.max(r, g, b);
@@ -80,8 +80,8 @@ export class HSL extends HS {
         this.lightness = lightness;
     }
 
-    public static fromRgbInt(rgbInteger: number): HSL {
-        const { r, g, b } = RGB.fromRgbInt(rgbInteger).toDecimals();
+    public static fromRgb(rgb: RGB): HSL {
+        const { r, g, b } = rgb.toDecimals();
 
         const rgbMin = Math.min(r, g, b);
         const rgbMax = Math.max(r, g, b);
@@ -123,15 +123,21 @@ export class RGB {
     public green: number;
     public blue: number;
 
-    public constructor(red: number, green: number, blue: number) {
+    public constructor(argbColor: number);
+    public constructor(red: number, green: number, blue: number);
+    public constructor(redOrRgbInteger: number, green?: number, blue?: number) {
+        let red = redOrRgbInteger;
+
+        if(green === undefined && blue === undefined) {
+            const { r, g, b } = decodeRgbInt24(redOrRgbInteger);
+            red = r;
+            green = g;
+            blue = b;
+        }
+
         this.red = red;
         this.green = green;
         this.blue = blue;
-    }
-
-    public static fromRgbInt(rgbInteger: number): RGB {
-        const { r, g, b } = decodeRgbInteger(rgbInteger);
-        return new RGB(r, g, b);
     }
 
     public toDecimals(): RGBValues {
@@ -148,7 +154,6 @@ export class RGB {
 
     public get intensity(): number {
         return Math.round((this.red + this.green + this.blue) / 3);
-        //return 0.21 * this.red + 0.72 * this.green + 0.07 * this.blue;
     }
 }
 
@@ -157,14 +162,22 @@ export class RGBA extends RGB {
 
     public alpha: number;
 
-    public constructor(red: number, green: number, blue: number, alpha: number) {
-        super(red, green, blue);
-        this.alpha = alpha;
-    }
+    public constructor(rgbInteger: number, alpha?: number);
+    public constructor(red: number, green: number, blue: number, alpha?: number);
+    public constructor(redOrRgbInteger: number, greenOrAlpha?: number, blue?: number, alpha?: number) {
+        if(blue === undefined && alpha === undefined) {
+            super(redOrRgbInteger);
 
-    public static fromRgbInt(rgbInteger: number, alpha: number = 255): RGBA {
-        const { r, g, b } = decodeRgbInteger(rgbInteger);
-        return new RGBA(r, g, b, alpha);
+            if(greenOrAlpha === undefined) {
+                alpha = 255;
+            } else {
+                alpha = greenOrAlpha;
+            }
+        } else {
+            super(redOrRgbInteger, greenOrAlpha, blue);
+        }
+
+        this.alpha = alpha ?? 255;
     }
 
     public toDecimals(): RGBAValues {
@@ -218,7 +231,7 @@ export const paletteBuilder = (ranges: { rgb: number, pixels: number }[],
             // continue;
         }
 
-        const intensity = RGB.fromRgbInt(range.rgb).intensity;
+        const intensity = new RGB(range.rgb).intensity;
         const colorUsage = usageMap[intensity];
 
         if(!colorUsage) {

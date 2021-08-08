@@ -1,4 +1,4 @@
-import { SpriteSheet, SpriteStorageMethod } from './sprite.codec';
+import { SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
 import { join } from 'path';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { ByteBuffer } from '@runejs/core/buffer';
@@ -86,7 +86,7 @@ export const dumpSpriteSheetData = (spriteSheet: SpriteSheet): void => {
     });
 
     const pngData = new ByteBuffer(palette.length * 4);
-    palette.forEach(color => pngData.put(RGBA.fromRgbInt(color).toInt(), 'int'));
+    palette.forEach(color => pngData.put(new RGBA(color).toInt(), 'int'));
     pngData.flipWriter();
 
     const png = new PNG({ width: palette.length, height: 1, filterType: -1 });

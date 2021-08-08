@@ -120,7 +120,7 @@ export default {
             return null;
         }
 
-        const palette: number[] = [];
+        /*const palette: number[] = [];
 
         const spriteCount = images.length;
         const maxWidth = images[0].width;
@@ -186,7 +186,7 @@ export default {
         const height = maxY - minY + 1;
         const actualArea = width * height;
         const offsetX = minX;
-        const offsetY = minY;
+        const offsetY = minY;*/
 
         const rowRanges: { rgb: number, pixels: number }[] = [];
         const columnRanges: { rgb: number, pixels: number }[] = [];

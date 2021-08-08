@@ -28,12 +28,27 @@ export class SpriteSheet {
     public maxHeight: number;
     public palette: number[];
 
-    public constructor(fileIndex: number,
-                       fileName: string,
-                       spriteCount: number) {
+    public constructor(fileIndex: number, fileName: string, images: PNG[]);
+    public constructor(fileIndex: number, fileName: string, spriteCount: number);
+    public constructor(fileIndex: number, fileName: string, spriteCountOrImages: number | PNG[]) {
         this.fileIndex = fileIndex;
         this.fileName = fileName;
-        this.sprites = new Array(spriteCount);
+
+        if(typeof spriteCountOrImages === 'number') {
+            this.sprites = new Array(spriteCountOrImages);
+            this.palette = [];
+        } else {
+            const images: PNG[] = spriteCountOrImages;
+            // @TODO account for child indices not being in order, muddying up the 'true' sprite count
+            this.sprites = new Array(images.length);
+            this.palette = [];
+            this.maxWidth = Math.max(...images.map(i => i.width));
+            this.maxHeight = Math.max(...images.map(i => i.height));
+        }
+    }
+
+    public get maxArea(): number {
+        return this.maxHeight * this.maxWidth;
     }
 
 }

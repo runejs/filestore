@@ -2,22 +2,27 @@ import { ByteBuffer } from '@runejs/core/buffer';
 import FileCodec from '../file-codec';
 import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
-import { HSB, RGB, RGBA } from '../../util/colors';
+import { HSB, paletteBuilder, RGB, RGBA } from '../../util/colors';
+import { dumpSpriteSheetData, printSpritePaletteIndices, SpriteDebugSettings } from './sprite-debug';
 
-const pad = (i, amt): string => {
-    if(i === 0) {
-        return new Array(amt).fill(' ').join('');
+
+
+
+let spriteCodecMode: 'debug' | 'standard' = 'standard';
+
+export const spriteCodecDebugSettings: SpriteDebugSettings = {};
+
+export const setSpriteCodecMode = (mode: 'debug' | 'standard', settings?: SpriteDebugSettings) => {
+    spriteCodecMode = mode;
+
+    if(settings?.expectedStorageMode) {
+        spriteCodecDebugSettings.expectedStorageMode = settings.expectedStorageMode;
     }
-    const s = `${i}`;
-    if(s.length < amt) {
-        return new Array(amt - s.length).fill(' ').join('') + s;
+    if(settings?.expectedTotals) {
+        spriteCodecDebugSettings.expectedTotals = settings.expectedTotals;
     }
-    return s;
 };
 
-function similarHue(hue1, hue2, interval = 30): boolean {
-    return (Math.floor(hue1 / interval) === Math.floor(hue2 / interval));
-}
 
 /**
  * The method with which pixel data is stored for a single Sprite within a SpriteSheet.
@@ -36,6 +41,7 @@ export type SpriteStorageMethod = 'row-major' | 'column-major';
 export class SpriteSheet {
 
     public readonly fileIndex: number;
+    public readonly fileName: string;
 
     public sprites: Sprite[];
     public maxWidth: number;
@@ -43,8 +49,10 @@ export class SpriteSheet {
     public palette: number[];
 
     public constructor(fileIndex: number,
+                       fileName: string,
                        spriteCount: number) {
         this.fileIndex = fileIndex;
+        this.fileName = fileName;
         this.sprites = new Array(spriteCount);
     }
 
@@ -61,8 +69,10 @@ export class Sprite {
     public offsetX: number;
     public offsetY: number;
     public pixels: number[];
+    public alphas: number[];
     public paletteIndices: number[];
     public settings: number;
+    public png: PNG | undefined;
 
     public constructor(spriteIndex: number,
                        spriteSheet: SpriteSheet) {
@@ -70,12 +80,100 @@ export class Sprite {
         this.spriteSheet = spriteSheet;
     }
 
-    public getAlpha(pixelIndex: number): number {
-        if(this.hasAlpha) {
-            return this.pixels[pixelIndex] >> 24;
+    public decompress(fileBuffer: ByteBuffer): PNG {
+        this.settings = fileBuffer.get('byte', 'unsigned');
+
+        const {
+            width, height, offsetX, offsetY,
+            storageMethod, minArea, maxArea, hasAlpha,
+            spriteSheet, spriteSheet: { maxWidth, maxHeight }
+        } = this;
+
+        this.pixels = new Array(minArea);
+        this.alphas = new Array(minArea);
+        this.paletteIndices = new Array(minArea);
+
+        if(storageMethod === 'row-major') {
+            // row-major pixel ordering [y][x] (horizontal)
+            // each 'x' value is read in the first 'y' column before moving to the next 'y' column
+            for(let i = 0; i < minArea; i++) {
+                const paletteIndex = this.paletteIndices[i] = fileBuffer.get('byte');
+                this.pixels[i] = spriteSheet.palette[paletteIndex];
+            }
+
+            if(hasAlpha) {
+                for(let i = 0; i < minArea; i++) {
+                    this.alphas[i] = fileBuffer.get('byte');
+                }
+            }
+        } else {
+            // column-major pixel ordering [x][y] (vertical)
+            // each 'y' value is read in the first 'x' row before moving to the next 'x' row
+            for(let x = 0; x < width; x++) {
+                for(let y = 0; y < height; y++) {
+                    const paletteIndex = this.paletteIndices[width * y + x] = fileBuffer.get('byte');
+                    this.pixels[width * y + x] = spriteSheet.palette[paletteIndex];
+                }
+            }
+
+            if(hasAlpha) {
+                for(let x = 0; x < width; x++) {
+                    for(let y = 0; y < height; y++) {
+                        this.alphas[width * y + x] = fileBuffer.get('byte');
+                    }
+                }
+            }
         }
 
-        return this.paletteIndices[pixelIndex] !== 0 ? 0xff : 0
+        // No image data found
+        if(width === 0 || height === 0) {
+            return null;
+        }
+
+        const png = new PNG({
+            width: maxWidth,
+            height: maxHeight,
+            colorType: 6,
+            inputHasAlpha: true,
+            filterType: -1
+        });
+        const pngData = new ByteBuffer(maxArea * 4);
+
+        for(let y = 0; y < maxHeight; y++) {
+            for(let x = 0; x < maxWidth; x++) {
+                const spriteX = x - offsetX;
+                const spriteY = y - offsetY;
+
+                if(spriteX < 0 || spriteY < 0 || spriteX >= width || spriteY >= height) {
+                    pngData.put(0 & 0x00FFFFFF, 'int');
+                } else {
+                    const i = width * spriteY + spriteX;
+                    pngData.put(RGBA.fromRgbInt(this.pixels[i], this.getAlpha(i)).toInt(), 'int');
+                }
+            }
+        }
+
+        // Copy the data from the RuneBuffer to the PNG data buffer
+        png.data = Buffer.from(pngData.flipWriter());
+
+        try {
+            return png.pack();
+        } catch(error) {
+            logger.error(`Error packing PNG sprite:`, error);
+            return null;
+        }
+    }
+
+    public getAlpha(pixelIndex: number): number {
+        if(pixelIndex < 0 || this.alphas.length <= pixelIndex) {
+            return 0;
+        }
+
+        if(this.hasAlpha) {
+            return this.alphas[pixelIndex];
+        }
+
+        return this.paletteIndices[pixelIndex] !== 0 ? 0xff : 0;
     }
 
     public get storageMethod(): SpriteStorageMethod {
@@ -86,89 +184,15 @@ export class Sprite {
         return (this.settings & 0b10) !== 0;
     }
 
+    public get minArea(): number {
+        return (this.width ?? 0) * (this.height ?? 0);
+    }
+
+    public get maxArea(): number {
+        return (this.spriteSheet?.maxWidth ?? 0) * (this.spriteSheet?.maxHeight ?? 0);
+    }
+
 }
-
-
-function decodeSprite(fileBuffer: ByteBuffer, sprite: Sprite): PNG {
-    const { width, height, offsetX, offsetY } = sprite;
-    const { maxWidth, maxHeight } = sprite.spriteSheet;
-    const spriteArea: number = width * height;
-
-    sprite.settings = fileBuffer.get('byte', 'unsigned');
-    sprite.pixels = new Array(spriteArea);
-    sprite.paletteIndices = new Array(spriteArea);
-
-    if(sprite.storageMethod === 'row-major') {
-        // row-major (horizontal)
-
-        for(let i = 0; i < spriteArea; i++) {
-            const paletteIndex = sprite.paletteIndices[i] = fileBuffer.get('byte');
-            sprite.pixels[i] = sprite.spriteSheet.palette[paletteIndex];
-        }
-
-        if(sprite.hasAlpha) {
-            for(let i = 0; i < spriteArea; i++) {
-                sprite.pixels[i] = sprite.pixels[i] | (fileBuffer.get('byte') << 24);
-            }
-        }
-    } else {
-        // column-major (vertical)
-
-        for(let x = 0; x < width; x++) {
-            for(let y = 0; y < height; y++) {
-                const paletteIndex = sprite.paletteIndices[width * y + x] = fileBuffer.get('byte');
-                sprite.pixels[width * y + x] = sprite.spriteSheet.palette[paletteIndex];
-            }
-        }
-
-        if(sprite.hasAlpha) {
-            for(let x = 0; x < width; x++) {
-                for(let y = 0; y < height; y++) {
-                    sprite.pixels[width * y + x] = sprite.pixels[width * y + x] | (fileBuffer.get('byte') << 24);
-                }
-            }
-        }
-    }
-
-    if(width === 0 || height === 0) {
-        return null;
-    }
-
-    const pngData = new ByteBuffer((maxWidth * maxHeight) * 4);
-
-    for(let y = 0; y < maxHeight; y++) {
-        for(let x = 0; x < maxWidth; x++) {
-            const spriteX = x - offsetX;
-            const spriteY = y - offsetY;
-
-            if(spriteX < 0 || spriteY < 0 || spriteX >= width || spriteY >= height) {
-                pngData.put(0 & 0x00FFFFFF, 'int');
-            } else {
-                const i = width * spriteY + spriteX;
-                const pixel = sprite.pixels[i];
-                const rgba = RGBA.fromRgbInt(pixel, sprite.getAlpha(i)).toInt();
-                pngData.put(rgba, 'int');
-            }
-        }
-    }
-
-    pngData.flipWriter();
-
-    const png = new PNG({ width: maxWidth, height: maxHeight, filterType: -1 });
-    pngData.copy(png.data, 0, 0);
-
-    try {
-        return png.pack();
-    } catch(error) {
-        logger.error(`Error packing PNG sprite:`, error);
-        return null;
-    }
-}
-
-
-export let codecMode: SpriteStorageMethod;
-export let codecTotals = [ 0, 0 ];
-export const setCodecMode = (mode: SpriteStorageMethod) => codecMode = mode;
 
 
 export default {
@@ -182,7 +206,7 @@ export default {
         // Read the number of sprites in this pack
         const spriteCount = reversedBuffer.get('short', 'unsigned', 'le');
 
-        const spriteSheet = new SpriteSheet(file.fileIndex, spriteCount);
+        const spriteSheet = new SpriteSheet(file.fileIndex, file.fileName, spriteCount);
 
         // Individual sprite metadata - height, width, offsetY, offsetX
         for(let i = spriteCount - 1; i >= 0; i--) {
@@ -210,31 +234,16 @@ export default {
         for(let i = paletteLength; i > 0; i--) {
             spriteSheet.palette[i] = reversedBuffer.get('int24', 'signed', 'le');
 
-            if(spriteSheet.palette[i] === 0) { // does this store the color white as '0'?
-                // spriteSheet.palette[i] = 1;
+            // converts the color 0 (black) into the int 1 to differentiate between black and transparent (0 is used for fully transparent pixels)
+            if(spriteSheet.palette[i] === 0) {
+                spriteSheet.palette[i] = 1;
             }
         }
 
         // Now read the individual sprites from the beginning of the file
-        return spriteSheet.sprites.map(sprite => {
+        const spriteBuffers = spriteSheet.sprites.map(sprite => {
             try {
-                const decodedSprite = decodeSprite(buffer, sprite);
-                if(file.fileIndex === 780 || file.fileIndex === 781) {
-                    console.log(`\n${file.fileIndex}`);
-                    console.log(...spriteSheet.palette.slice(1));
-                    console.log(`\n`);
-
-                    for(let y = 0; y < sprite.height; y++) {
-                        let row = ``;
-                        for(let x = 0; x < sprite.width; x++) {
-                            const i = sprite.width * y + x;
-                            row += pad(sprite.paletteIndices[i], 2) + ' ';
-                        }
-                        console.log(row);
-                    }
-
-                    console.log(`\n`);
-                }
+                const decodedSprite: PNG = sprite.decompress(buffer);
                 return decodedSprite ? PNG.sync.write(decodedSprite) : null;
             } catch(error) {
                 if(buffer?.length) {
@@ -243,6 +252,12 @@ export default {
                 return null;
             }
         }) as Buffer[];
+
+        if(spriteCodecMode === 'debug') {
+            dumpSpriteSheetData(spriteSheet);
+        }
+
+        return spriteBuffers;
     },
 
     encode: (file, data: Buffer | Buffer[]) => {
@@ -403,113 +418,14 @@ export default {
             }
         }
 
-        const rowPaletteMap: { [key: number]: { ranges: number, total: number } } = {};
-        const columnPaletteMap: { [key: number]: { ranges: number, total: number } } = {};
         let rowPalette: number[] = [];
         let columnPalette: number[] = [];
 
-        const paletteBuilder = (ranges: { rgb: number, pixels: number }[],
-                                paletteMap: { [key: number]: { ranges: number, total: number } },
-                                palette: number[]): void => {
-            ranges.forEach(range => {
-                const entry = paletteMap[range.rgb];
-                if(!entry) {
-                    palette.push(range.rgb);
-                    paletteMap[range.rgb] = { ranges: 1, total: range.pixels };
-                } else {
-                    entry.ranges++;
-                    entry.total += range.pixels;
-                }
-            });
-
-            palette.sort((firstRgb, secondRgb) => {
-                // return firstRgb - secondRgb;
-                const a = HSB.fromRgbInt(firstRgb);
-                const b = HSB.fromRgbInt(secondRgb);
-
-                if(a.hue === b.hue) {
-                    console.log('same hue: ' + firstRgb + ' ' + secondRgb);
-                }
-
-                return a.hue - b.hue;
-
-                /*if(!similarHue(a.h, b.h, 20)) {
-                    if(a.h < b.h) {
-                        return -1;
-                    }
-                    if(a.h > b.h) {
-                        return 1;
-                    }
-                }
-                if(a.s < b.s) {
-                    return 1;
-                }
-                if(a.s > b.s) {
-                    return -1;
-                }
-                if(a.v < b.v) {
-                    return -1;
-                }
-                if(a.v > b.v) {
-                    return 1;
-                }
-                return 0;*/
-
-                /*if(hsb1[0] === hsb2[0]) {
-                    if(hsb1[1] === hsb2[1]) {
-                        return hsb2[2] - hsb1[2];
-                    } else {
-                        return hsb1[1] - hsb2[1];
-                    }
-                }
-
-                return hsb1[0] - hsb2[0];*/
-            });//.reverse();
-        };
-
         // Count the number of ranges that each color appears in for row-major order
-        paletteBuilder(rowRanges, rowPaletteMap, rowPalette);
+        paletteBuilder(rowRanges, rowPalette);
 
         // Count the number of ranges that each color appears in for column-major order
-        paletteBuilder(columnRanges, columnPaletteMap, columnPalette);
-
-        /*rowPalette = rowPalette.sort((a, b) => {
-            const [ aH, aS, aL ] = argbToHsvValues(a);
-            const [ bH, bS, bL ] = argbToHsvValues(b);
-
-            if(aL === bL) {
-                return aH !== bH ? bH - aH : bS - aS;
-            }
-
-            return bL - aL;
-        });
-
-        columnPalette = columnPalette.sort((a, b) => {
-            const [ aH, aS, aL ] = argbToHsvValues(a);
-            const [ bH, bS, bL ] = argbToHsvValues(b);
-
-            if(aL === bL) {
-                return aH !== bH ? aH - bH : aS - bS;
-            }
-
-            return aL - bL;
-        });*/
-        if(rowPalette.indexOf(1) !== -1) {
-            rowPalette.splice(rowPalette.indexOf(1), 1);
-            rowPalette.unshift(1);
-        }
-        if(columnPalette.indexOf(1) !== -1) {
-            columnPalette.splice(columnPalette.indexOf(1), 1);
-            columnPalette.unshift(1);
-        }
-        if(rowPalette.indexOf(0) !== -1) {
-            rowPalette.splice(rowPalette.indexOf(0), 1);
-            rowPalette.unshift(0);
-        }
-        if(columnPalette.indexOf(0) !== -1) {
-            columnPalette.splice(columnPalette.indexOf(0), 1);
-            columnPalette.unshift(0);
-        }
+        paletteBuilder(columnRanges, columnPalette);
 
 
         const rowRangeCounts: number = rowRanges.length;
@@ -567,36 +483,25 @@ export default {
 
         const storageMethod: SpriteStorageMethod = rowGrandTotal <= columnGrandTotal ? 'row-major' : 'column-major';
 
-        if(!codecMode || (codecMode && codecMode !== storageMethod)) {
-            console.error(`\nDetected: ${storageMethod}`);
-            console.log(`\nRow:\t ranges:${rowRangeTotal} indicesDiff:${rowDiff} total:${rowGrandTotal}`);
-            // console.log(`\nRow:\t`, rowRanges);
-            console.log(`\nColumn:\t ranges:${columnRangeTotal} indicesDiff:${columnDiff} total:${columnGrandTotal}`);
-            // console.log(`\nColumn:\t`, columnRanges);
-            codecTotals[1]++;
-        } else {
-            codecTotals[0]++;
-        }
-
-        if(codecMode === 'row-major') {
-            console.log(...rowPalette);
-            for(let y = 0; y < height; y++) {
-                let row = ``;
-                for(let x = 0; x < width; x++) {
-                    const i = width * y + x;
-                    row += pad(rowPaletteIndices[i], 2) + ' ';
+        if(spriteCodecMode === 'debug') {
+            const expectedStorageMode = spriteCodecDebugSettings?.expectedStorageMode ?? storageMethod;
+            if(expectedStorageMode !== storageMethod) {
+                console.error(`\nDetected: ${storageMethod}`);
+                console.log(`\nRow:\t ranges:${rowRangeTotal} indicesDiff:${rowDiff} total:${rowGrandTotal}`);
+                // console.log(`\nRow:\t`, rowRanges);
+                console.log(`\nColumn:\t ranges:${columnRangeTotal} indicesDiff:${columnDiff} total:${columnGrandTotal}`);
+                // console.log(`\nColumn:\t`, columnRanges);
+                if(spriteCodecDebugSettings.expectedTotals) {
+                    spriteCodecDebugSettings.expectedTotals[1]++;
                 }
-                console.log(row);
+            } else if(spriteCodecDebugSettings.expectedTotals) {
+                spriteCodecDebugSettings.expectedTotals[0]++;
             }
-        } else {
-            console.log(...columnPalette);
-            for(let y = 0; y < height; y++) {
-                let row = ``;
-                for(let x = 0; x < width; x++) {
-                    const i = width * y + x;
-                    row += pad(columnPaletteIndices[i], 2) + ' ';
-                }
-                console.log(row);
+
+            if(expectedStorageMode === 'row-major') {
+                printSpritePaletteIndices(storageMethod, rowPalette, width, height, rowPaletteIndices);
+            } else {
+                printSpritePaletteIndices(storageMethod, columnPalette, width, height, columnPaletteIndices);
             }
         }
 

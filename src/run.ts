@@ -1,6 +1,10 @@
 import { FileStore } from './file-store';
 import { logger } from '@runejs/core';
-import spriteCodec, { codecTotals, setCodecMode, SpriteStorageMethod } from './codec/archives/sprite.codec';
+import spriteCodec, {
+    setSpriteCodecMode,
+    SpriteStorageMethod,
+    spriteCodecDebugSettings
+} from './codec/sprites/sprite.codec';
 import { ClientFileStore, loadXteaRegionFiles } from './client-store';
 import * as fs from 'fs';
 import path from 'path';
@@ -13,7 +17,10 @@ import { ArchiveDecompressor } from './client-store/decompression/archive-decomp
 function validateSpriteFormats(): void {
     console.log('\n\nChecking column-major files...');
 
-    setCodecMode('column-major');
+    setSpriteCodecMode('debug', {
+        expectedTotals: [ 0, 0 ],
+        expectedStorageMode: 'column-major'
+    });
 
     let spriteFiles = fs.readdirSync(`D:/rsdev/sprites-column-major`).filter(fileName => {
         return fileName.endsWith('.png');
@@ -26,15 +33,14 @@ function validateSpriteFormats(): void {
         }, spriteFile);
     }
 
-    const [ columnCorrect, columnIncorrect ] = codecTotals;
+    const [ columnCorrect, columnIncorrect ] = spriteCodecDebugSettings.expectedTotals;
     const columnTotal = columnCorrect + columnIncorrect;
     const columnPercentRight = Math.round((columnCorrect / columnTotal) * 100);
 
     console.log('\n\nChecking row-major files...');
 
-    codecTotals[0] = 0;
-    codecTotals[1] = 0;
-    setCodecMode('row-major');
+    spriteCodecDebugSettings.expectedStorageMode = 'row-major';
+    spriteCodecDebugSettings.expectedTotals = [ 0, 0 ];
 
     spriteFiles = fs.readdirSync(`D:/rsdev/sprites-row-major`).filter(fileName => {
         return fileName.endsWith('.png');
@@ -47,7 +53,7 @@ function validateSpriteFormats(): void {
         }, spriteFile);
     }
 
-    const [ rowCorrect, rowIncorrect ] = codecTotals;
+    const [ rowCorrect, rowIncorrect ] = spriteCodecDebugSettings.expectedTotals;
     const rowTotal = rowCorrect + rowIncorrect;
     const rowPercentRight = Math.round((rowCorrect / rowTotal) * 100);
 
@@ -72,11 +78,12 @@ function validateSpriteFormats(): void {
     // await ArchiveDecompressor.writeFileNames();
 
     // Decode a single packed client cache archive with this line vvv
-    // await clientFileStore.getIndex('sprites').decompressArchive(false, true);
+    await clientFileStore.getIndex('sprites').decompressArchive(false, false);
 
 
     // validateSpriteFormats();
 
+    /*setSpriteCodecMode('debug', { expectedTotals: [ 0, 0 ] });
     ([
         [ 780, 'sideicons_interface,6', 'row-major' ],
         [ 781, 'sideicons_interface,7', 'column-major' ],
@@ -85,12 +92,12 @@ function validateSpriteFormats(): void {
         // [ 203, 'staticons,6', 'row-major' ]
     ] as [ number, string, SpriteStorageMethod ][]).forEach(file => {
         const [ fileIndex, fileName, storageType ] = file;
-        setCodecMode(storageType);
+        spriteCodecDebugSettings.expectedStorageMode = storageType;
         console.log(`Original: ${storageType}`);
         const spriteFile: Buffer = fs.readFileSync(`./stores/sprites/${fileName}.png`);
         spriteCodec.encode({ fileIndex, fileName }, spriteFile);
         console.log('\n');
-    });
+    });*/
 
     // const fileStore = new FileStore();
 

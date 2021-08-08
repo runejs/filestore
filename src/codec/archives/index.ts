@@ -1,10 +1,10 @@
 import { ByteBuffer } from '@runejs/core/buffer';
 import { ArchiveName } from '../../file-store/archive';
-import spriteCodec from './sprite.codec';
+import spriteCodec from '../sprites/sprite.codec';
 import FileCodec, { FileInfo } from '../file-codec';
 
-export * from './map.codec';
-export * from './sprite.codec';
+export * from '../maps/map.codec';
+export * from '../sprites/sprite.codec';
 
 export const fileCodecs: { [key in ArchiveName]?: FileCodec } = {
     // maps: mapCodec,

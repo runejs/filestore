@@ -141,6 +141,15 @@ export class RGB {
             b: this.blue / 255
         }
     }
+
+    public toString(): string {
+        return `[${this.red}, ${this.green}, ${this.blue}]`;
+    }
+
+    public get intensity(): number {
+        return Math.round((this.red + this.green + this.blue) / 3);
+        //return 0.21 * this.red + 0.72 * this.green + 0.07 * this.blue;
+    }
 }
 
 
@@ -171,3 +180,121 @@ export class RGBA extends RGB {
         return (this.red << 24) + (this.green << 16) + (this.blue << 8) + (this.alpha);
     }
 }
+
+
+export class ColorUsage {
+
+    public rgb: number;
+    public rangeCount: number = 1;
+    public totalUses: number = 1;
+
+    public constructor(rgb: number, totalUses: number) {
+        this.rgb = rgb;
+        this.totalUses = totalUses;
+    }
+
+    public get average(): number {
+        return (this.totalUses || 1) / (this.rangeCount || 1);
+    }
+
+}
+
+
+export type PaletteUsageMap = { [key: number]: ColorUsage };
+
+
+export const paletteBuilder = (ranges: { rgb: number, pixels: number }[],
+                               palette: number[]): number[] => {
+    const usageMap: PaletteUsageMap = {};
+
+    let usesBlack: boolean = false;
+
+    for(const range of ranges) {
+        if(range.rgb === 0) {
+            continue;
+        }
+        if(range.rgb === 1) {
+            usesBlack = true;
+            // continue;
+        }
+
+        const intensity = RGB.fromRgbInt(range.rgb).intensity;
+        const colorUsage = usageMap[intensity];
+
+        if(!colorUsage) {
+            palette.push(range.rgb);
+            usageMap[intensity] = new ColorUsage(range.rgb, range.pixels);
+        } else {
+            colorUsage.rangeCount++;
+            colorUsage.totalUses += range.pixels;
+        }
+    }
+
+    const nodes = Object.keys(usageMap);
+    const nodeCount = nodes.length;
+
+    palette.sort((firstRgb, secondRgb) => {
+        const usageA = usageMap[firstRgb];
+        const usageB = usageMap[secondRgb];
+
+        return usageB.rangeCount - usageA.rangeCount;
+
+        /*const a = RGB.fromRgbInt(firstRgb);
+        const b = RGB.fromRgbInt(secondRgb);
+
+        const result = a.value - b.value;
+
+        if(result === 0) {
+            console.log(`equal ${a} = ${b}`);
+            return -1;
+        } else {
+            console.log(result);
+        }
+
+        return result;*/
+        // return firstRgb - secondRgb;
+        /*const a = HSB.fromRgbInt(firstRgb);
+        const b = HSB.fromRgbInt(secondRgb);
+
+        const similarHue = Math.floor(a.hue / 16) === Math.floor(b.hue / 16);
+
+        if(!similarHue) {
+            if(a.hue < b.hue) {
+                return -1;
+            }
+            if(a.hue > b.hue) {
+                return 1;
+            }
+        }
+        if(a.saturation < b.saturation) {
+            return 1;
+        }
+        if(a.saturation > b.saturation) {
+            return -1;
+        }
+        if(a.brightness < b.brightness) {
+            return -1;
+        }
+        if(a.brightness > b.brightness) {
+            return 1;
+        }
+        return 0;*/
+
+        /*if(hsb1[0] === hsb2[0]) {
+            if(hsb1[1] === hsb2[1]) {
+                return hsb2[2] - hsb1[2];
+            } else {
+                return hsb1[1] - hsb2[1];
+            }
+        }
+
+        return hsb1[0] - hsb2[0];*/
+    });//.reverse();
+
+    if(usesBlack) {
+        // palette.unshift(1);
+    }
+    palette.unshift(0);
+
+    return palette;
+};

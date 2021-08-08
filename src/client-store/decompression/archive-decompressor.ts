@@ -7,7 +7,7 @@ import { createHash } from 'crypto';
 import { ClientFileGroup } from '../client-file-group';
 import * as CRC32 from 'crc-32';
 import path from 'path';
-import { decode } from '../../codec/archives';
+import { decode, setSpriteCodecMode } from '../../codec/archives';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { extractIndexedFile } from '../data';
 import { getFileName } from '../file-naming';
@@ -34,6 +34,7 @@ export class ArchiveDecompressor {
 
     public async decompressArchive(matchMapFiles: boolean = false, debug: boolean = false): Promise<void> {
         if(!debug) {
+            setSpriteCodecMode('standard');
             if(fs.existsSync(this.storePath)) {
                 fs.rmSync(this.storePath, {
                     force: true,
@@ -42,6 +43,8 @@ export class ArchiveDecompressor {
             }
 
             fs.mkdirSync(this.storePath, { recursive: true });
+        } else {
+            setSpriteCodecMode('debug');
         }
 
         logger.info(`Writing ${this.storePath}...`);
@@ -150,7 +153,10 @@ export class ArchiveDecompressor {
 
                     if(!debug) {
                         fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt),
-                            decode(archiveName, { fileIndex: groupedFileIndex }, groupedFile.content) as Buffer);
+                            decode(archiveName, {
+                                fileIndex: groupedFileIndex,
+                                fileName: `${fileName}`
+                            }, groupedFile.content) as Buffer);
                     }
 
                     if(groupedFileIndex !== childArrayIndex) {
@@ -179,7 +185,10 @@ export class ArchiveDecompressor {
                     continue;
                 }
 
-                const decodedContent = decode(archiveName, { fileIndex }, fileContents);
+                const decodedContent = decode(archiveName, {
+                    fileIndex,
+                    fileName: `${fileName}`
+                }, fileContents);
 
                 if(!decodedContent?.length) {
                     pushError(errors, fileIndex, file.name, file.nameHash, `Error decoding file content`);

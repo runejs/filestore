@@ -1,10 +1,34 @@
 import { PNG } from 'pngjs';
 import { SpriteSheet } from './sprite-sheet';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { RGB } from '../../util/colors';
+import { HSB, HSL, RGB } from '../../util/colors';
+import { debugSpritePaletteIndices, printSpritePaletteIndices } from './sprite-debug';
 
 
-interface ImageData {
+export type ColorUsageMap = { [key: number]: ColorUsage };
+
+export type RgbRange = { rgb: number, count: number };
+export type AlphaRange = { alpha: number, count: number };
+
+
+export class ColorUsage {
+
+    public rgb: number;
+    public rangeCount: number = 1;
+    public totalUses: number = 1;
+
+    public constructor(rgb: number, totalUses: number) {
+        this.rgb = rgb;
+        this.totalUses = totalUses;
+    }
+
+    public get average(): number {
+        return (this.totalUses || 1) / (this.rangeCount || 1);
+    }
+
+}
+
+export interface ImageData {
     minX: number;
     maxX: number;
     minY: number;
@@ -13,55 +37,151 @@ interface ImageData {
     intensities: number[][];
     alphas: number[][];
     hasAlpha: boolean;
+    width?: number;
+    height?: number;
 }
 
-interface Pixfreq {
-    pix: number;
-    larrloc: number;
-    rarrloc: number;
-    freq: number;
-    left: Pixfreq;
-    right: Pixfreq;
-    code: string[];
-}
-
-interface Huffcode {
-    pix: number;
-    arrloc: number;
-    freq: number;
+export interface ColorFrequency {
+    nodeIndex: number;
+    intensity?: number;
+    color?: number;
+    frequency: number;
+    leftNodeIndex: number;
+    rightNodeIndex: number;
+    left: ColorFrequency;
+    right: ColorFrequency;
+    code: string;
 }
 
 
-const fib = (n: number): number => {
-    if(n <= 1) {
-        return n;
-    }
-
-    return fib(n - 1) + fib(n - 2);
-};
-
-const codelen = (code: string[]): number => code.includes('\0') ? code.indexOf('\0') : 0;
-
-const strconcat = (str: string[], parentcode: string[], add: string) => {
-    let i = 0;
-    while(parentcode[i] !== '\0') {
-        str[i] = parentcode[i];
-        i++;
-    }
-
-    if (add !== '2') {
-        str[i] = add;
-        str[i + 1] = '\0';
+const generateHuffCode = (root: ColorFrequency, s: string, values: number[]): void => {
+    if(!root.left && !root.right) {
+        root.code = s;
+        values.push(root.color);
     } else {
-        str[i] = '\0';
+        generateHuffCode(root.left, `${s}0`, values);
+        generateHuffCode(root.right, `${s}1`, values);
     }
-}
-
-
-
-const encodeSprite = (image: PNG): void => {
-
 };
+
+// @TODO collect pixel indices first (no sort order)
+// then - create tree off of indices
+// finally - print sorted index tree and re-map indices!
+
+const sortQueue = (nodeQueue: ColorFrequency[], usageMap: ColorUsageMap) =>
+    nodeQueue.sort((colorA: ColorFrequency, colorB: ColorFrequency): number => {
+    const rangesA = usageMap[colorA.color];
+    const rangesB = usageMap[colorB.color];
+    if(!rangesA) {
+        return -1;
+    }
+    if(!rangesB) {
+        return 1;
+    }
+    const rgbA = new RGB(colorA.color);
+    const rgbB = new RGB(colorB.color);
+
+    if(rgbA.intensity !== rgbB.intensity) {
+        return rgbA.intensity - rgbB.intensity;
+    }
+
+    if(rangesA.rangeCount !== rangesB.rangeCount) {
+        //return rangesB.rangeCount - rangesA.rangeCount;
+    }
+
+    return colorA.frequency - colorB.frequency;
+});
+
+
+const addToQueue = (nodeQueue: ColorFrequency[], color: ColorFrequency, usageMap: ColorUsageMap): void => {
+    nodeQueue.push(color);
+    sortQueue(nodeQueue, usageMap);
+};
+
+
+const mapColorUsage = (ranges: RgbRange[]): ColorUsageMap => {
+    const usageMap: ColorUsageMap = {};
+
+    for(const range of ranges) {
+        if(range.rgb === 0) {
+            continue;
+        }
+
+        const colorUsage = usageMap[range.rgb];
+
+        if(!colorUsage) {
+            usageMap[range.rgb] = new ColorUsage(range.rgb, range.count);
+        } else {
+            colorUsage.rangeCount++;
+            colorUsage.totalUses += range.count;
+        }
+    }
+
+    return usageMap;
+};
+
+const addPixelRangeData = (rgb: number, alpha: number, rgbRanges: RgbRange[], alphaRanges: AlphaRange[]): void => {
+    if(!rgbRanges?.length) {
+        rgbRanges.push({ rgb, count: 1 });
+        alphaRanges.push({ alpha, count: 1 });
+    } else {
+        const lastEntry = rgbRanges[rgbRanges.length - 1];
+        if(lastEntry && lastEntry.rgb === rgb) {
+            lastEntry.count++;
+        } else {
+            rgbRanges.push({ rgb, count: 1 });
+        }
+
+        const lastAlphaEntry = alphaRanges[alphaRanges.length - 1];
+        if(lastAlphaEntry && lastAlphaEntry.alpha === alpha) {
+            lastAlphaEntry.count++;
+        } else {
+            alphaRanges.push({ alpha, count: 1 });
+        }
+    }
+};
+
+
+const generateHuffmanTree = (nodeQueue: ColorFrequency[],
+                             frequencies: ColorFrequency[],
+                             lastIdx: number,
+                             usageMap: ColorUsageMap): { rootNode: ColorFrequency, colorPalette: number[] } => {
+    sortQueue(nodeQueue, usageMap);
+
+    let root: ColorFrequency = null;
+
+    let nodeIndex: number = lastIdx;
+
+    while(nodeQueue.length > 1) {
+        const left = nodeQueue.shift();
+        const right = nodeQueue.shift();
+        const leftNodeIndex = left.nodeIndex;
+        const rightNodeIndex = right.nodeIndex;
+
+        const frequency = right.frequency + left.frequency;
+        const color = right.color + left.color;
+
+        root = frequencies[nodeIndex] = {
+            color,
+            frequency,
+            nodeIndex,
+            leftNodeIndex, left,
+            rightNodeIndex, right,
+            code: '-'
+        };
+
+        addToQueue(nodeQueue, frequencies[nodeIndex], usageMap);
+        nodeIndex++;
+    }
+
+    const sortedRowPalette: number[] = [];
+    generateHuffCode(root, '', sortedRowPalette);
+
+    sortedRowPalette.unshift(0);
+
+    return { rootNode: root, colorPalette: sortedRowPalette };
+};
+
 
 
 const readImageData = (spriteSheet: SpriteSheet, image: PNG): ImageData => {
@@ -94,7 +214,7 @@ const readImageData = (spriteSheet: SpriteSheet, image: PNG): ImageData => {
         }
 
         pixels[y][x] = rgb;
-        intensities[y][x] = new RGB(rgb).intensity;
+        intensities[y][x] = rgb === 1 ? 1 : new RGB(rgb).intensity;
         alphas[y][x] = alpha;
 
         if(!hasAlpha && alpha !== 255) {
@@ -130,148 +250,157 @@ const readImageData = (spriteSheet: SpriteSheet, image: PNG): ImageData => {
 export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: PNG[]): void => {
     const spriteSheet = new SpriteSheet(fileIndex, fileName, images);
     const imageData: ImageData[] = new Array(spriteSheet.sprites.length);
-    const histogram: number[] = new Array(256).fill(0);
+    const histogram: { [key: number]: number } = {};
+    const { maxHeight, maxWidth, maxArea } = spriteSheet;
+
+    const rowRanges: RgbRange[] = [];
+    const columnRanges: RgbRange[] = [];
+
+    const rowAlphaRanges: AlphaRange[] = [];
+    const columnAlphaRanges: AlphaRange[] = [];
 
     for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
         const image = images[imageIdx];
 
         imageData[imageIdx] = readImageData(spriteSheet, image);
-        const { minX, maxX, minY, maxY, intensities } = imageData[imageIdx];
+        const { pixels, alphas } = imageData[imageIdx];
 
-        const width = maxX - minX + 1;
-        const height = maxY - minY + 1;
+        // row-major duplicate pixel range detection & histogram generation
+        for(let y = 0; y < maxHeight; y++) {
+            for(let x = 0; x < maxWidth; x++) {
+                const rgb = pixels[y][x];
 
-        for(let y = 0; y < height; y++) {
-            for(let x = 0; x < width; x++) {
-                histogram[intensities[y + minY][x + minX]] += 1;
+                if(rgb === 0) {
+                    continue;
+                }
+
+                if(!histogram[rgb]) {
+                    histogram[rgb] = 1;
+                } else {
+                    histogram[rgb] += 1;
+                }
+
+                addPixelRangeData(rgb, alphas[y][x], rowRanges, rowAlphaRanges);
+            }
+        }
+
+        // column-major duplicate pixel range detection
+        for(let x = 0; x < maxWidth; x++) {
+            for(let y = 0; y < maxHeight; y++) {
+                const rgb = pixels[y][x];
+
+                if(rgb === 0) {
+                    continue;
+                }
+
+                addPixelRangeData(rgb, alphas[y][x], columnRanges, columnAlphaRanges);
             }
         }
     }
 
-    const { maxHeight, maxWidth, maxArea } = spriteSheet;
-
+    const spriteSheetColors = Object.keys(histogram).map(n => Number(n));
     let nodes: number = 0;
-    for(let i = 0; i < 256; i++) {
-        if(histogram[i] !== 0) {
+
+    for(const color of spriteSheetColors) {
+        if(histogram[color] !== 0) {
             nodes++;
         }
     }
 
-    // Calculating minimum probability
-    let minProbability = 1.0, tempMinProb;
-    for(let i = 0; i < 256; i++) {
-        tempMinProb = (histogram[i] / maxArea);
-        if(tempMinProb > 0 && tempMinProb <= minProbability) {
-            minProbability = tempMinProb;
-        }
-    }
-
-    // Calculating max length of the code word
-    let codeLen = 0;
-    while((1 / minProbability) > fib(codeLen)) {
-        codeLen++;
-    }
-
-    const maxCodeWordLength = codeLen - 3;
     const totalNodes = 2 * nodes - 1;
+    const rowFrequencies: ColorFrequency[] = new Array(totalNodes);
+    const columnFrequencies: ColorFrequency[] = new Array(totalNodes);
+    const rowQueue: ColorFrequency[] = [];
+    const columnQueue: ColorFrequency[] = [];
 
-    const pixfreqs: Pixfreq[] = new Array(totalNodes).fill({
-        pix: 0,
-        larrloc: 0,
-        rarrloc: 0,
-        freq: 0,
-        left: null,
-        right: null,
-        code: new Array(maxCodeWordLength)
-    });
+    let nodeIndex = 0;
 
-    const huffcodes: Huffcode[] = new Array(totalNodes).fill({
-        pix: 0,
-        arrloc: 0,
-        freq: 0
-    });
-
-    let j = 0;
-    let tempProbability: number;
-    for(let i = 0; i < 256; i++) {
-        if(histogram[i] === 0) {
+    for(const color of spriteSheetColors) {
+        if(histogram[color] === 0) {
             continue;
         }
 
-        // pixel intensity value
-        huffcodes[j].pix = i;
-        pixfreqs[j].pix = i;
+        const frequency = histogram[color] / maxArea;
 
-        // location of the node in the pixfreqs array
-        huffcodes[j].arrloc = j;
+        rowFrequencies[nodeIndex] = {
+            color, frequency, nodeIndex,
+            leftNodeIndex: -1, left: null,
+            rightNodeIndex: -1, right: null,
+            code: ''
+        };
 
-        // probability of occurrence
-        tempProbability = histogram[i] / maxArea;
-        pixfreqs[j].freq = tempProbability;
-        huffcodes[j].freq = tempProbability;
+        columnFrequencies[nodeIndex] = {
+            color, frequency, nodeIndex,
+            leftNodeIndex: -1, left: null,
+            rightNodeIndex: -1, right: null,
+            code: ''
+        };
 
-        // initializing the code
-        // word as end of line
-        pixfreqs[j].code[0] = '\0';
-        j++;
+        rowQueue.push(rowFrequencies[nodeIndex]);
+        columnQueue.push(columnFrequencies[nodeIndex]);
+        nodeIndex++;
     }
 
-    // Sorting with respect to probability of occurrence
-    let tempHuff: Huffcode;
-    for(let i = 0; i < nodes; i++) {
-        for(let j = i + 1; j < nodes; j++) {
-            if(huffcodes[i].freq < huffcodes[j].freq) {
-                tempHuff = huffcodes[i];
-                huffcodes[i] = huffcodes[j];
-                huffcodes[j] = tempHuff;
+    const rowUsageMap = mapColorUsage(rowRanges);
+    const columnUsageMap = mapColorUsage(columnRanges);
+
+    const rowPalette = generateHuffmanTree(rowQueue, rowFrequencies, nodeIndex, rowUsageMap).colorPalette;
+    const columnPalette = generateHuffmanTree(columnQueue, columnFrequencies, nodeIndex, columnUsageMap).colorPalette;
+
+    for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
+        const { pixels } = imageData[imageIdx];
+
+        const rowIndexedPixels: number[] = new Array(maxArea);
+        const columnIndexedPixels: number[] = new Array(maxArea);
+
+        let pixelIdx = 0;
+        let previousPaletteIdx = 0;
+        let columnDiff: number = 0;
+        let rowDiff: number = 0;
+
+        // Build the array of palette indices for row-major order
+        for(let y = 0; y < maxHeight; y++) {
+            for(let x = 0; x < maxWidth; x++) {
+                const rgb = pixels[y][x];
+                let paletteIdx = rowPalette.indexOf(rgb);
+                if(paletteIdx < 0) {
+                    paletteIdx = 0;
+                }
+                rowIndexedPixels[pixelIdx++] = paletteIdx;
+                rowDiff = paletteIdx - previousPaletteIdx;
+                previousPaletteIdx = paletteIdx;
             }
         }
-    }
 
-    // Building the huffman tree
+        previousPaletteIdx = 0;
 
-    let sumprob: number;
-    let sumpix: number;
-    let n = 0, k = 0;
-    let nextnode = nodes;
-
-    while(n < nodes - 1) {
-
-        // Adding the lowest two probabilities
-        sumprob = huffcodes[nodes - n - 1].freq + huffcodes[nodes - n - 2].freq;
-        sumpix = huffcodes[nodes - n - 1].pix + huffcodes[nodes - n - 2].pix;
-
-        // Appending to the pix_freq Array
-        pixfreqs[nextnode].pix = sumpix;
-        pixfreqs[nextnode].freq = sumprob;
-        pixfreqs[nextnode].left = pixfreqs[huffcodes[nodes - n - 2].arrloc];
-        pixfreqs[nextnode].right = pixfreqs[huffcodes[nodes - n - 1].arrloc];
-        pixfreqs[nextnode].code[0] = '\0';
-        let i = 0;
-
-        // Sorting and Updating the
-        // huffcodes array simultaneously
-        // New position of the combined node
-        while(sumprob <= huffcodes[i].freq) {
-            i++;
-        }
-
-        // Inserting the new node
-        // in the huffcodes array
-        for(k = nodes; k >= 0; k--) {
-            if(k === i) {
-                huffcodes[k].pix = sumpix;
-                huffcodes[k].freq = sumprob;
-                huffcodes[k].arrloc = nextnode;
-            } else if (k > i) {
-                // Shifting the nodes below
-                // the new node by 1
-                // For inserting the new node
-                // at the updated position k
-                huffcodes[k] = huffcodes[k - 1];
+        // Build the array of palette indices for column-major order
+        for(let x = 0; x < maxWidth; x++) {
+            for(let y = 0; y < maxHeight; y++) {
+                const rgb = pixels[y][x];
+                let paletteIdx = columnPalette.indexOf(rgb);
+                if(paletteIdx < 0) {
+                    paletteIdx = 0;
+                }
+                columnIndexedPixels[maxWidth * y + x] = paletteIdx;
+                columnDiff = paletteIdx - previousPaletteIdx;
+                previousPaletteIdx = paletteIdx;
             }
         }
-        n += 1;
-        nextnode += 1;
+
+        let averageRowBits = 0;
+        for(let i = 0; i < rowFrequencies.length; i++) {
+            averageRowBits += rowFrequencies[i].frequency + rowFrequencies[i].code.length;
+        }
+
+        let averageColumnBits = 0;
+        for(let i = 0; i < columnFrequencies.length; i++) {
+            averageColumnBits += columnFrequencies[i].frequency + columnFrequencies[i].code.length;
+        }
+
+        printSpritePaletteIndices('row-major', maxWidth, maxHeight, rowIndexedPixels, rowPalette);
+        printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, columnPalette);
+        console.log(`Average Bits:  Column: ${averageColumnBits}  Row: ${averageRowBits}`);
+        console.log(`Diffs:         Column: ${columnDiff}  Row: ${rowDiff}`);
     }
 };

@@ -5,6 +5,9 @@ import { ByteBuffer } from '@runejs/core/buffer';
 import { RGBA } from '../../util/colors';
 import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
+import fs from 'fs';
+import path from 'path';
+import { ColorFrequency, ImageData } from './sprite-encoder';
 
 
 export interface SpriteDebugSettings {
@@ -36,24 +39,64 @@ const createSpriteSheetDebugDirectory = (fileName: string): string => {
 };
 
 
+export const debugHuffmanTree = (fileName: string, width: number, height: number,
+                                 imageData: ImageData[], colorFrequencies: ColorFrequency[]): void => {
+    const outputDir = path.join('.', 'output', 'debug', 'sprites-2', fileName);
+
+    if(fs.existsSync(outputDir)) {
+        fs.rmSync(outputDir, { recursive: true, force: true });
+    }
+
+    fs.mkdirSync(outputDir, { recursive: true });
+
+    for(let imageIdx = 0; imageIdx < imageData.length; imageIdx++) {
+        const { intensities } = imageData[imageIdx];
+
+        const lines: string[] = new Array(height).fill('');
+        let intensity;
+
+        for(let y = 0; y < height; y++) {
+            for(let x = 0; x < width; x++) {
+                intensity = intensities[y][x];
+                for(let i = 0; i < colorFrequencies.length; i++) {
+                    if(intensity === colorFrequencies[i].intensity) {
+                        lines[y] += `${colorFrequencies[i].code} `;
+                    }
+                }
+            }
+        }
+
+        fs.writeFileSync(path.join(outputDir, `${imageIdx}.txt`), lines.join('\n'));
+    }
+};
+
+
 export const debugSpritePaletteIndices = (type: SpriteStorageMethod,
-                                          palette: number[],
                                           width: number,
                                           height: number,
-                                          paletteIndices: number[]): string[] => {
-    const pixelLines: string[] = new Array(height);
+                                          indexedPixels: number[],
+                                          colorPalette: number[]): string[] => {
+    const pixelLines: string[] = new Array(height).fill('');
 
-    for(let y = 0; y < height; y++) {
-        pixelLines[y] = ``;
+    if(type === 'row-major') {
+        for(let y = 0; y < height; y++) {
+            for(let x = 0; x < width; x++) {
+                const i = width * y + x;
+                pixelLines[y] += pad(indexedPixels[i], 2) + ' ';
+            }
+        }
+    } else {
         for(let x = 0; x < width; x++) {
-            const i = width * y + x;
-            pixelLines[y] += pad(paletteIndices[i], 2) + ' ';
+            for(let y = 0; y < height; y++) {
+                const i = width * y + x;
+                pixelLines[y] += pad(indexedPixels[i], 2) + ' ';
+            }
         }
     }
 
     return [
-        `\nPalette:`, palette.join(' '),
-        `\nDetected:`, type,
+        `\nPalette:`, colorPalette.join(' '),
+        `\nType Used: ${type}`,
         `\nPixel Visualization:\n`,
         ...pixelLines
     ];
@@ -61,12 +104,11 @@ export const debugSpritePaletteIndices = (type: SpriteStorageMethod,
 
 
 export const printSpritePaletteIndices = (type: SpriteStorageMethod,
-                                          palette: number[],
                                           width: number,
                                           height: number,
-                                          paletteIndices: number[]): void => {
-    debugSpritePaletteIndices(type, palette, width, height, paletteIndices).forEach(line => console.log(line));
-};
+                                          indexedPixels: number[],
+                                          colorPalette: number[]): void =>
+    debugSpritePaletteIndices(type, width, height, indexedPixels, colorPalette).forEach(line => console.log(line));
 
 
 export const dumpSpriteSheetData = (spriteSheet: SpriteSheet): void => {
@@ -78,7 +120,7 @@ export const dumpSpriteSheetData = (spriteSheet: SpriteSheet): void => {
         try {
             const { spriteIndex, width, height, paletteIndices } = sprite;
             const pixelDebugData: string[] =
-                debugSpritePaletteIndices(sprite.storageMethod, palette, width, height, paletteIndices);
+                debugSpritePaletteIndices(sprite.storageMethod, width, height, paletteIndices, palette);
             writeFileSync(join(spriteSheetDir, `${spriteIndex}.txt`), pixelDebugData.join('\n'));
         } catch(error) {
             logger.error(`Error dumping sprite pixel data:`, error);

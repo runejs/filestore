@@ -11,6 +11,7 @@ import { PNG } from 'pngjs';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { IndexedFile } from './file-store/file';
 import { ArchiveDecompressor } from './client-store/decompression/archive-decompressor';
+import { SpriteStorageMethod } from './codec/sprites/sprite-sheet';
 
 
 function validateSpriteFormats(): void {
@@ -77,12 +78,11 @@ function validateSpriteFormats(): void {
     // await ArchiveDecompressor.writeFileNames();
 
     // Decode a single packed client cache archive with this line vvv
-    await clientFileStore.getIndex('sprites').decompressArchive(false, false);
+    // await clientFileStore.getIndex('sprites').decompressArchive(false, false);
 
 
     // validateSpriteFormats();
 
-    /*setSpriteCodecMode('debug', { expectedTotals: [ 0, 0 ] });
     ([
         [ 780, 'sideicons_interface,6', 'row-major' ],
         [ 781, 'sideicons_interface,7', 'column-major' ],
@@ -96,7 +96,7 @@ function validateSpriteFormats(): void {
         const spriteFile: Buffer = fs.readFileSync(`./stores/sprites/${fileName}.png`);
         spriteCodec.encode({ fileIndex, fileName }, spriteFile);
         console.log('\n');
-    });*/
+    });
 
     // const fileStore = new FileStore();
 

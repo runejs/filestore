@@ -33,12 +33,20 @@ abstract class HS {
 export class HSB extends HS {
     public brightness: number;
 
-    public constructor(hue: number, saturation: number, brightness: number) {
-        super(hue, saturation);
+    public constructor(argbInteger: number);
+    public constructor(hue: number, saturation: number, brightness: number);
+    public constructor(hueOrArgb: number, saturation?: number, brightness?: number) {
+        if(saturation === undefined && brightness === undefined) {
+            const { h, s, b } = HSB.fromRgb(new RGB(hueOrArgb));
+            hueOrArgb = h;
+            saturation = s;
+            brightness = b;
+        }
+        super(hueOrArgb, saturation);
         this.brightness = brightness;
     }
 
-    public static fromRgb(rgb: RGB): HSB {
+    public static fromRgb(rgb: RGB): { h: number, s: number, b: number } {
         const { r, g, b } = rgb.toDecimals();
 
         const rgbMin = Math.min(r, g, b);
@@ -67,7 +75,7 @@ export class HSB extends HS {
                 break;
         }
 
-        return new HSB(hue, saturation, brightness);
+        return { h: hue, s: saturation, b: brightness };
     }
 }
 
@@ -75,12 +83,20 @@ export class HSB extends HS {
 export class HSL extends HS {
     public lightness: number;
 
-    public constructor(hue: number, saturation: number, lightness: number) {
-        super(hue, saturation);
+    public constructor(argbInteger: number);
+    public constructor(hue: number, saturation: number, lightness: number);
+    public constructor(hueOrArgb: number, saturation?: number, lightness?: number) {
+        if(saturation === undefined && lightness === undefined) {
+            const { h, s, l } = HSL.fromRgb(new RGB(hueOrArgb));
+            hueOrArgb = h;
+            saturation = s;
+            lightness = l;
+        }
+        super(hueOrArgb, saturation);
         this.lightness = lightness;
     }
 
-    public static fromRgb(rgb: RGB): HSL {
+    public static fromRgb(rgb: RGB): { h: number, s: number, l: number } {
         const { r, g, b } = rgb.toDecimals();
 
         const rgbMin = Math.min(r, g, b);
@@ -113,7 +129,7 @@ export class HSL extends HS {
             hue = 60 * (r - g) / rgbDelta + 240;
         }
 
-        return new HSL(hue, saturation, lightness);
+        return { h: hue, s: saturation, l: lightness };
     }
 }
 
@@ -123,13 +139,13 @@ export class RGB {
     public green: number;
     public blue: number;
 
-    public constructor(argbColor: number);
+    public constructor(argbInteger: number);
     public constructor(red: number, green: number, blue: number);
-    public constructor(redOrRgbInteger: number, green?: number, blue?: number) {
-        let red = redOrRgbInteger;
+    public constructor(redOrArgbInteger: number, green?: number, blue?: number) {
+        let red = redOrArgbInteger;
 
         if(green === undefined && blue === undefined) {
-            const { r, g, b } = decodeRgbInt24(redOrRgbInteger);
+            const { r, g, b } = decodeRgbInt24(redOrArgbInteger);
             red = r;
             green = g;
             blue = b;
@@ -162,11 +178,11 @@ export class RGBA extends RGB {
 
     public alpha: number;
 
-    public constructor(rgbInteger: number, alpha?: number);
+    public constructor(argbInteger: number, alpha?: number);
     public constructor(red: number, green: number, blue: number, alpha?: number);
-    public constructor(redOrRgbInteger: number, greenOrAlpha?: number, blue?: number, alpha?: number) {
+    public constructor(redOrArgbInteger: number, greenOrAlpha?: number, blue?: number, alpha?: number) {
         if(blue === undefined && alpha === undefined) {
-            super(redOrRgbInteger);
+            super(redOrArgbInteger);
 
             if(greenOrAlpha === undefined) {
                 alpha = 255;
@@ -174,7 +190,7 @@ export class RGBA extends RGB {
                 alpha = greenOrAlpha;
             }
         } else {
-            super(redOrRgbInteger, greenOrAlpha, blue);
+            super(redOrArgbInteger, greenOrAlpha, blue);
         }
 
         this.alpha = alpha ?? 255;
@@ -193,121 +209,3 @@ export class RGBA extends RGB {
         return (this.red << 24) + (this.green << 16) + (this.blue << 8) + (this.alpha);
     }
 }
-
-
-export class ColorUsage {
-
-    public rgb: number;
-    public rangeCount: number = 1;
-    public totalUses: number = 1;
-
-    public constructor(rgb: number, totalUses: number) {
-        this.rgb = rgb;
-        this.totalUses = totalUses;
-    }
-
-    public get average(): number {
-        return (this.totalUses || 1) / (this.rangeCount || 1);
-    }
-
-}
-
-
-export type PaletteUsageMap = { [key: number]: ColorUsage };
-
-
-export const paletteBuilder = (ranges: { rgb: number, pixels: number }[],
-                               palette: number[]): number[] => {
-    const usageMap: PaletteUsageMap = {};
-
-    let usesBlack: boolean = false;
-
-    for(const range of ranges) {
-        if(range.rgb === 0) {
-            continue;
-        }
-        if(range.rgb === 1) {
-            usesBlack = true;
-            // continue;
-        }
-
-        const intensity = new RGB(range.rgb).intensity;
-        const colorUsage = usageMap[intensity];
-
-        if(!colorUsage) {
-            palette.push(range.rgb);
-            usageMap[intensity] = new ColorUsage(range.rgb, range.pixels);
-        } else {
-            colorUsage.rangeCount++;
-            colorUsage.totalUses += range.pixels;
-        }
-    }
-
-    const nodes = Object.keys(usageMap);
-    const nodeCount = nodes.length;
-
-    palette.sort((firstRgb, secondRgb) => {
-        const usageA = usageMap[firstRgb];
-        const usageB = usageMap[secondRgb];
-
-        return usageB.rangeCount - usageA.rangeCount;
-
-        /*const a = RGB.fromRgbInt(firstRgb);
-        const b = RGB.fromRgbInt(secondRgb);
-
-        const result = a.value - b.value;
-
-        if(result === 0) {
-            console.log(`equal ${a} = ${b}`);
-            return -1;
-        } else {
-            console.log(result);
-        }
-
-        return result;*/
-        // return firstRgb - secondRgb;
-        /*const a = HSB.fromRgbInt(firstRgb);
-        const b = HSB.fromRgbInt(secondRgb);
-
-        const similarHue = Math.floor(a.hue / 16) === Math.floor(b.hue / 16);
-
-        if(!similarHue) {
-            if(a.hue < b.hue) {
-                return -1;
-            }
-            if(a.hue > b.hue) {
-                return 1;
-            }
-        }
-        if(a.saturation < b.saturation) {
-            return 1;
-        }
-        if(a.saturation > b.saturation) {
-            return -1;
-        }
-        if(a.brightness < b.brightness) {
-            return -1;
-        }
-        if(a.brightness > b.brightness) {
-            return 1;
-        }
-        return 0;*/
-
-        /*if(hsb1[0] === hsb2[0]) {
-            if(hsb1[1] === hsb2[1]) {
-                return hsb2[2] - hsb1[2];
-            } else {
-                return hsb1[1] - hsb2[1];
-            }
-        }
-
-        return hsb1[0] - hsb2[0];*/
-    });//.reverse();
-
-    if(usesBlack) {
-        // palette.unshift(1);
-    }
-    palette.unshift(0);
-
-    return palette;
-};

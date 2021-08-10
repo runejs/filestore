@@ -2,9 +2,9 @@ import { ByteBuffer } from '@runejs/core/buffer';
 import FileCodec from '../file-codec';
 import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
-import { paletteBuilder } from '../../util/colors';
-import { dumpSpriteSheetData, printSpritePaletteIndices, SpriteDebugSettings } from './sprite-debug';
-import { Sprite, SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
+import { dumpSpriteSheetData, SpriteDebugSettings } from './sprite-debug';
+import { Sprite, SpriteSheet } from './sprite-sheet';
+import { encodeSpriteSheet } from './sprite-encoder';
 
 
 
@@ -120,6 +120,8 @@ export default {
             return null;
         }
 
+        encodeSpriteSheet(file.fileIndex, file.fileName, images);
+
         /*const palette: number[] = [];
 
         const spriteCount = images.length;
@@ -186,7 +188,7 @@ export default {
         const height = maxY - minY + 1;
         const actualArea = width * height;
         const offsetX = minX;
-        const offsetY = minY;*/
+        const offsetY = minY;
 
         const rowRanges: { rgb: number, pixels: number }[] = [];
         const columnRanges: { rgb: number, pixels: number }[] = [];
@@ -335,7 +337,7 @@ export default {
             }
         }
 
-        console.log(`\n`);
+        console.log(`\n`);*/
 
         /*let pixels: number[][][] = new Array(spriteCount);
         let paletteIndices: number[][][] = new Array(spriteCount);

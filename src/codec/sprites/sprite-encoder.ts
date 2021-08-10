@@ -64,32 +64,42 @@ const generateHuffCode = (root: ColorFrequency, s: string, values: number[]): vo
     }
 };
 
-// @TODO collect pixel indices first (no sort order)
-// then - create tree off of indices
-// finally - print sorted index tree and re-map indices!
-
 const sortQueue = (nodeQueue: ColorFrequency[], usageMap: ColorUsageMap) =>
     nodeQueue.sort((colorA: ColorFrequency, colorB: ColorFrequency): number => {
     const rangesA = usageMap[colorA.color];
     const rangesB = usageMap[colorB.color];
-    if(!rangesA) {
-        return -1;
+    if(!rangesA || !rangesB) {
+        return 0;
     }
-    if(!rangesB) {
+
+    if(colorA.color === 1) {
+        return -1;
+    } else if(colorB.color === 1) {
         return 1;
     }
+
     const rgbA = new RGB(colorA.color);
     const rgbB = new RGB(colorB.color);
 
-    if(rgbA.intensity !== rgbB.intensity) {
-        return rgbA.intensity - rgbB.intensity;
+    if(rgbA.intensity > rgbB.intensity) {
+        return 1;
+    } else if(rgbA.intensity < rgbB.intensity) {
+        return -1;
     }
 
-    if(rangesA.rangeCount !== rangesB.rangeCount) {
-        //return rangesB.rangeCount - rangesA.rangeCount;
+    if(rangesA.rangeCount > rangesB.rangeCount) {
+        return 1;
+    } else if(rangesA.rangeCount < rangesB.rangeCount) {
+        return -1;
     }
 
-    return colorA.frequency - colorB.frequency;
+    if(colorA.frequency > colorB.frequency) {
+        return -1;
+    } else if(colorA.frequency < colorB.frequency) {
+        return 1;
+    }
+
+    return 0;
 });
 
 
@@ -177,6 +187,13 @@ const generateHuffmanTree = (nodeQueue: ColorFrequency[],
     const sortedRowPalette: number[] = [];
     generateHuffCode(root, '', sortedRowPalette);
 
+    /*const blackColorIdx = sortedRowPalette.indexOf(1);
+    if(blackColorIdx > 0) {
+        // Shift black back to the start of the color palette if it ended up out of order
+        sortedRowPalette.splice(sortedRowPalette.indexOf(1), 1);
+        sortedRowPalette.unshift(1);
+    }*/
+    sortedRowPalette.unshift(1);
     sortedRowPalette.unshift(0);
 
     return { rootNode: root, colorPalette: sortedRowPalette };
@@ -259,6 +276,8 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
     const rowAlphaRanges: AlphaRange[] = [];
     const columnAlphaRanges: AlphaRange[] = [];
 
+    let usesBlack: boolean = false;
+
     for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
         const image = images[imageIdx];
 
@@ -271,6 +290,10 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
                 const rgb = pixels[y][x];
 
                 if(rgb === 0) {
+                    continue;
+                }
+                if(rgb === 1) {
+                    usesBlack = true;
                     continue;
                 }
 
@@ -289,7 +312,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
             for(let y = 0; y < maxHeight; y++) {
                 const rgb = pixels[y][x];
 
-                if(rgb === 0) {
+                if(rgb === 0 || rgb === 1) {
                     continue;
                 }
 

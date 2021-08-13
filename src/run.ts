@@ -78,14 +78,14 @@ function validateSpriteFormats(): void {
     // await ArchiveDecompressor.writeFileNames();
 
     // Decode a single packed client cache archive with this line vvv
-    await clientFileStore.getIndex('sprites').decompressArchive(false, true);
+    // await clientFileStore.getIndex('sprites').decompressArchive(false, true);
 
 
     // validateSpriteFormats();
 
-    /*([
+    ([
         [ 780, 'sideicons_interface,6', 'row-major' ],
-        // [ 781, 'sideicons_interface,7', 'column-major' ],
+        [ 781, 'sideicons_interface,7', 'column-major' ],
         // [ 460, 'painting2', 'row-major' ],
         // [ 213, 'staticons,16', 'column-major' ],
         // [ 203, 'staticons,6', 'row-major' ]
@@ -96,7 +96,7 @@ function validateSpriteFormats(): void {
         const spriteFile: Buffer = fs.readFileSync(`./stores/sprites/${fileName}.png`);
         spriteCodec.encode({ fileIndex, fileName }, spriteFile);
         console.log('\n');
-    });*/
+    });
 
     // const fileStore = new FileStore();
 

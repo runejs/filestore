@@ -61,38 +61,43 @@ const generateHuffCode = (root: ColorFrequency, s: string, values: number[]): vo
     }
 };
 
-function frequencySort(a: ColorFrequency, b: ColorFrequency) {
-    if(a.frequency > b.frequency) {
+function frequencySort(a: ColorFrequency, b: ColorFrequency, usageMap: ColorUsageMap) {
+    if(a.color === 1) {
+        return -1;
+    } else if(b.color === 1) {
         return 1;
-    } else if(a.frequency < b.frequency) {
+    }
+
+    const rgbA = new RGB(a.color);
+    const rgbB = new RGB(b.color);
+
+    if(rgbA.intensity > rgbB.intensity) {
+        return 1;
+    } else if(rgbA.intensity < rgbB.intensity) {
         return -1;
     }
 
-    /*const { intensity: aIntensity } = new RGB(a.color);
-    const { intensity: bIntensity } = new RGB(b.color);
+    const rangesA = usageMap[a.color];
+    const rangesB = usageMap[b.color];
+    if(rangesA && rangesB) {
+        if(rangesA.rangeCount > rangesB.rangeCount) {
+            return 1;
+        } else if(rangesA.rangeCount < rangesB.rangeCount) {
+            return -1;
+        }
+    }
 
-    if(aIntensity > bIntensity) {
+    if(a.frequency > b.frequency) {
         return -1;
-    } else if(aIntensity < bIntensity) {
+    } else if(a.frequency < b.frequency) {
         return 1;
-    }*/
-
-    const aHsl = new HSL(a.color);
-    const bHsl = new HSL(b.color);
-
-    if(aHsl.saturation > bHsl.saturation) {
-        return 1;
-    } else if(aHsl.saturation < bHsl.saturation) {
-        return -1;
     }
 
     return 0;
-
-    // return a.frequency - b.frequency;
 }
 
 function sortQueue(nodeQueue: ColorFrequency[], usageMap: ColorUsageMap): ColorFrequency[] {
-    return nodeQueue.sort((a: ColorFrequency, b: ColorFrequency) => frequencySort(a, b));
+    return nodeQueue.sort((a: ColorFrequency, b: ColorFrequency) => frequencySort(a, b, usageMap));
 }
 
 
@@ -340,14 +345,14 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         });
     }
 
-    rowFrequencies.sort((a, b) => frequencySort(a, b));
-    columnFrequencies.sort((a, b) => frequencySort(a, b));
+    const rowUsageMap = mapColorUsage(rowRanges);
+    const columnUsageMap = mapColorUsage(columnRanges);
+
+    rowFrequencies.sort((a, b) => frequencySort(a, b, rowUsageMap));
+    columnFrequencies.sort((a, b) => frequencySort(a, b, columnUsageMap));
 
     rowFrequencies.forEach(f => rowQueue.push(f));
     columnFrequencies.forEach(f => columnQueue.push(f));
-
-    const rowUsageMap = mapColorUsage(rowRanges);
-    const columnUsageMap = mapColorUsage(columnRanges);
 
     const rowPalette = generateHuffmanTree(rowQueue, rowFrequencies, rowUsageMap, usesBlack).colorPalette;
     const columnPalette = generateHuffmanTree(columnQueue, columnFrequencies, columnUsageMap, usesBlack).colorPalette;

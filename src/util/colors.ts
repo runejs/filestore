@@ -1,159 +1,167 @@
+import { padNumber } from './strings';
 
 export interface RGBValues {
     r: number;
     g: number;
     b: number;
+    a?: number;
 }
 
-export interface RGBAValues extends RGBValues {
-    a: number;
+function triplePad(i: number, fractionDigits: number = 0): string {
+    return padNumber(i, 3, {
+        fractionDigits
+    });
 }
 
-function decodeRgbInt24(rgb24: number): RGBValues {
-    rgb24 >>>= 0;
-    const b = rgb24 & 0xFF,
-        g = (rgb24 & 0xFF00) >>> 8,
-        r = (rgb24 & 0xFF0000) >>> 16;
+function round(i: number, fractionDigits: number = 0): number {
+    if(isNaN(i) || i < 0) {
+        return 0;
+    }
 
-    return { r, g, b };
-}
-
-
-abstract class HS {
-    public hue: number;
-    public saturation: number;
-
-    protected constructor(hue: number, saturation: number) {
-        this.hue = hue;
-        this.saturation = saturation;
+    if(fractionDigits === 0) {
+        return Math.floor(i);
+    } else {
+        return Number(i.toFixed(fractionDigits));
     }
 }
 
 
-export class HSB extends HS {
+export interface IColor {
+    toString(): string;
+}
+
+
+export class HSB implements IColor {
+
+    public hue: number;
+    public saturation: number;
     public brightness: number;
 
     public constructor(argbInteger: number);
+    public constructor(rgb: RGB);
     public constructor(hue: number, saturation: number, brightness: number);
-    public constructor(hueOrArgb: number, saturation?: number, brightness?: number) {
+    public constructor(arg0: number | RGB, saturation?: number, brightness?: number) {
+        let hue = arg0;
         if(saturation === undefined && brightness === undefined) {
-            const { h, s, b } = HSB.fromRgb(new RGB(hueOrArgb));
-            hueOrArgb = h;
+            const { h, s, b } = HSB.fromRgb(typeof arg0 === 'number' ? new RGB(arg0) : arg0);
+            hue = h;
             saturation = s;
             brightness = b;
         }
-        super(hueOrArgb, saturation);
+
+        this.hue = hue as number;
+        this.saturation = saturation;
         this.brightness = brightness;
     }
 
     public static fromRgb(rgb: RGB): { h: number, s: number, b: number } {
         const { r, g, b } = rgb.toDecimals();
 
-        const rgbMin = Math.min(r, g, b);
-        const rgbMax = Math.max(r, g, b);
-        const rgbDelta = rgbMax - rgbMin;
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        let h, s, v = max;
 
-        let hue = 0;
-        let saturation = (rgbMax === 0 ? 0 : rgbDelta / rgbMax);
-        const brightness = rgbMax / 255;
+        const d = max - min;
+        s = max == 0 ? 0 : d / max;
 
-        switch(rgbMax) {
-            case rgbMin:
-                hue = 0;
-                break;
-            case r:
-                hue = (g - b) + rgbDelta * (g < b ? 6 : 0);
-                hue /= 6 * rgbDelta;
-                break;
-            case g:
-                hue = (b - r) + rgbDelta * 2;
-                hue /= 6 * rgbDelta;
-                break;
-            case b:
-                hue = (r - g) + rgbDelta * 4;
-                hue /= 6 * rgbDelta;
-                break;
+        if(max === min) {
+            h = 0;
+        } else {
+            switch(max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+
+            h /= 6;
         }
 
-        return { h: hue, s: saturation, b: brightness };
+        return { h: round(h * 360, 1), s: round(s * 100, 1), b: round(v * 100, 1) };
     }
+
+    public toString(): string {
+        return `HSB ( ${triplePad(this.hue, 1)}, ${triplePad(this.saturation, 1)}%, ${triplePad(this.brightness, 1)}% )`;
+    }
+
 }
 
 
-export class HSL extends HS {
+export class HSL implements IColor {
+
+    public hue: number;
+    public saturation: number;
     public lightness: number;
 
     public constructor(argbInteger: number);
+    public constructor(rgb: RGB);
     public constructor(hue: number, saturation: number, lightness: number);
-    public constructor(hueOrArgb: number, saturation?: number, lightness?: number) {
+    public constructor(arg0: number | RGB, saturation?: number, lightness?: number) {
+        let hue = arg0;
         if(saturation === undefined && lightness === undefined) {
-            const { h, s, l } = HSL.fromRgb(new RGB(hueOrArgb));
-            hueOrArgb = h;
+            const { h, s, l } = HSL.fromRgb(typeof arg0 === 'number' ? new RGB(arg0) : arg0);
+            hue = h;
             saturation = s;
             lightness = l;
         }
-        super(hueOrArgb, saturation);
+
+        this.hue = hue as number;
+        this.saturation = saturation;
         this.lightness = lightness;
     }
 
     public static fromRgb(rgb: RGB): { h: number, s: number, l: number } {
         const { r, g, b } = rgb.toDecimals();
 
-        const rgbMin = Math.min(r, g, b);
-        const rgbMax = Math.max(r, g, b);
-        const rgbDelta = rgbMax - rgbMin;
+        const min = Math.min(r, g, b);
+        const max = Math.max(r, g, b);
 
-        let hue = 0;
-        let saturation = 0;
-        const lightness = (rgbMax + rgbMin) / 2;
+        let h, s, l = (max + min) / 2;
 
-        if(rgbDelta === 0 || lightness === 0) {
-            saturation = 0;
-        } else if(lightness === 1) {
-            saturation = 1;
-        } else if(lightness <= 0.5) {
-            saturation = rgbDelta / (2 * (1 - lightness));
-        } else if(lightness > 0.5) {
-            saturation = rgbDelta / (2 * lightness);
+        if(max === min) {
+            h = s = 0; // achromatic
+        } else {
+            let delta = max - min;
+            s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+
+            switch(max) {
+                case r: h = (g - b) / delta + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / delta + 2; break;
+                case b: h = (r - g) / delta + 4; break;
+            }
+
+            h /= 6;
         }
 
-        if(rgbDelta === 0) {
-            hue = 0;
-        } else if(rgbMax === r && g >= b) {
-            hue = 60 * (g - b) / rgbDelta;
-        } else if(rgbMax === r && g < b) {
-            hue = 60 * (g - b) / rgbDelta + 360;
-        } else if(rgbMax === g) {
-            hue = 60 * (b - r) / rgbDelta + 120;
-        } else if(rgbMax === b) {
-            hue = 60 * (r - g) / rgbDelta + 240;
-        }
-
-        return { h: hue, s: saturation, l: lightness };
+        return { h: round(h * 360, 1), s: round(s * 100, 1), l: round(l * 100, 1) };
     }
+
+    public toString(): string {
+        return `HSL ( ${triplePad(this.hue, 1)}, ${triplePad(this.saturation, 1)}%, ${triplePad(this.lightness, 1)}% )`;
+    }
+
 }
 
 
-export class RGB {
+export class RGB implements IColor {
     public red: number;
     public green: number;
     public blue: number;
 
     public constructor(argbInteger: number);
     public constructor(red: number, green: number, blue: number);
-    public constructor(redOrArgbInteger: number, green?: number, blue?: number) {
-        let red = redOrArgbInteger;
+    public constructor(arg0: number, green?: number, blue?: number) {
+        let red = arg0;
 
         if(green === undefined && blue === undefined) {
-            const { r, g, b } = decodeRgbInt24(redOrArgbInteger);
-            red = r;
-            green = g;
-            blue = b;
+            arg0 >>>= 0;
+            blue = arg0 & 0xFF;
+            green = (arg0 & 0xFF00) >>> 8;
+            red = (arg0 & 0xFF0000) >>> 16;
         }
 
-        this.red = red;
-        this.green = green;
-        this.blue = blue;
+        this.red = red ?? 0;
+        this.green = green ?? 0;
+        this.blue = blue ?? 0;
     }
 
     public toDecimals(): RGBValues {
@@ -165,7 +173,7 @@ export class RGB {
     }
 
     public toString(): string {
-        return `[${this.red}, ${this.green}, ${this.blue}]`;
+        return `RGB ( ${triplePad(this.red)}, ${triplePad(this.green)}, ${triplePad(this.blue)} )`;
     }
 
     public get intensity(): number {
@@ -174,7 +182,7 @@ export class RGB {
 }
 
 
-export class RGBA extends RGB {
+export class RGBA extends RGB implements IColor {
 
     public alpha: number;
 
@@ -196,13 +204,17 @@ export class RGBA extends RGB {
         this.alpha = alpha ?? 255;
     }
 
-    public toDecimals(): RGBAValues {
+    public toDecimals(): RGBValues {
         return {
             r: this.red / 255,
             g: this.green / 255,
             b: this.blue / 255,
             a: this.alpha / 255
         }
+    }
+
+    public toString(): string {
+        return `RGBA ( ${triplePad(this.red)}, ${triplePad(this.green)}, ${triplePad(this.blue)}, ${triplePad(this.alpha)} )`;
     }
 
     public toInt(): number {

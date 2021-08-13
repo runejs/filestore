@@ -1,8 +1,8 @@
 import { PNG } from 'pngjs';
 import { SpriteSheet } from './sprite-sheet';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { HSB, HSL, RGB } from '../../util/colors';
-import { debugSpritePaletteIndices, printSpritePaletteIndices } from './sprite-debug';
+import { HSL, RGB } from '../../util/colors';
+import { printSpritePaletteIndices } from './sprite-debug';
 
 
 export type ColorUsageMap = { [key: number]: ColorUsage };
@@ -42,12 +42,9 @@ export interface ImageData {
 }
 
 export interface ColorFrequency {
-    nodeIndex: number;
     intensity?: number;
     color?: number;
     frequency: number;
-    leftNodeIndex: number;
-    rightNodeIndex: number;
     left: ColorFrequency;
     right: ColorFrequency;
     code: string;
@@ -64,43 +61,39 @@ const generateHuffCode = (root: ColorFrequency, s: string, values: number[]): vo
     }
 };
 
-const sortQueue = (nodeQueue: ColorFrequency[], usageMap: ColorUsageMap) =>
-    nodeQueue.sort((colorA: ColorFrequency, colorB: ColorFrequency): number => {
-    const rangesA = usageMap[colorA.color];
-    const rangesB = usageMap[colorB.color];
-    if(!rangesA || !rangesB) {
-        return 0;
-    }
-
-    if(colorA.color === 1) {
-        return -1;
-    } else if(colorB.color === 1) {
+function frequencySort(a: ColorFrequency, b: ColorFrequency) {
+    if(a.frequency > b.frequency) {
         return 1;
-    }
-
-    const rgbA = new RGB(colorA.color);
-    const rgbB = new RGB(colorB.color);
-
-    if(rgbA.intensity > rgbB.intensity) {
-        return 1;
-    } else if(rgbA.intensity < rgbB.intensity) {
+    } else if(a.frequency < b.frequency) {
         return -1;
     }
 
-    if(rangesA.rangeCount > rangesB.rangeCount) {
-        return 1;
-    } else if(rangesA.rangeCount < rangesB.rangeCount) {
-        return -1;
-    }
+    /*const { intensity: aIntensity } = new RGB(a.color);
+    const { intensity: bIntensity } = new RGB(b.color);
 
-    if(colorA.frequency > colorB.frequency) {
+    if(aIntensity > bIntensity) {
         return -1;
-    } else if(colorA.frequency < colorB.frequency) {
+    } else if(aIntensity < bIntensity) {
         return 1;
+    }*/
+
+    const aHsl = new HSL(a.color);
+    const bHsl = new HSL(b.color);
+
+    if(aHsl.saturation > bHsl.saturation) {
+        return 1;
+    } else if(aHsl.saturation < bHsl.saturation) {
+        return -1;
     }
 
     return 0;
-});
+
+    // return a.frequency - b.frequency;
+}
+
+function sortQueue(nodeQueue: ColorFrequency[], usageMap: ColorUsageMap): ColorFrequency[] {
+    return nodeQueue.sort((a: ColorFrequency, b: ColorFrequency) => frequencySort(a, b));
+}
 
 
 const addToQueue = (nodeQueue: ColorFrequency[], color: ColorFrequency, usageMap: ColorUsageMap): void => {
@@ -154,34 +147,28 @@ const addPixelRangeData = (rgb: number, alpha: number, rgbRanges: RgbRange[], al
 
 const generateHuffmanTree = (nodeQueue: ColorFrequency[],
                              frequencies: ColorFrequency[],
-                             lastIdx: number,
-                             usageMap: ColorUsageMap): { rootNode: ColorFrequency, colorPalette: number[] } => {
+                             usageMap: ColorUsageMap,
+                             appendBlack: boolean): { rootNode: ColorFrequency, colorPalette: number[] } => {
     sortQueue(nodeQueue, usageMap);
 
     let root: ColorFrequency = null;
 
-    let nodeIndex: number = lastIdx;
-
     while(nodeQueue.length > 1) {
         const left = nodeQueue.shift();
         const right = nodeQueue.shift();
-        const leftNodeIndex = left.nodeIndex;
-        const rightNodeIndex = right.nodeIndex;
 
         const frequency = right.frequency + left.frequency;
-        const color = right.color + left.color;
+        const color = right.intensity + left.intensity;
 
-        root = frequencies[nodeIndex] = {
+        root = {
             color,
             frequency,
-            nodeIndex,
-            leftNodeIndex, left,
-            rightNodeIndex, right,
+            left,
+            right,
             code: '-'
         };
 
-        addToQueue(nodeQueue, frequencies[nodeIndex], usageMap);
-        nodeIndex++;
+        addToQueue(nodeQueue, root, usageMap);
     }
 
     const sortedRowPalette: number[] = [];
@@ -193,7 +180,11 @@ const generateHuffmanTree = (nodeQueue: ColorFrequency[],
         sortedRowPalette.splice(sortedRowPalette.indexOf(1), 1);
         sortedRowPalette.unshift(1);
     }*/
-    sortedRowPalette.unshift(1);
+
+    if(appendBlack) {
+        sortedRowPalette.unshift(1);
+    }
+
     sortedRowPalette.unshift(0);
 
     return { rootNode: root, colorPalette: sortedRowPalette };
@@ -322,53 +313,44 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
     }
 
     const spriteSheetColors = Object.keys(histogram).map(n => Number(n));
-    let nodes: number = 0;
-
-    for(const color of spriteSheetColors) {
-        if(histogram[color] !== 0) {
-            nodes++;
-        }
-    }
-
-    const totalNodes = 2 * nodes - 1;
-    const rowFrequencies: ColorFrequency[] = new Array(totalNodes);
-    const columnFrequencies: ColorFrequency[] = new Array(totalNodes);
+    const rowFrequencies: ColorFrequency[] = [];
+    const columnFrequencies: ColorFrequency[] = [];
     const rowQueue: ColorFrequency[] = [];
     const columnQueue: ColorFrequency[] = [];
 
-    let nodeIndex = 0;
-
     for(const color of spriteSheetColors) {
         if(histogram[color] === 0) {
-            continue;
+            // continue;
         }
 
-        const frequency = histogram[color] / maxArea;
+        const frequency = histogram[color] ?? 0;// / maxArea;
 
-        rowFrequencies[nodeIndex] = {
-            color, frequency, nodeIndex,
-            leftNodeIndex: -1, left: null,
-            rightNodeIndex: -1, right: null,
+        rowFrequencies.push({
+            color, frequency,
+            left: null,
+            right: null,
             code: ''
-        };
+        });
 
-        columnFrequencies[nodeIndex] = {
-            color, frequency, nodeIndex,
-            leftNodeIndex: -1, left: null,
-            rightNodeIndex: -1, right: null,
+        columnFrequencies.push({
+            color, frequency,
+            left: null,
+            right: null,
             code: ''
-        };
-
-        rowQueue.push(rowFrequencies[nodeIndex]);
-        columnQueue.push(columnFrequencies[nodeIndex]);
-        nodeIndex++;
+        });
     }
+
+    rowFrequencies.sort((a, b) => frequencySort(a, b));
+    columnFrequencies.sort((a, b) => frequencySort(a, b));
+
+    rowFrequencies.forEach(f => rowQueue.push(f));
+    columnFrequencies.forEach(f => columnQueue.push(f));
 
     const rowUsageMap = mapColorUsage(rowRanges);
     const columnUsageMap = mapColorUsage(columnRanges);
 
-    const rowPalette = generateHuffmanTree(rowQueue, rowFrequencies, nodeIndex, rowUsageMap).colorPalette;
-    const columnPalette = generateHuffmanTree(columnQueue, columnFrequencies, nodeIndex, columnUsageMap).colorPalette;
+    const rowPalette = generateHuffmanTree(rowQueue, rowFrequencies, rowUsageMap, usesBlack).colorPalette;
+    const columnPalette = generateHuffmanTree(columnQueue, columnFrequencies, columnUsageMap, usesBlack).colorPalette;
 
     for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
         const { pixels } = imageData[imageIdx];
@@ -413,17 +395,29 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
 
         let averageRowBits = 0;
         for(let i = 0; i < rowFrequencies.length; i++) {
-            averageRowBits += rowFrequencies[i].frequency + rowFrequencies[i].code.length;
+            const { frequency, code } = rowFrequencies[i];
+            if(code === '-') {
+                continue;
+            }
+
+            averageRowBits += frequency + code.length;
         }
 
         let averageColumnBits = 0;
         for(let i = 0; i < columnFrequencies.length; i++) {
-            averageColumnBits += columnFrequencies[i].frequency + columnFrequencies[i].code.length;
+            const { frequency, code } = columnFrequencies[i];
+            if(code === '-') {
+                continue;
+            }
+
+            averageColumnBits += frequency + code.length;
         }
 
         printSpritePaletteIndices('row-major', maxWidth, maxHeight, rowIndexedPixels, rowPalette);
+        console.log(...rowFrequencies.map(f => f.frequency));
         printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, columnPalette);
+        console.log(...columnFrequencies.map(f => f.frequency));
         console.log(`Average Bits:  Column: ${averageColumnBits}  Row: ${averageRowBits}`);
-        console.log(`Diffs:         Column: ${columnDiff}  Row: ${rowDiff}`);
+        console.log(`Diffs:         Column: ${columnDiff}  \tRow: ${rowDiff}`);
     }
 };

@@ -1,13 +1,12 @@
 import { SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
-import { join } from 'path';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs';
+import path, { join } from 'path';
+import fs, { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { RGBA } from '../../util/colors';
+import { HSB, HSL, IColor, RGB, RGBA } from '../../util/colors';
 import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
-import fs from 'fs';
-import path from 'path';
 import { ColorFrequency, ImageData } from './sprite-encoder';
+import { padNumber } from '../../util/strings';
 
 
 export interface SpriteDebugSettings {
@@ -16,17 +15,6 @@ export interface SpriteDebugSettings {
 }
 
 const spriteDebugDir = join('.', 'output', 'debug', 'sprites');
-
-const pad = (i, amt): string => {
-    if(i === 0) {
-        return new Array(amt).fill(' ').join('');
-    }
-    const s = `${i}`;
-    if(s.length < amt) {
-        return new Array(amt - s.length).fill(' ').join('') + s;
-    }
-    return s;
-};
 
 const createSpriteSheetDebugDirectory = (fileName: string): string => {
     const spriteSheetDir = join(spriteDebugDir, fileName);
@@ -71,6 +59,25 @@ export const debugHuffmanTree = (fileName: string, width: number, height: number
 };
 
 
+export const debugPaletteColors = (colorPalette: number[], type: 'rgb' | 'hsl' | 'hsb' | 'int'): string[] => {
+    if(type === 'int') {
+        return [ colorPalette.join(' ') ];
+    } else {
+        const objectPalette: IColor[] = colorPalette.map(color => {
+            if(type === 'hsl') {
+                return new HSL(color);
+            } else if(type === 'hsb') {
+                return new HSB(color);
+            }
+
+            return new RGB(color);
+        });
+
+        return objectPalette.map(color => color.toString());
+    }
+};
+
+
 export const debugSpritePaletteIndices = (type: SpriteStorageMethod,
                                           width: number,
                                           height: number,
@@ -82,21 +89,30 @@ export const debugSpritePaletteIndices = (type: SpriteStorageMethod,
         for(let y = 0; y < height; y++) {
             for(let x = 0; x < width; x++) {
                 const i = width * y + x;
-                pixelLines[y] += pad(indexedPixels[i], 2) + ' ';
+                pixelLines[y] += padNumber(indexedPixels[i], 2,
+                    { hideEmpties: true }) + ' ';
             }
         }
     } else {
         for(let x = 0; x < width; x++) {
             for(let y = 0; y < height; y++) {
                 const i = width * y + x;
-                pixelLines[y] += pad(indexedPixels[i], 2) + ' ';
+                pixelLines[y] += padNumber(indexedPixels[i], 2,
+                    { hideEmpties: true }) + ' ';
             }
         }
     }
 
     return [
-        `\nPalette:`, colorPalette.join(' '),
-        `\nType Used: ${type}`,
+        `\nInt24 Palette:`,
+        ...debugPaletteColors(colorPalette, 'int'),
+        `\n\nRGB Palette:`,
+        ...debugPaletteColors(colorPalette, 'rgb'),
+        `\n\nHSL Palette:`,
+        ...debugPaletteColors(colorPalette, 'hsl'),
+        `\n\nHSB Palette:`,
+        ...debugPaletteColors(colorPalette, 'hsb'),
+        `\n\nType Used: ${type}`,
         `\nPixel Visualization:\n`,
         ...pixelLines
     ];

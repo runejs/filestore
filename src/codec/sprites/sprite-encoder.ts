@@ -3,6 +3,7 @@ import { SpriteSheet } from './sprite-sheet';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { HSL, RGB } from '../../util/colors';
 import { printSpritePaletteIndices } from './sprite-debug';
+import { frequencySorter, colorSorter, sortPalette } from './sorter';
 
 
 export type ColorUsageMap = { [key: number]: ColorUsage };
@@ -42,7 +43,7 @@ export interface ImageData {
 }
 
 export interface ColorFrequency {
-    intensity?: number;
+    value?: number;
     color?: number;
     frequency: number;
     left: ColorFrequency;
@@ -61,43 +62,9 @@ const generateHuffCode = (root: ColorFrequency, s: string, values: number[]): vo
     }
 };
 
-function frequencySort(a: ColorFrequency, b: ColorFrequency, usageMap: ColorUsageMap) {
-    if(a.color === 1) {
-        return -1;
-    } else if(b.color === 1) {
-        return 1;
-    }
-
-    const rgbA = new RGB(a.color);
-    const rgbB = new RGB(b.color);
-
-    if(rgbA.intensity > rgbB.intensity) {
-        return 1;
-    } else if(rgbA.intensity < rgbB.intensity) {
-        return -1;
-    }
-
-    const rangesA = usageMap[a.color];
-    const rangesB = usageMap[b.color];
-    if(rangesA && rangesB) {
-        if(rangesA.rangeCount > rangesB.rangeCount) {
-            return 1;
-        } else if(rangesA.rangeCount < rangesB.rangeCount) {
-            return -1;
-        }
-    }
-
-    if(a.frequency > b.frequency) {
-        return -1;
-    } else if(a.frequency < b.frequency) {
-        return 1;
-    }
-
-    return 0;
-}
 
 function sortQueue(nodeQueue: ColorFrequency[], usageMap: ColorUsageMap): ColorFrequency[] {
-    return nodeQueue.sort((a: ColorFrequency, b: ColorFrequency) => frequencySort(a, b, usageMap));
+    return nodeQueue.sort((a: ColorFrequency, b: ColorFrequency) => frequencySorter(a, b, usageMap));
 }
 
 
@@ -163,7 +130,7 @@ const generateHuffmanTree = (nodeQueue: ColorFrequency[],
         const right = nodeQueue.shift();
 
         const frequency = right.frequency + left.frequency;
-        const color = right.intensity + left.intensity;
+        const color = right.value + left.value;
 
         root = {
             color,
@@ -176,8 +143,8 @@ const generateHuffmanTree = (nodeQueue: ColorFrequency[],
         addToQueue(nodeQueue, root, usageMap);
     }
 
-    const sortedRowPalette: number[] = [];
-    generateHuffCode(root, '', sortedRowPalette);
+    const sortedPalette: number[] = [];
+    generateHuffCode(root, '', sortedPalette);
 
     /*const blackColorIdx = sortedRowPalette.indexOf(1);
     if(blackColorIdx > 0) {
@@ -186,13 +153,15 @@ const generateHuffmanTree = (nodeQueue: ColorFrequency[],
         sortedRowPalette.unshift(1);
     }*/
 
+    sortedPalette.sort((a, b) => colorSorter(a, b));
+
     if(appendBlack) {
-        sortedRowPalette.unshift(1);
+        sortedPalette.unshift(1);
     }
 
-    sortedRowPalette.unshift(0);
+    sortedPalette.unshift(0);
 
-    return { rootNode: root, colorPalette: sortedRowPalette };
+    return { rootNode: root, colorPalette: sortedPalette };
 };
 
 
@@ -318,6 +287,13 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
     }
 
     const spriteSheetColors = Object.keys(histogram).map(n => Number(n));
+    const palette = sortPalette(spriteSheetColors);
+    if(usesBlack) {
+        palette.unshift(1);
+    }
+    palette.unshift(0);
+
+    /*
     const rowFrequencies: ColorFrequency[] = [];
     const columnFrequencies: ColorFrequency[] = [];
     const rowQueue: ColorFrequency[] = [];
@@ -325,7 +301,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
 
     for(const color of spriteSheetColors) {
         if(histogram[color] === 0) {
-            // continue;
+            continue;
         }
 
         const frequency = histogram[color] ?? 0;// / maxArea;
@@ -355,7 +331,9 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
     columnFrequencies.forEach(f => columnQueue.push(f));
 
     const rowPalette = generateHuffmanTree(rowQueue, rowFrequencies, rowUsageMap, usesBlack).colorPalette;
-    const columnPalette = generateHuffmanTree(columnQueue, columnFrequencies, columnUsageMap, usesBlack).colorPalette;
+    const columnPalette = generateHuffmanTree(columnQueue, columnFrequencies, columnUsageMap, usesBlack).colorPalette;*/
+
+
 
     for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
         const { pixels } = imageData[imageIdx];
@@ -372,7 +350,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         for(let y = 0; y < maxHeight; y++) {
             for(let x = 0; x < maxWidth; x++) {
                 const rgb = pixels[y][x];
-                let paletteIdx = rowPalette.indexOf(rgb);
+                let paletteIdx = palette.indexOf(rgb);
                 if(paletteIdx < 0) {
                     paletteIdx = 0;
                 }
@@ -388,7 +366,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         for(let x = 0; x < maxWidth; x++) {
             for(let y = 0; y < maxHeight; y++) {
                 const rgb = pixels[y][x];
-                let paletteIdx = columnPalette.indexOf(rgb);
+                let paletteIdx = palette.indexOf(rgb);
                 if(paletteIdx < 0) {
                     paletteIdx = 0;
                 }
@@ -398,7 +376,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
             }
         }
 
-        let averageRowBits = 0;
+        /*let averageRowBits = 0;
         for(let i = 0; i < rowFrequencies.length; i++) {
             const { frequency, code } = rowFrequencies[i];
             if(code === '-') {
@@ -416,13 +394,13 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
             }
 
             averageColumnBits += frequency + code.length;
-        }
+        }*/
 
-        printSpritePaletteIndices('row-major', maxWidth, maxHeight, rowIndexedPixels, rowPalette);
-        console.log(...rowFrequencies.map(f => f.frequency));
-        printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, columnPalette);
-        console.log(...columnFrequencies.map(f => f.frequency));
-        console.log(`Average Bits:  Column: ${averageColumnBits}  Row: ${averageRowBits}`);
+        printSpritePaletteIndices('row-major', maxWidth, maxHeight, rowIndexedPixels, palette);
+        // console.log(...rowFrequencies.map(f => f.frequency));
+        printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, palette);
+        // console.log(...columnFrequencies.map(f => f.frequency));
+        // console.log(`Average Bits:  Column: ${averageColumnBits}  Row: ${averageRowBits}`);
         console.log(`Diffs:         Column: ${columnDiff}  \tRow: ${rowDiff}`);
     }
 };

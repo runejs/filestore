@@ -47,7 +47,7 @@ export const debugHuffmanTree = (fileName: string, width: number, height: number
             for(let x = 0; x < width; x++) {
                 intensity = intensities[y][x];
                 for(let i = 0; i < colorFrequencies.length; i++) {
-                    if(intensity === colorFrequencies[i].intensity) {
+                    if(intensity === colorFrequencies[i].value) {
                         lines[y] += `${colorFrequencies[i].code} `;
                     }
                 }
@@ -63,17 +63,18 @@ export const debugPaletteColors = (colorPalette: number[], type: 'rgb' | 'hsl' |
     if(type === 'int') {
         return [ colorPalette.join(' ') ];
     } else {
-        const objectPalette: IColor[] = colorPalette.map(color => {
+        return colorPalette.map(color => {
+            let c: IColor;
             if(type === 'hsl') {
-                return new HSL(color);
+                c = new HSL(color);
             } else if(type === 'hsb') {
-                return new HSB(color);
+                c = new HSB(color);
+            } else {
+                c = new RGB(color);
             }
 
-            return new RGB(color);
+            return c.toString();
         });
-
-        return objectPalette.map(color => color.toString());
     }
 };
 
@@ -143,11 +144,14 @@ export const dumpSpriteSheetData = (spriteSheet: SpriteSheet): void => {
         }
     });
 
-    const pngData = new ByteBuffer(palette.length * 4);
-    palette.forEach(color => pngData.put(new RGBA(color).toInt(), 'int'));
+    const paletteVizHeight = 20;
+    const pngData = new ByteBuffer((palette.length * 4) * paletteVizHeight);
+    for(let i = 0; i < paletteVizHeight; i++) {
+        palette.forEach(color => pngData.put(new RGBA(color).toInt(), 'int'));
+    }
     pngData.flipWriter();
 
-    const png = new PNG({ width: palette.length, height: 1, filterType: -1 });
+    const png = new PNG({ width: palette.length, height: paletteVizHeight, filterType: -1 });
     pngData.copy(png.data, 0, 0);
 
     const paletteImageBuffer = PNG.sync.write(png.pack());

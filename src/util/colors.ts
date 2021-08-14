@@ -7,6 +7,33 @@ export interface RGBValues {
     a?: number;
 }
 
+export interface IColor {
+    toString(): string;
+}
+
+function getHueAndSaturation(rgb: RGB) {
+    const { r, g, b } = rgb.toDecimals();
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const delta = max - min;
+    let h, s = max === 0 ? 0 : delta / max;
+
+    if(max === min) {
+        h = s = 0; // achromatic
+    } else {
+        switch(max) {
+            case r: h = (g - b) / delta + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / delta + 2; break;
+            case b: h = (r - g) / delta + 4; break;
+        }
+
+        h /= 6;
+    }
+
+    return { h, s, max, min, delta, r, g, b };
+}
+
 function triplePad(i: number, fractionDigits: number = 0): string {
     return padNumber(i, 3, {
         fractionDigits
@@ -26,10 +53,6 @@ function round(i: number, fractionDigits: number = 0): number {
 }
 
 
-export interface IColor {
-    toString(): string;
-}
-
 
 export class HSB implements IColor {
 
@@ -37,16 +60,22 @@ export class HSB implements IColor {
     public saturation: number;
     public brightness: number;
 
-    public constructor(argbInteger: number);
+    public constructor(rgb24Integer: number);
     public constructor(rgb: RGB);
     public constructor(hue: number, saturation: number, brightness: number);
     public constructor(arg0: number | RGB, saturation?: number, brightness?: number) {
         let hue = arg0;
         if(saturation === undefined && brightness === undefined) {
-            const { h, s, b } = HSB.fromRgb(typeof arg0 === 'number' ? new RGB(arg0) : arg0);
-            hue = h;
-            saturation = s;
-            brightness = b;
+            if(typeof arg0 === 'number' && arg0 <= 1) {
+                hue = arg0 === 1 ? 0 : -1;
+                saturation = arg0 === 1 ? 0 : -1;
+                brightness = arg0 === 1 ? 0 : -1;
+            } else {
+                const { h, s, b } = HSB.fromRgb(typeof arg0 === 'number' ? new RGB(arg0) : arg0);
+                hue = h;
+                saturation = s;
+                brightness = b;
+            }
         }
 
         this.hue = hue as number;
@@ -55,32 +84,18 @@ export class HSB implements IColor {
     }
 
     public static fromRgb(rgb: RGB): { h: number, s: number, b: number } {
-        const { r, g, b } = rgb.toDecimals();
-
-        const max = Math.max(r, g, b);
-        const min = Math.min(r, g, b);
-        let h, s, v = max;
-
-        const d = max - min;
-        s = max == 0 ? 0 : d / max;
-
-        if(max === min) {
-            h = 0;
-        } else {
-            switch(max) {
-                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                case g: h = (b - r) / d + 2; break;
-                case b: h = (r - g) / d + 4; break;
-            }
-
-            h /= 6;
-        }
-
+        const { h, s, max: v } = getHueAndSaturation(rgb);
         return { h: round(h * 360, 1), s: round(s * 100, 1), b: round(v * 100, 1) };
     }
 
     public toString(): string {
-        return `HSB ( ${triplePad(this.hue, 1)}, ${triplePad(this.saturation, 1)}%, ${triplePad(this.brightness, 1)}% )`;
+        if(this.hue < 0) {
+            return `HSB ( Transparent )`;
+        } else if(this.hue === 0 && this.saturation === 0 && this.brightness === 0) {
+            return `HSB ( Black )`;
+        }
+        return `HSB ( ${triplePad(this.hue, 1)}, ${triplePad(this.saturation, 1)}%, ` +
+            `${triplePad(this.brightness, 1)}% ) hueSatDelta ( ${(this.hue - this.saturation).toFixed(1)} )`;
     }
 
 }
@@ -92,16 +107,22 @@ export class HSL implements IColor {
     public saturation: number;
     public lightness: number;
 
-    public constructor(argbInteger: number);
+    public constructor(rgb24Integer: number);
     public constructor(rgb: RGB);
     public constructor(hue: number, saturation: number, lightness: number);
     public constructor(arg0: number | RGB, saturation?: number, lightness?: number) {
         let hue = arg0;
         if(saturation === undefined && lightness === undefined) {
-            const { h, s, l } = HSL.fromRgb(typeof arg0 === 'number' ? new RGB(arg0) : arg0);
-            hue = h;
-            saturation = s;
-            lightness = l;
+            if(typeof arg0 === 'number' && arg0 <= 1) {
+                hue = arg0 === 1 ? 0 : -1;
+                saturation = arg0 === 1 ? 0 : -1;
+                lightness = arg0 === 1 ? 0 : -1;
+            } else {
+                const { h, s, l } = HSL.fromRgb(typeof arg0 === 'number' ? new RGB(arg0) : arg0);
+                hue = h;
+                saturation = s;
+                lightness = l;
+            }
         }
 
         this.hue = hue as number;
@@ -110,33 +131,19 @@ export class HSL implements IColor {
     }
 
     public static fromRgb(rgb: RGB): { h: number, s: number, l: number } {
-        const { r, g, b } = rgb.toDecimals();
-
-        const min = Math.min(r, g, b);
-        const max = Math.max(r, g, b);
-
-        let h, s, l = (max + min) / 2;
-
-        if(max === min) {
-            h = s = 0; // achromatic
-        } else {
-            let delta = max - min;
-            s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
-
-            switch(max) {
-                case r: h = (g - b) / delta + (g < b ? 6 : 0); break;
-                case g: h = (b - r) / delta + 2; break;
-                case b: h = (r - g) / delta + 4; break;
-            }
-
-            h /= 6;
-        }
-
+        const { h, s, max, min } = getHueAndSaturation(rgb);
+        const l = (max + min) / 2;
         return { h: round(h * 360, 1), s: round(s * 100, 1), l: round(l * 100, 1) };
     }
 
     public toString(): string {
-        return `HSL ( ${triplePad(this.hue, 1)}, ${triplePad(this.saturation, 1)}%, ${triplePad(this.lightness, 1)}% )`;
+        if(this.hue < 0) {
+            return `HSL ( Transparent )`;
+        } else if(this.hue === 0 && this.saturation === 0 && this.lightness === 0) {
+            return `HSL ( Black )`;
+        }
+        return `HSL ( ${triplePad(this.hue, 1)}, ${triplePad(this.saturation, 1)}%, ` +
+            `${triplePad(this.lightness, 1)}% ) hueSatDelta ( ${(this.hue - this.saturation).toFixed(1)} )`;
     }
 
 }
@@ -147,7 +154,7 @@ export class RGB implements IColor {
     public green: number;
     public blue: number;
 
-    public constructor(argbInteger: number);
+    public constructor(rgb24Integer: number);
     public constructor(red: number, green: number, blue: number);
     public constructor(arg0: number, green?: number, blue?: number) {
         let red = arg0;
@@ -173,11 +180,27 @@ export class RGB implements IColor {
     }
 
     public toString(): string {
-        return `RGB ( ${triplePad(this.red)}, ${triplePad(this.green)}, ${triplePad(this.blue)} )`;
+        if(this.red === 0 && this.green === 0) {
+            if(this.blue === 1) {
+                return `RGB ( Black )`;
+            } else if(this.blue === 0) {
+                return `RGB ( Transparent )`;
+            }
+        }
+        return `RGB ( ${triplePad(this.red)}, ${triplePad(this.green)}, ${triplePad(this.blue)} ) ` +
+            `intensity ( ${triplePad(this.intensity)} ) luminance ( ${this.luminance} )`;
     }
 
     public get intensity(): number {
         return Math.round((this.red + this.green + this.blue) / 3);
+    }
+
+    public get total(): number {
+        return this.green + this.blue + this.red;
+    }
+
+    public get luminance(): number {
+        return Math.sqrt( .241 * this.red + .691 * this.green + .068 * this.blue);
     }
 }
 

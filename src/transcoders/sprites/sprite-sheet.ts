@@ -92,7 +92,7 @@ export class Sprite {
             // row-major pixel ordering [y][x] (horizontal)
             // each 'x' value is read in the first 'y' column before moving to the next 'y' column
             for(let i = 0; i < minArea; i++) {
-                const paletteIndex = this.paletteIndices[i] = fileBuffer.get('byte');
+                const paletteIndex = this.paletteIndices[i] = fileBuffer.get('byte', 'unsigned');
                 this.pixels[i] = spriteSheet.palette[paletteIndex].argb;
             }
 
@@ -106,7 +106,7 @@ export class Sprite {
             // each 'y' value is read in the first 'x' row before moving to the next 'x' row
             for(let x = 0; x < width; x++) {
                 for(let y = 0; y < height; y++) {
-                    const paletteIndex = this.paletteIndices[width * y + x] = fileBuffer.get('byte');
+                    const paletteIndex = this.paletteIndices[width * y + x] = fileBuffer.get('byte', 'unsigned');
                     this.pixels[width * y + x] = spriteSheet.palette[paletteIndex].argb;
                 }
             }
@@ -114,7 +114,7 @@ export class Sprite {
             if(hasAlpha) {
                 for(let x = 0; x < width; x++) {
                     for(let y = 0; y < height; y++) {
-                        this.alphas[width * y + x] = fileBuffer.get('byte');
+                        this.alphas[width * y + x] = fileBuffer.get('byte', 'unsigned');
                     }
                 }
             }

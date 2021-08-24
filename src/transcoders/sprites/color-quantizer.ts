@@ -13,11 +13,11 @@ type MinMax = [ number, number ];
 
 class ColorRange {
 
-    r: MinMax;
-    g: MinMax;
-    b: MinMax;
+    public r: MinMax;
+    public g: MinMax;
+    public b: MinMax;
 
-    toString(): string {
+    public toString(): string {
         return `{ r: [ ${this.r[0]}, ${this.r[1]} ], g: [ ${this.g[0]}, ${this.g[1]} ], b: [ ${this.b[0]}, ${this.b[1]} ] }`;
     }
 
@@ -156,7 +156,7 @@ export class ColorQuantizer {
     public readonly depth: number;
     public root: ColorNode;
     public nodeLevels: ColorNode[][];
-    public buckets: RGBA[][][];
+    public buckets: ColorNode[][];
     public generatedPalette: RGBA[] | undefined;
 
     public constructor(spriteSheet: SpriteSheet, depth: number = MAX_DEPTH) {
@@ -191,7 +191,7 @@ export class ColorQuantizer {
 
         this.processLevel(this.root);
 
-        this.buckets[this.depth].forEach(colorList => colorList?.forEach(color => {
+        this.buckets[this.depth].forEach(node => node?.colors?.forEach(color => {
             if(color && !palette.find(existingColor => existingColor.equals(color))) {
                 palette.push(color);
             }
@@ -212,19 +212,20 @@ export class ColorQuantizer {
             if(children.length !== 0) {
                 for(const child of children) {
                     if(child?.colors?.length) {
-                        this.buckets[level].push([ ...child.colors ].sort((rgb1, rgb2) => {
-                            return rgb2.argb - rgb1.argb;
-                        }));
+                        child.colors.sort((rgb1, rgb2) => rgb2.argb - rgb1.argb);
+                        this.buckets[level].push(child);
                     }
 
                     this.processLevel(child, level + 1);
                 }
             } else if(node.colors?.length) {
-                this.buckets[level].push([ ...node.colors ].sort((rgb1, rgb2) => {
-                    return rgb2.argb - rgb1.argb;
-                }));
+                node.colors.sort((rgb1, rgb2) => rgb2.argb - rgb1.argb);
+                this.buckets[level].push(node);
             }
         }
+
+        this.buckets[level].sort((node1, node2) =>
+            (node2?.pixelCount ?? 0) - (node1?.pixelCount ?? 0));
     }
 
 }

@@ -52,15 +52,13 @@ const spriteCodec: FileTranscoder<SpriteCodecOptions> = {
         // Parse all of the colors used in the pack
         for(let i = paletteLength; i > 0; i--) {
             let color = reversedBuffer.get('int24', 'signed', 'le');
-            if(color === 1) {
-                color = 0;
-            }
-            spriteSheet.palette[i] = new RGBA(color);
 
             // converts the color 0 (black) into the int 1 to differentiate between black and transparent (0 is used for fully transparent pixels)
-            // if(spriteSheet.palette[i] === 0) {
-            //     spriteSheet.palette[i] = 1;
-            // }
+            if(color === 0) {
+                color = 1;
+            }
+
+            spriteSheet.palette[i] = new RGBA(color, 255);
         }
 
         // Now read the individual sprites from the beginning of the file

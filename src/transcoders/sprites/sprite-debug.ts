@@ -60,27 +60,30 @@ export const debugHuffmanTree = (fileName: string, width: number, height: number
 };
 
 
-export const debugPaletteColors = (colorPalette: RGBA[], type: ColorType): string[] => {
-    if(type === 'argb') {
-        return [ colorPalette.map(c => c.argb).join(' ') ];
-    }
-
-    return colorPalette.map(color => {
+export const debugPaletteColors = (colorPalette: RGBA[], type: ColorType, colorUses?: number[]): string[] =>
+    [ `\n${type.toString().toUpperCase()} Palette:`, ...colorPalette.map((color, i) => {
         let c: IColor = color;
 
-        if(type === 'hsl') {
-            c = new HSL(color);
-        } else if(type === 'hsb') {
-            c = new HSB(color);
-        } else if(type === 'hcl') {
-            c = new HCL(color);
-        } else if(type === 'lab') {
-            c = new LAB(color);
+        if(type !== 'argb') {
+            if(type === 'hsl') {
+                c = new HSL(color);
+            } else if(type === 'hsb') {
+                c = new HSB(color);
+            } else if(type === 'hcl') {
+                c = new HCL(color);
+            } else if(type === 'lab') {
+                c = new LAB(color);
+            }
         }
 
-        return c.toString();
-    });
-};
+        let result = type === 'argb' ? String(color.argb) : c.toString();
+
+        if(colorUses?.length) {
+            result += ` Uses: ${colorUses[i]}`
+        }
+
+        return result;
+    }), '\n' ];
 
 
 export const debugSpritePaletteIndices = (type: SpriteStorageMethod,
@@ -90,37 +93,36 @@ export const debugSpritePaletteIndices = (type: SpriteStorageMethod,
                                           colorPalette: RGBA[]): string[] => {
     const pixelLines: string[] = new Array(height).fill('');
 
+    const pixelUses: number[] = new Array(colorPalette.length).fill(0);
+
+    const addIndex = (width: number, x: number, y: number): void => {
+        const i = width * y + x;
+        const colorIndex = indexedPixels[i];
+        pixelUses[colorIndex]++;
+        pixelLines[y] += padNumber(colorIndex, 2, { hideEmpties: true }) + ' ';
+    };
+
     if(type === 'row-major') {
         for(let y = 0; y < height; y++) {
             for(let x = 0; x < width; x++) {
-                const i = width * y + x;
-                pixelLines[y] += padNumber(indexedPixels[i], 2,
-                    { hideEmpties: true }) + ' ';
+                addIndex(width, x, y);
             }
         }
     } else {
         for(let x = 0; x < width; x++) {
             for(let y = 0; y < height; y++) {
-                const i = width * y + x;
-                pixelLines[y] += padNumber(indexedPixels[i], 2,
-                    { hideEmpties: true }) + ' ';
+                addIndex(width, x, y);
             }
         }
     }
 
+    const debugPaletteTypes: ColorType[] = [
+        'argb', 'rgb', 'hsl'
+    ];
+
     return [
-        `\nARGB Int Palette:`,
-        ...debugPaletteColors(colorPalette, 'argb'),
-        `\n\nRGB Palette:`,
-        ...debugPaletteColors(colorPalette, 'rgb'),
-        `\n\nHSL Palette:`,
-        ...debugPaletteColors(colorPalette, 'hsl'),
-        /*`\n\nHSV Palette:`,
-        ...debugPaletteColors(colorPalette, 'hsb'),
-        `\n\nHCL Palette:`,
-        ...debugPaletteColors(colorPalette, 'hcl'),
-        `\n\nLAB Palette:`,
-        ...debugPaletteColors(colorPalette, 'lab'),*/
+        ...debugPaletteTypes.map(type => debugPaletteColors(colorPalette, type, pixelUses))
+            .reduce((prev, curr) => [ ...prev, ...curr ]),
         `\n\nType Used: ${type}`,
         `\nPixel Visualization:\n`,
         ...pixelLines
@@ -170,7 +172,7 @@ export const dumpOctreeData = (quantizer: ColorQuantizer): void => {
     }
 
     const bucketPaletteStr = quantizer.buckets[quantizer.depth - 1].map((bucket, i) => {
-        const colorStrings = bucket.map(c => c.toString());
+        const colorStrings = bucket?.colors.map(c => c.toString());
         let result = `Bucket ${i + 1}: [`;
         colorStrings.forEach(str => result += `\n\t${str}`);
         result += '\n]';
@@ -180,7 +182,7 @@ export const dumpOctreeData = (quantizer: ColorQuantizer): void => {
     let paletteData = bucketPaletteStr + '\n\n';
 
     for(let i = 0; i < quantizer.buckets.length - 1; i++) {
-        paletteData += `Level ${i + 1}: ${JSON.stringify(quantizer.buckets[i], null, 4)}\n`;
+        paletteData += `Level ${i + 1}: ${JSON.stringify(quantizer.buckets[i].map(node => node?.colors), null, 4)}\n`;
     }
 
     const spriteSheetName = quantizer.spriteSheet.fileName.replace(/ /g, '_');

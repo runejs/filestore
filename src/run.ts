@@ -75,7 +75,7 @@ function validateSpriteFormats(debugDir: string): void {
     // await ArchiveDecompressor.writeFileNames();
 
     // Decode a single packed client cache archive with this line vvv
-    // await clientFileStore.getIndex('sprites').decompressArchive(false, true);
+    await clientFileStore.getIndex('sprites').decompressArchive(false, true);
 
 
     // validateSpriteFormats();

@@ -164,7 +164,7 @@ const generateHuffmanTree = (nodeQueue: ColorFrequency[],
 
 
 
-const readImageData = (spriteSheet: SpriteSheet, image: PNG): ImageData => {
+const readImageData = (spriteSheet: SpriteSheet, image: PNG, colorQuantizer: ColorQuantizer): ImageData => {
     const pngData = new ByteBuffer(image.data);
     const { maxWidth, maxHeight, maxArea, palette } = spriteSheet;
     let minX = -1, minY = -1, maxX = -1, maxY = -1;
@@ -187,6 +187,8 @@ const readImageData = (spriteSheet: SpriteSheet, image: PNG): ImageData => {
 
         const color = new RGBA(rgb, alpha);
         pixels[y][x] = color;
+
+        colorQuantizer.addColor(color);
 
         const paletteMapIdx = palette.findIndex(c => c.equals(color));
         if(paletteMapIdx === -1) {
@@ -233,10 +235,13 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
     const rowAlphaRanges: AlphaRange[] = [];
     const columnAlphaRanges: AlphaRange[] = [];
 
+    const depth = 3;
+    const colorQuantizer: ColorQuantizer = new ColorQuantizer(spriteSheet, depth);
+
     for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
         const image = images[imageIdx];
 
-        imageData[imageIdx] = readImageData(spriteSheet, image);
+        imageData[imageIdx] = readImageData(spriteSheet, image, colorQuantizer);
         const { pixels } = imageData[imageIdx];
 
         // row-major duplicate pixel range detection & histogram generation
@@ -263,9 +268,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         }
     }
 
-    const depth = 3;
-    const colorQuantizer: ColorQuantizer = new ColorQuantizer(spriteSheet, depth);
-    colorQuantizer.addSpriteSheetColors();
+    // colorQuantizer.addSpriteSheetColors();
 
 
     const palette = colorQuantizer.generateColorPalette();

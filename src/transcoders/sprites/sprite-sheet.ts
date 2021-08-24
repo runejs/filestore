@@ -26,7 +26,7 @@ export class SpriteSheet {
     public sprites: Sprite[];
     public maxWidth: number;
     public maxHeight: number;
-    public palette: number[];
+    public palette: RGBA[];
 
     public constructor(fileIndex: number, fileName: string, images: PNG[]);
     public constructor(fileIndex: number, fileName: string, spriteCount: number);
@@ -93,7 +93,7 @@ export class Sprite {
             // each 'x' value is read in the first 'y' column before moving to the next 'y' column
             for(let i = 0; i < minArea; i++) {
                 const paletteIndex = this.paletteIndices[i] = fileBuffer.get('byte');
-                this.pixels[i] = spriteSheet.palette[paletteIndex];
+                this.pixels[i] = spriteSheet.palette[paletteIndex].argb;
             }
 
             if(hasAlpha) {
@@ -107,7 +107,7 @@ export class Sprite {
             for(let x = 0; x < width; x++) {
                 for(let y = 0; y < height; y++) {
                     const paletteIndex = this.paletteIndices[width * y + x] = fileBuffer.get('byte');
-                    this.pixels[width * y + x] = spriteSheet.palette[paletteIndex];
+                    this.pixels[width * y + x] = spriteSheet.palette[paletteIndex].argb;
                 }
             }
 
@@ -143,7 +143,7 @@ export class Sprite {
                     pngData.put(0 & 0x00FFFFFF, 'int');
                 } else {
                     const i = width * spriteY + spriteX;
-                    pngData.put(new RGBA(this.pixels[i], this.getAlpha(i)).toInt(), 'int');
+                    pngData.put(new RGBA(this.pixels[i], this.getAlpha(i)).toRgbaInt(), 'int');
                 }
             }
         }

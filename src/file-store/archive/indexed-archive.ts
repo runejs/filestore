@@ -61,7 +61,7 @@ export class IndexedArchive {
             const folderCheck = fileName.replace('/', '');
             const originalFile = fileList.find(indexedFile =>
                 indexedFile.fullFileName === fileName || indexedFile.fullFileName === folderCheck);
-            return originalFile?.fileId ?? -1;
+            return originalFile?.fileIndex ?? -1;
         };
 
         const extension = this.config.fileExtension;

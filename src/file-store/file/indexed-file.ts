@@ -7,23 +7,31 @@ import { compressFile } from '../../compression';
 import { IndexedArchive, compressionKey } from '../archive';
 
 
+export class FileInfo {
+    fileIndex: number;
+    fileName?: string;
+}
+
+
 export interface FileCompressionOptions {
     cached?: boolean;
 }
 
 
-export abstract class IndexedFile {
+export abstract class IndexedFile extends FileInfo {
 
-    public readonly fileId: number;
     public fileData: ByteBuffer | undefined;
 
     protected _fileDataCompressed: boolean = false;
 
     public constructor(public readonly archive: IndexedArchive,
-                       fileId: number,
+                       fileIndex: number,
                        fileData?: ByteBuffer | undefined) {
-        this.fileId = fileId;
+        super();
+        this.fileIndex = fileIndex;
         this.fileData = fileData;
+        this.fileName = this.indexManifest?.files[this.fileIndex]?.name
+            ?.replace(this.archive.config.fileExtension, '') ?? undefined;
     }
 
     public abstract packFileData(): ByteBuffer | undefined | Promise<ByteBuffer | undefined>;
@@ -54,7 +62,7 @@ export abstract class IndexedFile {
             this._fileDataCompressed = true;
             return this.fileData;
         } catch(error) {
-            logger.error(`Error compressing file ${this.fileId} within index ${this.indexManifest.index}:`);
+            logger.error(`Error compressing file ${this.fileIndex} within index ${this.indexManifest.index}:`);
             logger.error(error);
             this._fileDataCompressed = false;
             return null;
@@ -113,16 +121,11 @@ export abstract class IndexedFile {
     }
 
     public get fullFileName(): string {
-        return this.indexManifest?.files[this.fileId]?.name ?? '';
-    }
-
-    public get fileName(): string {
-        return (this.indexManifest?.files[this.fileId]?.name ?? '')
-            .replace(this.archive.config.fileExtension, '');
+        return this.indexManifest?.files[this.fileIndex]?.name ?? '';
     }
 
     public get fileVersion(): number | undefined {
-        return this.indexManifest?.files[this.fileId]?.version ?? undefined;
+        return this.indexManifest?.files[this.fileIndex]?.version ?? undefined;
     }
 
     public get fileCompression(): number {

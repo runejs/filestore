@@ -1,35 +1,24 @@
 import { ByteBuffer } from '@runejs/core/buffer';
-import FileCodec from '../file-codec';
+import { FileTranscoder, TranscoderOptions } from '../file-transcoder';
 import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
-import { dumpSpriteSheetData, SpriteDebugSettings } from './sprite-debug';
-import { Sprite, SpriteSheet } from './sprite-sheet';
+import { dumpSpriteSheetData } from './sprite-debug';
+import { Sprite, SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
 import { encodeSpriteSheet } from './sprite-encoder';
+import { RGBA } from '../../util/colors';
 
 
 
-
-let spriteCodecMode: 'debug' | 'standard' = 'standard';
-
-export const spriteCodecDebugSettings: SpriteDebugSettings = {};
-
-export const setSpriteCodecMode = (mode: 'debug' | 'standard', settings?: SpriteDebugSettings) => {
-    spriteCodecMode = mode;
-
-    if(settings?.expectedStorageMode) {
-        spriteCodecDebugSettings.expectedStorageMode = settings.expectedStorageMode;
-    }
-    if(settings?.expectedTotals) {
-        spriteCodecDebugSettings.expectedTotals = settings.expectedTotals;
-    }
-};
+export interface SpriteCodecOptions extends TranscoderOptions {
+    forceStorageMethod?: SpriteStorageMethod;
+}
 
 
-export default {
+const spriteCodec: FileTranscoder<SpriteCodecOptions> = {
     archive: 'sprites',
     revision: '414-458',
 
-    decode: (file, buffer: ByteBuffer) => {
+    decode: (file, buffer, options?) => {
         // Reverse the buffer so we can pull the sprite information from the footer
         const reversedBuffer = new ByteBuffer(new ByteBuffer(buffer).reverse());
 
@@ -62,12 +51,16 @@ export default {
 
         // Parse all of the colors used in the pack
         for(let i = paletteLength; i > 0; i--) {
-            spriteSheet.palette[i] = reversedBuffer.get('int24', 'signed', 'le');
+            let color = reversedBuffer.get('int24', 'signed', 'le');
+            if(color === 1) {
+                color = 0;
+            }
+            spriteSheet.palette[i] = new RGBA(color);
 
             // converts the color 0 (black) into the int 1 to differentiate between black and transparent (0 is used for fully transparent pixels)
-            if(spriteSheet.palette[i] === 0) {
-                spriteSheet.palette[i] = 1;
-            }
+            // if(spriteSheet.palette[i] === 0) {
+            //     spriteSheet.palette[i] = 1;
+            // }
         }
 
         // Now read the individual sprites from the beginning of the file
@@ -83,14 +76,14 @@ export default {
             }
         }) as Buffer[];
 
-        if(spriteCodecMode === 'debug') {
+        if(options?.debug) {
             dumpSpriteSheetData(spriteSheet);
         }
 
         return spriteBuffers;
     },
 
-    encode: (file, data: Buffer | Buffer[]) => {
+    encode: (file, data, options?) => {
         if(!data?.length || !data[0]) {
             return null;
         }
@@ -120,8 +113,10 @@ export default {
             return null;
         }
 
-        encodeSpriteSheet(file.fileIndex, file.fileName, images);
+        encodeSpriteSheet(file.fileIndex, file.fileName, images, options);
 
         return null;
     }
-} as FileCodec;
+};
+
+export default spriteCodec;

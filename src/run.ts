@@ -1,9 +1,6 @@
 import { FileStore } from './file-store';
 import { logger } from '@runejs/core';
-import spriteCodec, {
-    setSpriteCodecMode,
-    spriteCodecDebugSettings
-} from './codec/sprites/sprite.codec';
+import spriteCodec from './transcoders/sprites/sprite.codec';
 import { ClientFileStore, loadXteaRegionFiles } from './client-store';
 import * as fs from 'fs';
 import path from 'path';
@@ -11,56 +8,56 @@ import { PNG } from 'pngjs';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { IndexedFile } from './file-store/file';
 import { ArchiveDecompressor } from './client-store/decompression/archive-decompressor';
-import { SpriteStorageMethod } from './codec/sprites/sprite-sheet';
+import { SpriteStorageMethod } from './transcoders/sprites/sprite-sheet';
 
 
-function validateSpriteFormats(): void {
+function validateSpriteFormats(debugDir: string): void {
     console.log('\n\nChecking column-major files...');
 
-    setSpriteCodecMode('debug', {
-        expectedTotals: [ 0, 0 ],
-        expectedStorageMode: 'column-major'
-    });
+    const debug = true;
 
     let spriteFiles = fs.readdirSync(`D:/rsdev/sprites-column-major`).filter(fileName => {
         return fileName.endsWith('.png');
     });
     for(let i = 0; i < spriteFiles.length; i++) {
-        const spriteFile: Buffer = fs.readFileSync(`D:/rsdev/sprites-column-major/${spriteFiles[i]}`);
+        const spriteFile: Buffer = fs.readFileSync(path.join(debugDir, 'sprites-column-major', spriteFiles[i]));
         spriteCodec.encode({
             fileIndex: i,
             fileName: spriteFiles[i].replace('.png', '')
-        }, spriteFile);
+        }, spriteFile, {
+            debug,
+            forceStorageMethod: 'column-major'
+        });
     }
 
-    const [ columnCorrect, columnIncorrect ] = spriteCodecDebugSettings.expectedTotals;
-    const columnTotal = columnCorrect + columnIncorrect;
-    const columnPercentRight = Math.round((columnCorrect / columnTotal) * 100);
+    // const [ columnCorrect, columnIncorrect ] = spriteCodecDebugSettings.expectedTotals;
+    // const columnTotal = columnCorrect + columnIncorrect;
+    // const columnPercentRight = Math.round((columnCorrect / columnTotal) * 100);
 
     console.log('\n\nChecking row-major files...');
-
-    spriteCodecDebugSettings.expectedStorageMode = 'row-major';
-    spriteCodecDebugSettings.expectedTotals = [ 0, 0 ];
 
     spriteFiles = fs.readdirSync(`D:/rsdev/sprites-row-major`).filter(fileName => {
         return fileName.endsWith('.png');
     });
     for(let i = 0; i < spriteFiles.length; i++) {
-        const spriteFile: Buffer = fs.readFileSync(`D:/rsdev/sprites-row-major/${spriteFiles[i]}`);
+        const spriteFile: Buffer = fs.readFileSync(path.join(debugDir, 'sprites-row-major', spriteFiles[i]));
         spriteCodec.encode({
             fileIndex: i,
             fileName: spriteFiles[i].replace('.png', '')
-        }, spriteFile);
+        }, spriteFile, {
+            debug,
+            forceStorageMethod: 'row-major'
+        });
     }
 
-    const [ rowCorrect, rowIncorrect ] = spriteCodecDebugSettings.expectedTotals;
-    const rowTotal = rowCorrect + rowIncorrect;
-    const rowPercentRight = Math.round((rowCorrect / rowTotal) * 100);
+    // const [ rowCorrect, rowIncorrect ] = spriteCodecDebugSettings.expectedTotals;
+    // const rowTotal = rowCorrect + rowIncorrect;
+    // const rowPercentRight = Math.round((rowCorrect / rowTotal) * 100);
 
-    console.log('');
-    console.log(`Row-Major: ${rowPercentRight}% (${rowCorrect}:${rowIncorrect} of ${rowTotal})`);
-    console.log(`Column-Major: ${columnPercentRight}% (${columnCorrect}:${columnIncorrect} of ${columnTotal})`);
-    console.log('');
+    // console.log('');
+    // console.log(`Row-Major: ${rowPercentRight}% (${rowCorrect}:${rowIncorrect} of ${rowTotal})`);
+    // console.log(`Column-Major: ${columnPercentRight}% (${columnCorrect}:${columnIncorrect} of ${columnTotal})`);
+    // console.log('');
 }
 
 (async () => {
@@ -91,10 +88,12 @@ function validateSpriteFormats(): void {
         // [ 203, 'staticons,6', 'row-major' ]
     ] as [ number, string, SpriteStorageMethod ][]).forEach(file => {
         const [ fileIndex, fileName, storageType ] = file;
-        spriteCodecDebugSettings.expectedStorageMode = storageType;
         console.log(`Original: ${storageType}`);
         const spriteFile: Buffer = fs.readFileSync(`./stores/sprites/${fileName}.png`);
-        spriteCodec.encode({ fileIndex, fileName }, spriteFile);
+        spriteCodec.encode({ fileIndex, fileName }, spriteFile, {
+            debug: true,
+            forceStorageMethod: storageType
+        });
         console.log('\n');
     });
 

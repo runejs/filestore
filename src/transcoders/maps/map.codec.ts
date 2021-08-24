@@ -1,5 +1,5 @@
 import { ByteBuffer } from '@runejs/core/buffer';
-import FileCodec from '../file-codec';
+import { FileTranscoder } from '../file-transcoder';
 
 
 export class MapData {
@@ -49,7 +49,7 @@ export class MapData {
 }
 
 
-export default {
+const mapCodec: FileTranscoder = {
     archive: 'maps',
     revision: '414-458',
 
@@ -117,4 +117,6 @@ export default {
 
         return buffer.flipWriter();
     }
-} as FileCodec;
+};
+
+export default mapCodec;

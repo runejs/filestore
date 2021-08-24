@@ -1,9 +1,11 @@
 import { PNG } from 'pngjs';
 import { SpriteSheet } from './sprite-sheet';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { HSL, RGB } from '../../util/colors';
-import { printSpritePaletteIndices } from './sprite-debug';
+import { HSL, IColor, RGB, RGBA } from '../../util/colors';
+import { dumpOctreeData, printSpritePaletteIndices } from './sprite-debug';
 import { frequencySorter, colorSorter, sortPalette } from './sorter';
+import { SpriteCodecOptions } from './sprite.codec';
+import { ColorQuantizer } from './color-quantizer';
 
 
 export type ColorUsageMap = { [key: number]: ColorUsage };
@@ -34,17 +36,14 @@ export interface ImageData {
     maxX: number;
     minY: number;
     maxY: number;
-    pixels: number[][];
-    intensities: number[][];
-    alphas: number[][];
+    pixels: RGBA[][];
     hasAlpha: boolean;
     width?: number;
     height?: number;
 }
 
 export interface ColorFrequency {
-    value?: number;
-    color?: number;
+    color: RGBA;
     frequency: number;
     left: ColorFrequency;
     right: ColorFrequency;
@@ -52,7 +51,7 @@ export interface ColorFrequency {
 }
 
 
-const generateHuffCode = (root: ColorFrequency, s: string, values: number[]): void => {
+const generateHuffCode = (root: ColorFrequency, s: string, values: RGBA[]): void => {
     if(!root.left && !root.right) {
         root.code = s;
         values.push(root.color);
@@ -95,23 +94,23 @@ const mapColorUsage = (ranges: RgbRange[]): ColorUsageMap => {
     return usageMap;
 };
 
-const addPixelRangeData = (rgb: number, alpha: number, rgbRanges: RgbRange[], alphaRanges: AlphaRange[]): void => {
+const addPixelRangeData = (rgba: RGBA, rgbRanges: RgbRange[], alphaRanges: AlphaRange[]): void => {
     if(!rgbRanges?.length) {
-        rgbRanges.push({ rgb, count: 1 });
-        alphaRanges.push({ alpha, count: 1 });
+        rgbRanges.push({ rgb: rgba.argb, count: 1 });
+        alphaRanges.push({ alpha: rgba.alpha, count: 1 });
     } else {
         const lastEntry = rgbRanges[rgbRanges.length - 1];
-        if(lastEntry && lastEntry.rgb === rgb) {
+        if(lastEntry && lastEntry.rgb === rgba.argb) {
             lastEntry.count++;
         } else {
-            rgbRanges.push({ rgb, count: 1 });
+            rgbRanges.push({ rgb: rgba.argb, count: 1 });
         }
 
         const lastAlphaEntry = alphaRanges[alphaRanges.length - 1];
-        if(lastAlphaEntry && lastAlphaEntry.alpha === alpha) {
+        if(lastAlphaEntry && lastAlphaEntry.alpha === rgba.alpha) {
             lastAlphaEntry.count++;
         } else {
-            alphaRanges.push({ alpha, count: 1 });
+            alphaRanges.push({ alpha: rgba.alpha, count: 1 });
         }
     }
 };
@@ -119,8 +118,7 @@ const addPixelRangeData = (rgb: number, alpha: number, rgbRanges: RgbRange[], al
 
 const generateHuffmanTree = (nodeQueue: ColorFrequency[],
                              frequencies: ColorFrequency[],
-                             usageMap: ColorUsageMap,
-                             appendBlack: boolean): { rootNode: ColorFrequency, colorPalette: number[] } => {
+                             usageMap: ColorUsageMap): { rootNode: ColorFrequency, colorPalette: RGBA[] } => {
     sortQueue(nodeQueue, usageMap);
 
     let root: ColorFrequency = null;
@@ -130,10 +128,10 @@ const generateHuffmanTree = (nodeQueue: ColorFrequency[],
         const right = nodeQueue.shift();
 
         const frequency = right.frequency + left.frequency;
-        const color = right.value + left.value;
+        const color = right.color.argb + left.color.argb;
 
         root = {
-            color,
+            color: new RGBA(color),
             frequency,
             left,
             right,
@@ -143,7 +141,7 @@ const generateHuffmanTree = (nodeQueue: ColorFrequency[],
         addToQueue(nodeQueue, root, usageMap);
     }
 
-    const sortedPalette: number[] = [];
+    const sortedPalette: RGBA[] = [];
     generateHuffCode(root, '', sortedPalette);
 
     /*const blackColorIdx = sortedRowPalette.indexOf(1);
@@ -153,13 +151,13 @@ const generateHuffmanTree = (nodeQueue: ColorFrequency[],
         sortedRowPalette.unshift(1);
     }*/
 
-    sortedPalette.sort((a, b) => colorSorter(a, b));
+    /*sortedPalette.sort((a, b) => colorSorter(a, b));
 
     if(appendBlack) {
         sortedPalette.unshift(1);
     }
 
-    sortedPalette.unshift(0);
+    sortedPalette.unshift(0);*/
 
     return { rootNode: root, colorPalette: sortedPalette };
 };
@@ -171,9 +169,7 @@ const readImageData = (spriteSheet: SpriteSheet, image: PNG): ImageData => {
     const { maxWidth, maxHeight, maxArea, palette } = spriteSheet;
     let minX = -1, minY = -1, maxX = -1, maxY = -1;
     let x = 0, y = 0;
-    const pixels: number[][] = new Array(maxHeight);
-    const intensities: number[][] = new Array(maxHeight);
-    const alphas: number[][] = new Array(maxHeight);
+    const pixels: RGBA[][] = new Array(maxHeight);
     let hasAlpha: boolean = false;
 
     for(let i = 0; i < maxArea; i++) {
@@ -182,28 +178,26 @@ const readImageData = (spriteSheet: SpriteSheet, image: PNG): ImageData => {
 
         if(x === 0) {
             pixels[y] = new Array(maxWidth);
-            intensities[y] = new Array(maxWidth);
-            alphas[y] = new Array(maxWidth);
         }
 
-        if(rgb === 0 || alpha === 0) {
-            rgb = alpha === 0 ? 0 : 1;
+        if(rgb === 1) {
+            // rgb = 0;
+            alpha = 255;
         }
 
-        const paletteMapIdx = palette.indexOf(rgb);
+        const color = new RGBA(rgb, alpha);
+        pixels[y][x] = color;
+
+        const paletteMapIdx = palette.findIndex(c => c.equals(color));
         if(paletteMapIdx === -1) {
-            palette.push(rgb);
+            palette.push(color);
         }
 
-        pixels[y][x] = rgb;
-        intensities[y][x] = rgb === 1 ? 1 : new RGB(rgb).intensity;
-        alphas[y][x] = alpha;
+        if(!color.isTransparent) {
+            if(!hasAlpha && alpha !== 255) {
+                hasAlpha = true;
+            }
 
-        if(!hasAlpha && alpha !== 255) {
-            hasAlpha = true;
-        }
-
-        if(rgb !== 0) {
             if(minX === -1 || x < minX) {
                 minX = x;
             }
@@ -225,50 +219,38 @@ const readImageData = (spriteSheet: SpriteSheet, image: PNG): ImageData => {
         }
     }
 
-    return { minX, maxX, minY, maxY, pixels, intensities, alphas, hasAlpha };
+    return { minX, maxX, minY, maxY, pixels, hasAlpha };
 };
 
 
-export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: PNG[]): void => {
+export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: PNG[], options?: SpriteCodecOptions): void => {
     const spriteSheet = new SpriteSheet(fileIndex, fileName, images);
     const imageData: ImageData[] = new Array(spriteSheet.sprites.length);
     const histogram: { [key: number]: number } = {};
-    const { maxHeight, maxWidth, maxArea } = spriteSheet;
-
+    const { maxHeight, maxWidth, maxArea, palette: spriteSheetPalette } = spriteSheet;
     const rowRanges: RgbRange[] = [];
     const columnRanges: RgbRange[] = [];
-
     const rowAlphaRanges: AlphaRange[] = [];
     const columnAlphaRanges: AlphaRange[] = [];
-
-    let usesBlack: boolean = false;
 
     for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
         const image = images[imageIdx];
 
         imageData[imageIdx] = readImageData(spriteSheet, image);
-        const { pixels, alphas } = imageData[imageIdx];
+        const { pixels } = imageData[imageIdx];
 
         // row-major duplicate pixel range detection & histogram generation
         for(let y = 0; y < maxHeight; y++) {
             for(let x = 0; x < maxWidth; x++) {
                 const rgb = pixels[y][x];
 
-                if(rgb === 0) {
-                    continue;
-                }
-                if(rgb === 1) {
-                    usesBlack = true;
-                    continue;
-                }
-
-                if(!histogram[rgb]) {
-                    histogram[rgb] = 1;
+                if(!histogram[rgb.argb]) {
+                    histogram[rgb.argb] = 1;
                 } else {
-                    histogram[rgb] += 1;
+                    histogram[rgb.argb] += 1;
                 }
 
-                addPixelRangeData(rgb, alphas[y][x], rowRanges, rowAlphaRanges);
+                addPixelRangeData(rgb, rowRanges, rowAlphaRanges);
             }
         }
 
@@ -276,22 +258,25 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         for(let x = 0; x < maxWidth; x++) {
             for(let y = 0; y < maxHeight; y++) {
                 const rgb = pixels[y][x];
-
-                if(rgb === 0 || rgb === 1) {
-                    continue;
-                }
-
-                addPixelRangeData(rgb, alphas[y][x], columnRanges, columnAlphaRanges);
+                addPixelRangeData(rgb, columnRanges, columnAlphaRanges);
             }
         }
     }
 
-    const spriteSheetColors = Object.keys(histogram).map(n => Number(n));
-    const palette = sortPalette(spriteSheetColors);
-    if(usesBlack) {
-        palette.unshift(1);
+    const depth = 3;
+    const colorQuantizer: ColorQuantizer = new ColorQuantizer(spriteSheet, depth);
+    colorQuantizer.addSpriteSheetColors();
+
+
+    const palette = colorQuantizer.generateColorPalette();
+
+    if(options?.debug) {
+        dumpOctreeData(colorQuantizer);
     }
-    palette.unshift(0);
+
+    // const palette = sortPalette(spriteSheetPalette);
+
+    // palette.unshift(0);
 
     /*
     const rowFrequencies: ColorFrequency[] = [];
@@ -350,7 +335,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         for(let y = 0; y < maxHeight; y++) {
             for(let x = 0; x < maxWidth; x++) {
                 const rgb = pixels[y][x];
-                let paletteIdx = palette.indexOf(rgb);
+                let paletteIdx = palette.findIndex(c => c.equals(rgb));
                 if(paletteIdx < 0) {
                     paletteIdx = 0;
                 }
@@ -366,7 +351,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         for(let x = 0; x < maxWidth; x++) {
             for(let y = 0; y < maxHeight; y++) {
                 const rgb = pixels[y][x];
-                let paletteIdx = palette.indexOf(rgb);
+                let paletteIdx = palette.findIndex(c => c.equals(rgb));
                 if(paletteIdx < 0) {
                     paletteIdx = 0;
                 }
@@ -396,11 +381,18 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
             averageColumnBits += frequency + code.length;
         }*/
 
-        printSpritePaletteIndices('row-major', maxWidth, maxHeight, rowIndexedPixels, palette);
-        // console.log(...rowFrequencies.map(f => f.frequency));
-        printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, palette);
-        // console.log(...columnFrequencies.map(f => f.frequency));
-        // console.log(`Average Bits:  Column: ${averageColumnBits}  Row: ${averageRowBits}`);
-        console.log(`Diffs:         Column: ${columnDiff}  \tRow: ${rowDiff}`);
+        if(options?.debug) {
+            if(options?.forceStorageMethod === 'row-major') {
+                // console.log(...rowFrequencies.map(f => f.frequency));
+                printSpritePaletteIndices('row-major', maxWidth, maxHeight, rowIndexedPixels, palette);
+            } else if(options?.forceStorageMethod === 'column-major') {
+                // console.log(...columnFrequencies.map(f => f.frequency));
+                printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, palette);
+            }
+
+            // console.log(`Average Bits:  Column: ${averageColumnBits}  Row: ${averageRowBits}`);
+
+            console.log(`Diffs:         Column: ${columnDiff}  \tRow: ${rowDiff}`);
+        }
     }
 };

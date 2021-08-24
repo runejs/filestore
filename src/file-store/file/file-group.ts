@@ -18,13 +18,14 @@ export class FileGroup extends IndexedFile {
     private filesLoaded: boolean = false;
 
     public constructor(archive: IndexedArchive,
-                       archiveId: number,
+                       fileIndex: number,
                        fileEntry: FileMetadata,
                        zippedFolder?: JSZip) {
-        super(archive, archiveId);
+        super(archive, fileIndex);
         this.fileEntry = fileEntry;
         this._folder = zippedFolder;
-        // this.loadFileInfo();
+        this.fileName = this.indexManifest?.files[this.fileIndex]?.name
+            ?.replace(this.archive.config.fileExtension, '') ?? undefined;
     }
 
     public async packFileData(): Promise<ByteBuffer | undefined> {

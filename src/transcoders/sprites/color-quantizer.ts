@@ -1,8 +1,8 @@
-import { HSL, RGBA } from '../../util/colors';
+import { RGBA } from '../../util/colors';
 import { SpriteSheet } from './sprite-sheet';
 
 
-export const MAX_OCTREE_DEPTH = 8;
+export const MAX_DEPTH = 8;
 
 const octreeColorOrder = [
     '000', '001', '010', '011', '100', '101', '110', '111'
@@ -42,7 +42,7 @@ export class ColorNode {
         this.pixelCount = 0;
         this.paletteIndex = 0;
         this.children = new Array(8);
-        if(level < MAX_OCTREE_DEPTH) {
+        if(level < MAX_DEPTH) {
             quantizer.nodeLevels[level].push(this);
         }
     }
@@ -87,7 +87,7 @@ export class ColorNode {
             this.pixelCount++;
         }
 
-        if(this.level === MAX_OCTREE_DEPTH) {
+        if(this.level === MAX_DEPTH) {
             return;
         }
 
@@ -143,39 +143,8 @@ export class ColorNode {
         this.children[childIndex].addColor(color);
     }
 
-    public getPaletteIndex(): number {
-        if(this.isLeaf) {
-            return this.paletteIndex;
-        }
-
-        return 0;
-    }
-
-    public getLeafNodes(): ColorNode[] {
-        let leafNodes = [];
-
-        for(const node of this.children) {
-            if(!node) {
-                continue;
-            }
-
-            const nodeChildren = node.getLeafNodes();
-            if(nodeChildren.length === 0) {
-                leafNodes.push(node);
-            } else {
-                leafNodes.push(...nodeChildren);
-            }
-        }
-
-        return leafNodes;
-    }
-
     public toString(): string {
         return this.colorRange.toString()
-    }
-
-    public get isLeaf(): boolean {
-        return this.pixelCount > 0;
     }
 
 }
@@ -190,11 +159,11 @@ export class ColorQuantizer {
     public buckets: RGBA[][][];
     public generatedPalette: RGBA[] | undefined;
 
-    public constructor(spriteSheet: SpriteSheet, depth: number = MAX_OCTREE_DEPTH) {
+    public constructor(spriteSheet: SpriteSheet, depth: number = MAX_DEPTH) {
         this.spriteSheet = spriteSheet;
         this.depth = depth;
-        this.nodeLevels = Array.from({ length: MAX_OCTREE_DEPTH }, () => []);
-        this.buckets = new Array(MAX_OCTREE_DEPTH);
+        this.nodeLevels = Array.from({ length: MAX_DEPTH }, () => []);
+        this.buckets = new Array(MAX_DEPTH);
         this.init();
     }
 
@@ -237,7 +206,7 @@ export class ColorQuantizer {
             this.buckets[level] = [];
         }
 
-        if(level < MAX_OCTREE_DEPTH) {
+        if(level < MAX_DEPTH) {
             const children = node.children.filter(c => !!c);
 
             if(children.length !== 0) {
@@ -256,56 +225,6 @@ export class ColorQuantizer {
                 }));
             }
         }
-    }
-
-    public addPaletteColors(palette: RGBA[]): void {
-        for(let i = 0; i < this.nodeLevels.length; i++) {
-            if(!this.buckets[i]) {
-                this.buckets[i] = [];
-            }
-
-            const nodes = this.nodeLevels[i];
-            for(const node of nodes) {
-                const colors = [ ...node.colors ].sort((rgb1, rgb2) => {
-                    /*const hsl1 = new HSL(rgb1);
-                    const hsl2 = new HSL(rgb2);
-
-                    return hsl1.saturation - hsl2.saturation;*/
-                    return rgb2.argb - rgb1.argb;
-                });
-
-                this.buckets[i].push(colors);
-
-                /*this.buckets[node.level].sort((bucket1, bucket2) => {
-                    if(!bucket1?.length || !bucket2?.length) {
-                        return 0;
-                    }
-
-                    const hslBucket1 = bucket1.map(c => new HSL(c));
-                    const hslBucket2 = bucket2.map(c => new HSL(c));
-
-                    const averageLightness1 = hslBucket1.map(hsl => hsl.lightness)
-                        .reduce((prev, curr) => prev + curr) / hslBucket1.length;
-
-                    const averageLightness2 = hslBucket2.map(hsl => hsl.lightness)
-                        .reduce((prev, curr) => prev + curr) / hslBucket2.length;
-
-                    return averageLightness2 - averageLightness1;
-                });*/
-            }
-        }
-
-        for(const bucket of this.buckets[this.depth - 1]) {
-            for(const c of bucket) {
-                if(!palette.find(color => color.equals(c))) {
-                    palette.push(c);
-                }
-            }
-        }
-    }
-
-    public get leafNodes() {
-        return this.root.getLeafNodes();
     }
 
 }

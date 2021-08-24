@@ -7,7 +7,7 @@ import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
 import { ColorFrequency, ImageData } from './sprite-encoder';
 import { padNumber } from '../../util/strings';
-import { ColorNode, ColorQuantizer, MAX_OCTREE_DEPTH } from './color-quantizer';
+import { ColorNode, ColorQuantizer, MAX_DEPTH } from './color-quantizer';
 
 
 export interface SpriteDebugSettings {
@@ -137,7 +137,7 @@ export const printSpritePaletteIndices = (type: SpriteStorageMethod,
 
 
 
-const simplifyOctreeLevel = (colorNode: ColorNode, depth: number = MAX_OCTREE_DEPTH) => {
+const simplifyOctreeLevel = (colorNode: ColorNode, depth: number = MAX_DEPTH) => {
     const { colors, level, colorRange, pixelCount } = colorNode;
     let children = colorNode.children;
 

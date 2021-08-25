@@ -117,7 +117,7 @@ export const debugSpritePaletteIndices = (type: SpriteStorageMethod,
     }
 
     const debugPaletteTypes: ColorType[] = [
-        'argb', 'rgb', 'hsl'
+        'argb', 'rgb', 'hsl'// , 'hsb', 'lab'
     ];
 
     return [

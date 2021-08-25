@@ -2,6 +2,12 @@ import { padNumber } from './strings';
 import { toDegrees } from './math';
 
 
+const DEFAULT_BLACK_HUE = 0;
+const DEFAULT_WHITE_HUE = 0;
+const DEFAULT_BLACK_SATURATION = 0;
+const DEFAULT_WHITE_SATURATION = 0;
+
+
 export type ColorType = 'argb' | 'rgb' | 'rgba' | 'hsl' | 'hsb' | 'hcl' | 'lab';
 
 export interface RGBValues {
@@ -17,7 +23,7 @@ export interface IColor {
 
 function rgbInfo(rgb: RGB) {
     const { red, green, blue } = rgb;
-    const { r, g, b } = rgb.toDecimals();
+    const { r, g, b } = rgb.decimalValues;
 
     const max = Math.max(Math.max(r, g), b);
     const min = Math.min(Math.min(r, g), b);
@@ -87,7 +93,7 @@ export class HSB implements IColor {
 
     public static fromRgb(rgb: RGB): { h: number, s: number, b: number } {
         if(rgb.isPureBlack) {
-            return { h: 360, s: 100, b: 0 };
+            return { h: DEFAULT_BLACK_HUE, s: DEFAULT_BLACK_SATURATION, b: 0 };
         }
 
         const { h, s, max: v } = rgbInfo(rgb);
@@ -135,16 +141,22 @@ export class HSL implements IColor {
 
     public static fromRgb(rgb: RGB): { h: number, s: number, l: number } {
         if(rgb.isPureBlack) {
-            return { h: 0, s: 0, l: 0 };
+            return { h: DEFAULT_BLACK_HUE, s: DEFAULT_BLACK_SATURATION, l: 0 };
         }
 
-        const { h, s, max, min } = rgbInfo(rgb);
-        const l = (max + min) / 2;
-        return {
-            h: round(h * 360, 0),
-            s: round(s * 100, 0),
-            l: round(l * 100, 0)
-        };
+        let { h, s, max, min } = rgbInfo(rgb);
+        let l = (max + min) / 2;
+
+        h = round(h * 360, 0);
+        s = round(s * 100, 0);
+        l = round(l * 100, 0);
+
+        if(h === 0 && s === 0 && l > 0) {
+            // gray/white
+            // h = 60;
+        }
+
+        return { h, s, l };
     }
 
     public toString(): string {
@@ -190,7 +202,7 @@ export class HCL implements IColor {
 
     public static fromRgb(rgb: RGB): { h: number, c: number, l: number } {
         if(rgb.isPureBlack) {
-            return { h: 0, c: 0, l: 0 };
+            return { h: DEFAULT_BLACK_HUE, c: 0, l: 0 };
         }
 
         const { red, green, blue, r, g, b, h, min, max } = rgbInfo(rgb);
@@ -369,14 +381,6 @@ export class RGB implements IColor {
         return this.blue === other.blue;
     }
 
-    public toDecimals(): RGBValues {
-        return {
-            r: this.red / 255,
-            g: this.green / 255,
-            b: this.blue / 255
-        }
-    }
-
     public toString(): string {
         return `RGB ( ${triplePad(this.red)}, ${triplePad(this.green)}, ${triplePad(this.blue)} ) ` +
             `intensity ( ${triplePad(this.intensity)} ) luminance ( ${this.luminance} ) ` +
@@ -425,8 +429,30 @@ export class RGB implements IColor {
         }
     }
 
+    public get decimalValues(): RGBValues {
+        return {
+            r: this.red / 255,
+            g: this.green / 255,
+            b: this.blue / 255
+        }
+    }
+
+    public get percentValues(): RGBValues {
+        const r = Math.floor(this.red / 255 * 100);
+        const g = Math.floor(this.green / 255 * 100);
+        const b = Math.floor(this.blue / 255 * 100);
+        return {
+            r, g, b
+        };
+    }
+
     public get intensity(): number {
         return Math.round((this.red + this.green + this.blue) / 3);
+    }
+
+    public get value(): number {
+        const { r, g, b } = this.percentValues;
+        return Math.round((r + g + b) / 3);
     }
 
     public get total(): number {
@@ -490,22 +516,22 @@ export class RGBA extends RGB implements IColor {
         return this.alpha === other.alpha;
     }
 
-    public toDecimals(): RGBValues {
-        return {
-            r: this.red / 255,
-            g: this.green / 255,
-            b: this.blue / 255,
-            a: this.alpha / 255
-        }
-    }
-
     public toString(): string {
         if(this.isTransparent) {
             return `Transparent`;
         }
-        return `RGBA ( ${triplePad(this.red)}, ${triplePad(this.green)}, ${triplePad(this.blue)}, ${triplePad(this.alpha)} ) ` +
-            `intensity ( ${triplePad(this.intensity)} ) luminance ( ${this.luminance} ) ` +
-            `grayscale ( ${triplePad(this.grayscale)} )`;
+        const { r, g, b } = this.percentValues;
+        const diffRG = r - g;
+        const diffGB = g - b;
+        const diffBR = b - r;
+        return [
+            `RGBA ( ${triplePad(this.red)}, ${triplePad(this.green)}, ${triplePad(this.blue)}, ${triplePad(this.alpha)} ) `,
+            `VAL  ( ${triplePad(r)}%, ${triplePad(g)}%, ${triplePad(b)}% ) `,
+            `DIFF ( ${diffRG}, ${diffGB}, ${diffBR} ) `,
+            // `intensity ( ${triplePad(this.intensity)} ) `,
+            // `luminance ( ${this.luminance} ) `,
+            // `grayscale ( ${triplePad(this.grayscale)} )`
+        ].join('');
     }
 
     public toRgbaInt(): number {
@@ -514,6 +540,15 @@ export class RGBA extends RGB implements IColor {
 
     public toArgbInt(): number {
         return (this.alpha << 24) + (this.red << 16) + (this.green << 8) + (this.blue);
+    }
+
+    public get decimalValues(): RGBValues {
+        return {
+            r: this.red / 255,
+            g: this.green / 255,
+            b: this.blue / 255,
+            a: this.alpha / 255
+        }
     }
 
     public get isTransparent(): boolean {

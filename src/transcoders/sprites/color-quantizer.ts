@@ -1,5 +1,6 @@
-import { RGBA } from '../../util/colors';
+import { HSL, RGBA } from '../../util/colors';
 import { SpriteSheet } from './sprite-sheet';
+import { sortPalette } from './sorter';
 
 
 export const MAX_DEPTH = 8;
@@ -186,10 +187,10 @@ export class ColorQuantizer {
         this.root.addColor(color);
     }
 
-    public generateColorPalette(): RGBA[] {
+    public generateColorPalette(histogram: { [key: number]: number }): RGBA[] {
         const palette: RGBA[] = [];
 
-        this.processLevel(this.root);
+        this.processLevel(this.root, histogram);
 
         this.buckets[this.depth].forEach(node => node?.colors?.forEach(color => {
             if(color && !palette.find(existingColor => existingColor.equals(color))) {
@@ -201,7 +202,7 @@ export class ColorQuantizer {
         return this.generatedPalette;
     }
 
-    public processLevel(node: ColorNode, level: number = 0): void {
+    public processLevel(node: ColorNode, histogram: { [key: number]: number }, level: number = 0): void {
         if(!this.buckets[level]) {
             this.buckets[level] = [];
         }
@@ -212,20 +213,30 @@ export class ColorQuantizer {
             if(children.length !== 0) {
                 for(const child of children) {
                     if(child?.colors?.length) {
-                        child.colors.sort((rgb1, rgb2) => rgb2.argb - rgb1.argb);
+                        child.colors = sortPalette(child.colors);
                         this.buckets[level].push(child);
                     }
 
-                    this.processLevel(child, level + 1);
+                    this.processLevel(child, histogram, level + 1);
                 }
             } else if(node.colors?.length) {
-                node.colors.sort((rgb1, rgb2) => rgb2.argb - rgb1.argb);
+                node.colors = sortPalette(node.colors);
                 this.buckets[level].push(node);
             }
         }
 
-        this.buckets[level].sort((node1, node2) =>
-            (node2?.pixelCount ?? 0) - (node1?.pixelCount ?? 0));
+        this.buckets[level].sort((node1, node2) => {
+            const colors1 = node1.colors;
+            const colors2 = node2.colors;
+
+            const averageUsage1 = Math.floor(colors1.map(c => histogram[c.argb] ?? 0)
+                .reduce((prev, curr) => prev + curr) / colors1.length);
+
+            const averageUsage2 = Math.floor(colors2.map(c => histogram[c.argb] ?? 0)
+                .reduce((prev, curr) => prev + curr) / colors2.length);
+
+            return averageUsage2 - averageUsage1;
+        });
     }
 
 }

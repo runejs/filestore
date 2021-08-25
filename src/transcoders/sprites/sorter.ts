@@ -13,30 +13,46 @@ interface Sort {
 function sortableColor(rgb: RGB, t = 1): Sort[] {
     const { red, green, blue } = rgb;
 
-    const redPercent = Math.floor(red / 255 * 100);
-    const greenPercent = Math.floor(green / 255 * 100);
-    const bluePercent = Math.floor(blue / 255 * 100);
+    const { r: redPercent, g: greenPercent, b: bluePercent } = rgb.percentValues;
 
-    const mod = 8;
-
-    const redMod = Math.round(red / 255 * mod);
-    const greenMod = Math.round(green / 255 * mod);
-    const blueMod = Math.round(blue / 255 * mod);
+    const diffRG = redPercent - greenPercent;
+    const diffGB = greenPercent - bluePercent;
+    const diffBR = bluePercent - redPercent;
 
     return [
         {
-            val: blueMod,
+            val: diffRG,
             dir: 'desc'
         },
         {
-            val: greenMod,
+            val: diffGB,
+            dir: 'desc'
+        },
+        {
+            val: diffBR,
+            dir: 'desc'
+        },
+    ];
+
+    /*const colorMod = 32;
+    const redMod = Math.floor((red + 1) / 256 * colorMod);
+    const greenMod = Math.floor((green + 1) / 256 * colorMod);
+    const blueMod = Math.floor((blue + 1) / 256 * colorMod);
+
+    return [
+        {
+            val: redPercent,
             dir: 'asc'
         },
         {
-            val: redMod,
-            dir: 'asc'
+            val: greenPercent,
+            dir: 'desc'
         },
-    ];
+        {
+            val: bluePercent,
+            dir: 'desc'
+        },
+    ];*/
 
     /*let { hue, saturation, lightness } = new HSL(rgb);
 
@@ -44,19 +60,17 @@ function sortableColor(rgb: RGB, t = 1): Sort[] {
     const satMod = 10;
     const lightMod = 10;
 
-    console.log(Math.floor(hue / hueMod));
-
     return [
         {
-            val: Math.floor(hue / hueMod),
+            val: Math.floor(saturation / satMod),
             dir: 'desc'
         },
         {
             val: Math.floor(lightness / lightMod),
-            dir: 'desc'
+            dir: 'asc'
         },
         {
-            val: Math.floor(saturation / satMod),
+            val: Math.floor(hue / hueMod),
             dir: 'desc'
         },
     ];*/

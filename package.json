@@ -2,17 +2,27 @@
     "name": "@runejs/filestore",
     "version": "0.14.2",
     "description": "Tools for managing the RuneJS filestore.",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
     "scripts": {
         "build": "tsc",
         "start": "ts-node src/run.ts",
-        "package": "rimraf dist && npm i && npm run build && npm publish --dry-run"
+        "lint": "eslint --ext .ts src",
+        "lint:fix": "eslint --ext .ts src --fix",
+        "package": "rimraf lib && npm i && npm run build && npm publish --dry-run"
     },
     "repository": {
         "type": "git",
         "url": "git+ssh://git@github.com/runejs/filestore.git"
     },
+    "keywords": [
+        "runejs",
+        "runescape",
+        "typescript",
+        "filestore",
+        "cache",
+        "js5"
+    ],
     "author": "Tynarus",
     "license": "GPL-3.0",
     "bugs": {
@@ -28,10 +38,22 @@
         "typescript": "^4.2.3"
     },
     "devDependencies": {
+        "@runejs/eslint-config": "^1.0.0",
         "@types/node": "^14.14.37",
         "@types/pngjs": "^3.4.2",
+        "@typescript-eslint/eslint-plugin": "^4.29.3",
+        "@typescript-eslint/parser": "^4.29.3",
+        "eslint": "^7.32.0",
         "rimraf": "^3.0.2",
         "ts-node": "^9.1.1",
         "tslib": "^2.1.0"
+    },
+    "eslintConfig": {
+        "extends": [
+            "@runejs/eslint-config"
+        ],
+        "parserOptions": {
+            "project": "./tsconfig.json"
+        }
     }
 }

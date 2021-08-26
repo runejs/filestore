@@ -228,7 +228,7 @@ export class FileIndex {
         let accumulator = 0;
         let size = -1;
         for(let i = 0; i < ids.length; i++) {
-            let delta = buffer.get('SHORT', 'UNSIGNED');
+            const delta = buffer.get('SHORT', 'UNSIGNED');
             ids[i] = accumulator += delta;
             if(ids[i] > size) {
                 size = ids[i];
@@ -280,7 +280,7 @@ export class FileIndex {
             size = -1;
 
             for(let i = 0; i < members[id].length; i++) {
-                let delta = buffer.get('SHORT', 'UNSIGNED');
+                const delta = buffer.get('SHORT', 'UNSIGNED');
                 members[id][i] = accumulator += delta;
                 if(members[id][i] > size) {
                     size = members[id][i];

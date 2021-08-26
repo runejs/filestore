@@ -42,7 +42,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
             throw new Error(`Invalid uncompressed length`);
         }
 
-        let decryptedData = new ByteBuffer(
+        const decryptedData = new ByteBuffer(
             compression == 1 ? uncompressedLength : (buffer.length - buffer.readerIndex + 2)
         );
         buffer.copy(decryptedData, 0, buffer.readerIndex);

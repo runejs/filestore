@@ -21,7 +21,7 @@ export class BinaryStore {
         if(!binaryFile) {
             // Write all files
             const binaryFiles: FileData[] = this.decodeBinaryFileStore();
-            binaryFiles.forEach(file => this.writeToDisk(file));
+            binaryFiles.forEach(async file => this.writeToDisk(file));
         } else {
             // Write single file
             return new Promise((resolve, reject) => {

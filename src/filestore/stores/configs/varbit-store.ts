@@ -61,9 +61,12 @@ export class VarbitStore {
         const buffer = varbitFile.content;
         varbitConfig.gameId = varbitFile.fileId;
 
-        while(true) {
+        let run = true;
+
+        while(run) {
             const opcode = buffer.get('BYTE', 'UNSIGNED');
             if(opcode === 0) {
+                run = false;
                 break;
             }
             if(opcode === 1) {

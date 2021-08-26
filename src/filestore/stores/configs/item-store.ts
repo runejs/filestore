@@ -281,9 +281,12 @@ export class ItemStore {
         const buffer = itemFile.content;
         itemConfig.gameId = itemFile.fileId;
 
-        while(true) {
+        let run = true;
+
+        while(run) {
             const opcode = buffer.get('BYTE', 'UNSIGNED');
             if(opcode === 0) {
+                run = false;
                 break;
             }
 

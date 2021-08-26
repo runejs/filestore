@@ -38,12 +38,12 @@ export const readIndexedDataChunk = (fileId: number, indexId: number, channels: 
 
 
 export const readIndexChunk = (fileId: number, indexId: number, indexChannel: ByteBuffer): IndexChunk => {
-    let ptr = fileId * indexFileLength;
+    const ptr = fileId * indexFileLength;
     if(ptr < 0 || ptr >= indexChannel.length) {
         throw new Error('File Not Found');
     }
 
-    let buf = new ByteBuffer(indexFileLength);
+    const buf = new ByteBuffer(indexFileLength);
     indexChannel.copy(buf, 0, ptr, ptr + indexFileLength);
 
     if(buf.readable !== indexFileLength) {
@@ -72,7 +72,7 @@ export const readDataChunk = (fileId: number, indexFile: IndexChunk, dataChannel
     let ptr = indexFile.sector * sectorLength;
 
     do {
-        let buf = new ByteBuffer(sectorLength);
+        const buf = new ByteBuffer(sectorLength);
         dataChannel.copy(buf, 0, ptr, ptr + sectorLength);
 
         if(buf.readable !== sectorLength) {

@@ -13,25 +13,43 @@ interface Sort {
 function sortableColor(rgb: RGB, t = 1): Sort[] {
     const { red, green, blue } = rgb;
 
-    const { r: redPercent, g: greenPercent, b: bluePercent } = rgb.percentValues;
+    const hsl = new HSL(rgb);
 
-    const diffRG = redPercent - greenPercent;
-    const diffGB = greenPercent - bluePercent;
-    const diffBR = bluePercent - redPercent;
+    // let { r: redPercent, g: greenPercent, b: bluePercent } = rgb.percentValues;
+
+    const mod = 10;
+
+    const r = Math.floor((red + 1) / mod);
+    const g = Math.floor((green + 1) / mod);
+    const b = Math.floor((blue + 1) / mod);
+
+    console.log(r, g, b);
+
+    let diffRG = Math.abs(red - green);
+    let diffGB = Math.abs(green - blue);
+    let diffBR = Math.abs(blue - red);
+
+    diffRG = Math.floor(diffRG / mod);
+    diffGB = Math.floor(diffGB / mod);
+    diffBR = Math.floor(diffBR / mod);
 
     return [
         {
-            val: diffRG,
+            val: g,
             dir: 'desc'
         },
         {
-            val: diffGB,
-            dir: 'desc'
+            val: b,
+            dir: 'asc'
         },
         {
-            val: diffBR,
+            val: r,
             dir: 'desc'
         },
+        // {
+        //     val: hsl.saturation,
+        //     dir: 'desc'
+        // },
     ];
 
     /*const colorMod = 32;

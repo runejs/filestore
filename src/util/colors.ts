@@ -521,13 +521,16 @@ export class RGBA extends RGB implements IColor {
             return `Transparent`;
         }
         const { r, g, b } = this.percentValues;
-        const diffRG = r - g;
-        const diffGB = g - b;
-        const diffBR = b - r;
+        const diffRG = Math.abs(this.red - this.green);
+        const diffGB = Math.abs(this.green - this.blue);
+        const diffBR = Math.abs(this.blue - this.red);
+        const diffAvg = Math.floor((diffRG + diffGB + diffBR) / 3);
+        const valAvg = Math.floor((r + g + b) / 3);
+        const rgbAvg = Math.floor((this.red + this.green + this.blue) / 3);
         return [
-            `RGBA ( ${triplePad(this.red)}, ${triplePad(this.green)}, ${triplePad(this.blue)}, ${triplePad(this.alpha)} ) `,
-            `VAL  ( ${triplePad(r)}%, ${triplePad(g)}%, ${triplePad(b)}% ) `,
-            `DIFF ( ${diffRG}, ${diffGB}, ${diffBR} ) `,
+            `RGBA ( ${triplePad(this.red)}, ${triplePad(this.green)}, ${triplePad(this.blue)}, ${triplePad(this.alpha)} [ avg ${triplePad(rgbAvg)} ] ) `,
+            `VAL  ( ${triplePad(r)}%, ${triplePad(g)}%, ${triplePad(b)}% [ avg ${triplePad(valAvg)} ] ) `,
+            `DIFF ( ${triplePad(diffRG)}, ${triplePad(diffGB)}, ${triplePad(diffBR)} [ avg ${triplePad(diffAvg)} ] ) `,
             // `intensity ( ${triplePad(this.intensity)} ) `,
             // `luminance ( ${this.luminance} ) `,
             // `grayscale ( ${triplePad(this.grayscale)} )`

@@ -165,7 +165,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
     const spriteSheet = new SpriteSheet(fileIndex, fileName, images);
     const imageData: ImageData[] = new Array(spriteSheet.sprites.length);
     const histogram: { [key: number]: number } = {};
-    const { maxHeight, maxWidth, palette: spriteSheetPalette } = spriteSheet;
+    const { palette: spriteSheetPalette } = spriteSheet;
     const rowRanges: RgbRange[] = [];
     const columnRanges: RgbRange[] = [];
     const rowAlphaRanges: AlphaRange[] = [];
@@ -196,7 +196,9 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
                     histogram[rgb.argb] += 1;
                 }
 
-                addPixelRangeData(rgb, rowRanges, rowAlphaRanges);
+                if(!rgb.isTransparent) {
+                    addPixelRangeData(rgb, rowRanges, rowAlphaRanges);
+                }
             }
         }
 
@@ -204,7 +206,10 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         for(let x = 0; x < width; x++) {
             for(let y = 0; y < height; y++) {
                 const rgb = pixels[y + minY][x + minX];
-                addPixelRangeData(rgb, columnRanges, columnAlphaRanges);
+
+                if(!rgb.isTransparent) {
+                    addPixelRangeData(rgb, columnRanges, columnAlphaRanges);
+                }
             }
         }
     }
@@ -241,7 +246,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
                     continue;
                 }
                 rowIndexedPixels[pixelIdx++] = paletteIdx;
-                rowDiff = paletteIdx - previousPaletteIdx;
+                rowDiff = Math.abs(paletteIdx - previousPaletteIdx);
                 previousPaletteIdx = paletteIdx;
             }
         }
@@ -257,19 +262,20 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
                     continue;
                 }
                 columnIndexedPixels[width * y + x] = paletteIdx;
-                columnDiff = paletteIdx - previousPaletteIdx;
+                columnDiff = Math.abs(paletteIdx - previousPaletteIdx);
                 previousPaletteIdx = paletteIdx;
             }
         }
 
-        const computedStorageMethod = columnDiff <= rowDiff ? 'column-major' : 'row-major';
+        const columnDelta = Math.abs(columnDiff) + columnRanges.length;
+        const rowDelta = Math.abs(rowDiff) + rowRanges.length;
+
+        const computedStorageMethod = columnDelta < rowDelta ? 'column-major' : 'row-major';
 
         if(options?.debug) {
             if(options?.forceStorageMethod === 'row-major') {
-                // console.log(...rowFrequencies.map(f => f.frequency));
                 // printSpritePaletteIndices('row-major', maxWidth, maxHeight, rowIndexedPixels, palette);
             } else if(options?.forceStorageMethod === 'column-major') {
-                // console.log(...columnFrequencies.map(f => f.frequency));
                 // printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, palette);
             }
 

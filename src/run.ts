@@ -1,7 +1,7 @@
 import { FileStore } from './file-store';
 import { logger } from '@runejs/core';
 import spriteCodec from './transcoders/sprites/sprite.codec';
-import { ClientFileStore, loadXteaRegionFiles } from './client-store';
+import { ClientFileStore } from './client-store';
 import * as fs from 'fs';
 import path from 'path';
 import { PNG } from 'pngjs';
@@ -9,6 +9,7 @@ import { ByteBuffer } from '@runejs/core/buffer';
 import { IndexedFile } from './file-store/file';
 import { ArchiveDecompressor } from './client-store/decompression/archive-decompressor';
 import { SpriteStorageMethod } from './transcoders/sprites/sprite-sheet';
+import { loadXteaRegionFiles } from './util';
 
 
 function validateSpriteFormats(debugDir: string): void {

@@ -8,7 +8,7 @@ export const sectorDataLength = 512;
 export const fullSectorLength = 520;
 
 
-export interface IndexMetadata {
+export interface ClientStoreIndexMetadata {
     readonly indexId: number;
     readonly fileId: number;
     readonly size: number;
@@ -16,7 +16,7 @@ export interface IndexMetadata {
 }
 
 export interface ExtractedFile {
-    indexFile: IndexMetadata;
+    indexFile: ClientStoreIndexMetadata;
     dataFile: ByteBuffer;
 }
 
@@ -37,7 +37,7 @@ export const extractIndexedFile = (fileId: number, indexId: number, channels: Cl
 };
 
 
-export const extractIndexData = (fileId: number, indexId: number, indexChannel: ByteBuffer): IndexMetadata => {
+export const extractIndexData = (fileId: number, indexId: number, indexChannel: ByteBuffer): ClientStoreIndexMetadata => {
     let ptr = fileId * indexDataLength;
     if(ptr < 0 || ptr >= indexChannel.length) {
         throw new Error('File Not Found');
@@ -55,7 +55,7 @@ export const extractIndexData = (fileId: number, indexId: number, indexChannel: 
     return { indexId, fileId, size, sector };
 };
 
-export const writeIndexData = (indexChunk: IndexMetadata, indexChannel: ByteBuffer): void => {
+export const writeIndexData = (indexChunk: ClientStoreIndexMetadata, indexChannel: ByteBuffer): void => {
     const indexBuffer = new ByteBuffer(indexDataLength);
     indexBuffer.put(indexChunk.size, 'INT24');
     indexBuffer.put(indexChunk.sector, 'INT24');
@@ -65,7 +65,7 @@ export const writeIndexData = (indexChunk: IndexMetadata, indexChannel: ByteBuff
 };
 
 
-export const extractFileData = (fileId: number, indexFile: IndexMetadata, dataChannel: ByteBuffer): ByteBuffer => {
+export const extractFileData = (fileId: number, indexFile: ClientStoreIndexMetadata, dataChannel: ByteBuffer): ByteBuffer => {
     const data = new ByteBuffer(indexFile.size);
 
     let chunk = 0, remaining = indexFile.size;

@@ -7,4 +7,3 @@ export * from './file-naming';
 // Sub-modules
 export * from './data';
 export * from './stores';
-export * from './util';

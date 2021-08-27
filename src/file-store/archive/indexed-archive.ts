@@ -5,10 +5,10 @@ import JSZip from 'jszip';
 import { logger } from '@runejs/core';
 import { FileMetadata, IndexManifest} from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { hashFileName } from '../../client-store';
 import { compressFile } from '../../compression';
 import { IndexedFile, FlatFile, FileGroup } from '../file';
 import { ArchiveConfig, compressionKey, getArchiveConfig, IndexName } from './config';
+import { hashFileName } from '../../util';
 
 
 export class IndexedArchive {

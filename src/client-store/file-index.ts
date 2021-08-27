@@ -2,7 +2,7 @@ import { logger } from '@runejs/core';
 import { ClientFileGroup } from './client-file-group';
 import { ClientFile } from './client-file';
 import { ClientStoreChannel, ExtractedFile, extractIndexedFile } from './data';
-import { hashFileName } from './util';
+import { hashFileName } from '../util';
 import { ClientFileStore } from './client-file-store';
 import { decompressFile } from '../compression';
 import { getIndexName } from '../file-store/archive';

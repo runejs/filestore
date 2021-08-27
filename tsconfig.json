@@ -12,7 +12,7 @@
         "baseUrl": ".",
         "allowJs": true,
         "declaration": true,
-        "outDir": "./dist",
+        "outDir": "./lib",
         "types": [
             "node"
         ]

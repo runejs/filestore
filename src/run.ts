@@ -94,9 +94,9 @@ function validateSpriteFormats(debugDir: string): void {
     // await clientFileStore.getIndex('sprites').decompressArchive(false, true);
 
 
-    // validateSpriteFormats(`D:/rsdev`);
+    validateSpriteFormats(`D:/rsdev`);
 
-    ([
+    /*([
         [ 780, 'sideicons_interface,6', 'row-major' ],
         [ 781, 'sideicons_interface,7', 'column-major' ],
         // [ 460, 'painting2', 'row-major' ],
@@ -111,7 +111,7 @@ function validateSpriteFormats(debugDir: string): void {
             forceStorageMethod: storageType
         });
         console.log('\n');
-    });
+    });*/
 
     // const fileStore = new FileStore();
 

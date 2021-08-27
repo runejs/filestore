@@ -22,8 +22,6 @@ function sortableColor(rgb: RGB, t = 1): Sort[] {
     const g = Math.floor((green + 1) / mod);
     const b = Math.floor((blue + 1) / mod);
 
-    console.log(r, g, b);
-
     let diffRG = Math.abs(red - green);
     let diffGB = Math.abs(green - blue);
     let diffBR = Math.abs(blue - red);

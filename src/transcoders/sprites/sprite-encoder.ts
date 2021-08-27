@@ -147,7 +147,17 @@ const readImageData = (spriteSheet: SpriteSheet, image: PNG, colorQuantizer?: Co
         }
     }
 
-    return { minX, maxX, minY, maxY, pixels, hasAlpha };
+    if(minX < 0) {
+        minX = 0;
+    }
+    if(minY < 0) {
+        minY = 0;
+    }
+
+    const width = maxX - minX + 1;
+    const height = maxY - minY + 1;
+
+    return { minX, maxX, minY, maxY, width, height, pixels, hasAlpha };
 };
 
 
@@ -155,7 +165,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
     const spriteSheet = new SpriteSheet(fileIndex, fileName, images);
     const imageData: ImageData[] = new Array(spriteSheet.sprites.length);
     const histogram: { [key: number]: number } = {};
-    const { maxHeight, maxWidth, maxArea, palette: spriteSheetPalette } = spriteSheet;
+    const { maxHeight, maxWidth, palette: spriteSheetPalette } = spriteSheet;
     const rowRanges: RgbRange[] = [];
     const columnRanges: RgbRange[] = [];
     const rowAlphaRanges: AlphaRange[] = [];
@@ -173,12 +183,12 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
             imageData[imageIdx].storageMethod = options.forceStorageMethod;
         }
 
-        const { pixels } = imageData[imageIdx];
+        const { pixels, width, height, minX, minY } = imageData[imageIdx];
 
         // row-major duplicate pixel range detection & histogram generation
-        for(let y = 0; y < maxHeight; y++) {
-            for(let x = 0; x < maxWidth; x++) {
-                const rgb = pixels[y][x];
+        for(let y = 0; y < height; y++) {
+            for(let x = 0; x < width; x++) {
+                const rgb = pixels[y + minY][x + minX];
 
                 if(!histogram[rgb.argb]) {
                     histogram[rgb.argb] = 1;
@@ -191,9 +201,9 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         }
 
         // column-major duplicate pixel range detection
-        for(let x = 0; x < maxWidth; x++) {
-            for(let y = 0; y < maxHeight; y++) {
-                const rgb = pixels[y][x];
+        for(let x = 0; x < width; x++) {
+            for(let y = 0; y < height; y++) {
+                const rgb = pixels[y + minY][x + minX];
                 addPixelRangeData(rgb, columnRanges, columnAlphaRanges);
             }
         }
@@ -210,10 +220,12 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
     let successful: boolean = true;
 
     for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
-        const { pixels } = imageData[imageIdx];
+        const { pixels, width, height, minX, minY } = imageData[imageIdx];
 
-        const rowIndexedPixels: number[] = new Array(maxArea);
-        const columnIndexedPixels: number[] = new Array(maxArea);
+        const area = width * height;
+
+        const rowIndexedPixels: number[] = new Array(area);
+        const columnIndexedPixels: number[] = new Array(area);
 
         let pixelIdx = 0;
         let previousPaletteIdx = 0;
@@ -221,12 +233,12 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         let rowDiff: number = 0;
 
         // Build the array of palette indices for row-major order
-        for(let y = 0; y < maxHeight; y++) {
-            for(let x = 0; x < maxWidth; x++) {
-                const rgb = pixels[y][x];
+        for(let y = 0; y < height; y++) {
+            for(let x = 0; x < width; x++) {
+                const rgb = pixels[y + minY][x + minX];
                 let paletteIdx = palette.findIndex(c => c.equals(rgb));
-                if(paletteIdx < 0) {
-                    paletteIdx = 0;
+                if(paletteIdx <= 0) {
+                    continue;
                 }
                 rowIndexedPixels[pixelIdx++] = paletteIdx;
                 rowDiff = paletteIdx - previousPaletteIdx;
@@ -237,28 +249,28 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         previousPaletteIdx = 0;
 
         // Build the array of palette indices for column-major order
-        for(let x = 0; x < maxWidth; x++) {
-            for(let y = 0; y < maxHeight; y++) {
-                const rgb = pixels[y][x];
+        for(let x = 0; x < width; x++) {
+            for(let y = 0; y < height; y++) {
+                const rgb = pixels[y + minY][x + minX];
                 let paletteIdx = palette.findIndex(c => c.equals(rgb));
-                if(paletteIdx < 0) {
-                    paletteIdx = 0;
+                if(paletteIdx <= 0) {
+                    continue;
                 }
-                columnIndexedPixels[maxWidth * y + x] = paletteIdx;
+                columnIndexedPixels[width * y + x] = paletteIdx;
                 columnDiff = paletteIdx - previousPaletteIdx;
                 previousPaletteIdx = paletteIdx;
             }
         }
 
-        const computedStorageMethod = columnDiff < rowDiff ? 'column-major' : 'row-major';
+        const computedStorageMethod = columnDiff <= rowDiff ? 'column-major' : 'row-major';
 
         if(options?.debug) {
             if(options?.forceStorageMethod === 'row-major') {
                 // console.log(...rowFrequencies.map(f => f.frequency));
-                printSpritePaletteIndices('row-major', maxWidth, maxHeight, rowIndexedPixels, palette);
+                // printSpritePaletteIndices('row-major', maxWidth, maxHeight, rowIndexedPixels, palette);
             } else if(options?.forceStorageMethod === 'column-major') {
                 // console.log(...columnFrequencies.map(f => f.frequency));
-                printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, palette);
+                // printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, palette);
             }
 
             console.log(`Column diff ${columnDiff}`);

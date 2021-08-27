@@ -2,20 +2,14 @@ import { SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
 import path, { join } from 'path';
 import fs, { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { ColorType, HCL, HSB, HSL, IColor, LAB, RGB, RGBA } from '../../util/colors';
+import { ColorType, HCL, HSB, HSL, IColor, LAB, RGBA, padNumber } from '../../util';
 import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
-import { ColorFrequency, ImageData } from './sprite-encoder';
-import { padNumber } from '../../util/strings';
 import { ColorNode, ColorQuantizer, MAX_DEPTH } from './color-quantizer';
 
 
-export interface SpriteDebugSettings {
-    expectedStorageMode?: SpriteStorageMethod | undefined;
-    expectedTotals?: [ number, number ] | undefined;
-}
-
 const spriteDebugDir = join('.', 'output', 'debug', 'sprites');
+
 
 const createSpriteSheetDebugDirectory = (fileName: string): string => {
     const spriteSheetDir = join(spriteDebugDir, fileName);
@@ -25,38 +19,6 @@ const createSpriteSheetDebugDirectory = (fileName: string): string => {
 
     mkdirSync(spriteSheetDir, { recursive: true });
     return spriteSheetDir;
-};
-
-
-export const debugHuffmanTree = (fileName: string, width: number, height: number,
-                                 imageData: ImageData[], colorFrequencies: ColorFrequency[]): void => {
-    const outputDir = path.join('.', 'output', 'debug', 'sprites-2', fileName);
-
-    if(fs.existsSync(outputDir)) {
-        fs.rmSync(outputDir, { recursive: true, force: true });
-    }
-
-    fs.mkdirSync(outputDir, { recursive: true });
-
-    for(let imageIdx = 0; imageIdx < imageData.length; imageIdx++) {
-        const { pixels } = imageData[imageIdx];
-
-        const lines: string[] = new Array(height).fill('');
-        let p: RGBA;
-
-        for(let y = 0; y < height; y++) {
-            for(let x = 0; x < width; x++) {
-                p = pixels[y][x];
-                for(let i = 0; i < colorFrequencies.length; i++) {
-                    if(p.equals(colorFrequencies[i].color)) {
-                        lines[y] += `${colorFrequencies[i].code} `;
-                    }
-                }
-            }
-        }
-
-        fs.writeFileSync(path.join(outputDir, `${imageIdx}.txt`), lines.join('\n'));
-    }
 };
 
 

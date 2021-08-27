@@ -1,6 +1,5 @@
-import { ColorFrequency, ColorUsageMap } from './sprite-encoder';
-import { HCL, HSB, HSL, IColor, LAB, RGB, RGBA } from '../../util/colors';
-import { toRadians } from '../../util/math';
+import { ColorUsageMap } from './sprite-encoder';
+import { HSL, RGB, RGBA } from '../../util';
 
 
 interface Sort {
@@ -151,10 +150,6 @@ export const colorSorter = (a: RGBA, b: RGBA): number => {
     return Math.sqrt(AlDl * AlDl + (c1 * c1 + c2 * c2 - 2 * c1 * c2 * Math.cos(toRadians(Dh))));
     // return Math.sqrt(AlDl * AlDl + Ach * (c1 * c1 + c2 * c2 - 2 * c1 * c2 * Math.cos(toRadians(Dh))));*/
 
-    if(a.isTransparent || b.isTransparent) {
-        return 0;
-    }
-
     // console.log(new LAB(a).delta(new LAB(b)));
 
     const sortOrderA = sortableColor(a);
@@ -182,7 +177,7 @@ export const colorSorter = (a: RGBA, b: RGBA): number => {
 };
 
 
-export const frequencySorter = (a: ColorFrequency, b: ColorFrequency, usageMap: ColorUsageMap): number => {
+export const frequencySorter = (a: any, b: any, usageMap: ColorUsageMap): number => {
     if(a.code === '-' || b.code === '-' || a.color.isTransparent || b.color.isTransparent) {
         return 0;
     }

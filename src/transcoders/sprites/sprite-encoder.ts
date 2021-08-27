@@ -1,9 +1,9 @@
 import { PNG } from 'pngjs';
-import { SpriteSheet } from './sprite-sheet';
+import { SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { HSL, IColor, RGB, RGBA } from '../../util/colors';
-import { dumpOctreeData, printSpritePaletteIndices } from './sprite-debug';
-import { frequencySorter, colorSorter, sortPalette } from './sorter';
+import { RGBA } from '../../util';
+import { printSpritePaletteIndices } from './sprite-debug';
+import { sortPalette } from './sorter';
 import { SpriteCodecOptions } from './sprite.codec';
 import { ColorQuantizer } from './color-quantizer';
 
@@ -31,6 +31,7 @@ export class ColorUsage {
 
 }
 
+
 export interface ImageData {
     minX: number;
     maxX: number;
@@ -40,37 +41,8 @@ export interface ImageData {
     hasAlpha: boolean;
     width?: number;
     height?: number;
+    storageMethod?: SpriteStorageMethod;
 }
-
-export interface ColorFrequency {
-    color: RGBA;
-    frequency: number;
-    left: ColorFrequency;
-    right: ColorFrequency;
-    code: string;
-}
-
-
-const generateHuffCode = (root: ColorFrequency, s: string, values: RGBA[]): void => {
-    if(!root.left && !root.right) {
-        root.code = s;
-        values.push(root.color);
-    } else {
-        generateHuffCode(root.left, `${s}0`, values);
-        generateHuffCode(root.right, `${s}1`, values);
-    }
-};
-
-
-function sortQueue(nodeQueue: ColorFrequency[], usageMap: ColorUsageMap): ColorFrequency[] {
-    return nodeQueue.sort((a: ColorFrequency, b: ColorFrequency) => frequencySorter(a, b, usageMap));
-}
-
-
-const addToQueue = (nodeQueue: ColorFrequency[], color: ColorFrequency, usageMap: ColorUsageMap): void => {
-    nodeQueue.push(color);
-    sortQueue(nodeQueue, usageMap);
-};
 
 
 const mapColorUsage = (ranges: RgbRange[]): ColorUsageMap => {
@@ -94,6 +66,7 @@ const mapColorUsage = (ranges: RgbRange[]): ColorUsageMap => {
     return usageMap;
 };
 
+
 const addPixelRangeData = (rgba: RGBA, rgbRanges: RgbRange[], alphaRanges: AlphaRange[]): void => {
     if(!rgbRanges?.length) {
         rgbRanges.push({ rgb: rgba.argb, count: 1 });
@@ -113,53 +86,6 @@ const addPixelRangeData = (rgba: RGBA, rgbRanges: RgbRange[], alphaRanges: Alpha
             alphaRanges.push({ alpha: rgba.alpha, count: 1 });
         }
     }
-};
-
-
-const generateHuffmanTree = (nodeQueue: ColorFrequency[],
-                             frequencies: ColorFrequency[],
-                             usageMap: ColorUsageMap): { rootNode: ColorFrequency, colorPalette: RGBA[] } => {
-    sortQueue(nodeQueue, usageMap);
-
-    let root: ColorFrequency = null;
-
-    while(nodeQueue.length > 1) {
-        const left = nodeQueue.shift();
-        const right = nodeQueue.shift();
-
-        const frequency = right.frequency + left.frequency;
-        const color = right.color.argb + left.color.argb;
-
-        root = {
-            color: new RGBA(color),
-            frequency,
-            left,
-            right,
-            code: '-'
-        };
-
-        addToQueue(nodeQueue, root, usageMap);
-    }
-
-    const sortedPalette: RGBA[] = [];
-    generateHuffCode(root, '', sortedPalette);
-
-    /*const blackColorIdx = sortedRowPalette.indexOf(1);
-    if(blackColorIdx > 0) {
-        // Shift black back to the start of the color palette if it ended up out of order
-        sortedRowPalette.splice(sortedRowPalette.indexOf(1), 1);
-        sortedRowPalette.unshift(1);
-    }*/
-
-    /*sortedPalette.sort((a, b) => colorSorter(a, b));
-
-    if(appendBlack) {
-        sortedPalette.unshift(1);
-    }
-
-    sortedPalette.unshift(0);*/
-
-    return { rootNode: root, colorPalette: sortedPalette };
 };
 
 
@@ -188,14 +114,14 @@ const readImageData = (spriteSheet: SpriteSheet, image: PNG, colorQuantizer?: Co
         const color = new RGBA(rgb, alpha);
         pixels[y][x] = color;
 
-        colorQuantizer?.addColor(color);
-
-        const paletteMapIdx = palette.findIndex(c => c.equals(color));
-        if(paletteMapIdx === -1) {
-            palette.push(color);
-        }
-
         if(!color.isTransparent) {
+            colorQuantizer?.addColor(color);
+
+            const paletteMapIdx = palette.findIndex(c => c.equals(color));
+            if(paletteMapIdx === -1) {
+                palette.push(color);
+            }
+
             if(!hasAlpha && alpha !== 255) {
                 hasAlpha = true;
             }
@@ -225,7 +151,7 @@ const readImageData = (spriteSheet: SpriteSheet, image: PNG, colorQuantizer?: Co
 };
 
 
-export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: PNG[], options?: SpriteCodecOptions): void => {
+export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: PNG[], options?: SpriteCodecOptions): boolean => {
     const spriteSheet = new SpriteSheet(fileIndex, fileName, images);
     const imageData: ImageData[] = new Array(spriteSheet.sprites.length);
     const histogram: { [key: number]: number } = {};
@@ -242,6 +168,11 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
         const image = images[imageIdx];
 
         imageData[imageIdx] = readImageData(spriteSheet, image/*, colorQuantizer*/);
+
+        if(options?.debug && options?.forceStorageMethod) {
+            imageData[imageIdx].storageMethod = options.forceStorageMethod;
+        }
+
         const { pixels } = imageData[imageIdx];
 
         // row-major duplicate pixel range detection & histogram generation
@@ -275,53 +206,8 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
     //     dumpOctreeData(colorQuantizer);
     // }
 
-    const palette = sortPalette(spriteSheetPalette);
-
-    // const palette = sortPalette(spriteSheetPalette);
-
-    // palette.unshift(0);
-
-    /*
-    const rowFrequencies: ColorFrequency[] = [];
-    const columnFrequencies: ColorFrequency[] = [];
-    const rowQueue: ColorFrequency[] = [];
-    const columnQueue: ColorFrequency[] = [];
-
-    for(const color of spriteSheetColors) {
-        if(histogram[color] === 0) {
-            continue;
-        }
-
-        const frequency = histogram[color] ?? 0;// / maxArea;
-
-        rowFrequencies.push({
-            color, frequency,
-            left: null,
-            right: null,
-            code: ''
-        });
-
-        columnFrequencies.push({
-            color, frequency,
-            left: null,
-            right: null,
-            code: ''
-        });
-    }
-
-    const rowUsageMap = mapColorUsage(rowRanges);
-    const columnUsageMap = mapColorUsage(columnRanges);
-
-    rowFrequencies.sort((a, b) => frequencySort(a, b, rowUsageMap));
-    columnFrequencies.sort((a, b) => frequencySort(a, b, columnUsageMap));
-
-    rowFrequencies.forEach(f => rowQueue.push(f));
-    columnFrequencies.forEach(f => columnQueue.push(f));
-
-    const rowPalette = generateHuffmanTree(rowQueue, rowFrequencies, rowUsageMap, usesBlack).colorPalette;
-    const columnPalette = generateHuffmanTree(columnQueue, columnFrequencies, columnUsageMap, usesBlack).colorPalette;*/
-
-
+    const palette = [ new RGBA(0, 0, 0, 0), ...sortPalette(spriteSheetPalette) ];
+    let successful: boolean = true;
 
     for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
         const { pixels } = imageData[imageIdx];
@@ -364,25 +250,7 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
             }
         }
 
-        /*let averageRowBits = 0;
-        for(let i = 0; i < rowFrequencies.length; i++) {
-            const { frequency, code } = rowFrequencies[i];
-            if(code === '-') {
-                continue;
-            }
-
-            averageRowBits += frequency + code.length;
-        }
-
-        let averageColumnBits = 0;
-        for(let i = 0; i < columnFrequencies.length; i++) {
-            const { frequency, code } = columnFrequencies[i];
-            if(code === '-') {
-                continue;
-            }
-
-            averageColumnBits += frequency + code.length;
-        }*/
+        const computedStorageMethod = columnDiff < rowDiff ? 'column-major' : 'row-major';
 
         if(options?.debug) {
             if(options?.forceStorageMethod === 'row-major') {
@@ -393,9 +261,15 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: P
                 printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, palette);
             }
 
-            // console.log(`Average Bits:  Column: ${averageColumnBits}  Row: ${averageRowBits}`);
+            console.log(`Column diff ${columnDiff}`);
+            console.log(`Row diff ${rowDiff}`);
 
-            console.log(`Diffs:         Column: ${columnDiff}  \tRow: ${rowDiff}`);
+            if(computedStorageMethod !== imageData[imageIdx].storageMethod) {
+                console.warn(`Computed storage method does not match the original.`);
+                successful = false;
+            }
         }
     }
+
+    return successful;
 };

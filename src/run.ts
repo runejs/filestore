@@ -17,48 +17,63 @@ function validateSpriteFormats(debugDir: string): void {
 
     const debug = true;
 
-    let spriteFiles = fs.readdirSync(`D:/rsdev/sprites-column-major`).filter(fileName => {
-        return fileName.endsWith('.png');
-    });
+    let columnCorrect: number = 0;
+    let columnIncorrect: number = 0;
+    let spriteFiles = fs.readdirSync(path.join(debugDir, 'sprites-column-major'))
+        .filter(fileName => fileName.endsWith('.png'));
+
     for(let i = 0; i < spriteFiles.length; i++) {
         const spriteFile: Buffer = fs.readFileSync(path.join(debugDir, 'sprites-column-major', spriteFiles[i]));
-        spriteCodec.encode({
+        const result = spriteCodec.encode({
             fileIndex: i,
             fileName: spriteFiles[i].replace('.png', '')
         }, spriteFile, {
             debug,
             forceStorageMethod: 'column-major'
         });
+
+        if(result === null) {
+            columnIncorrect++;
+        } else {
+            columnCorrect++;
+        }
     }
 
-    // const [ columnCorrect, columnIncorrect ] = spriteCodecDebugSettings.expectedTotals;
-    // const columnTotal = columnCorrect + columnIncorrect;
-    // const columnPercentRight = Math.round((columnCorrect / columnTotal) * 100);
+    const columnTotal = columnCorrect + columnIncorrect;
+    const columnPercentRight = Math.round((columnCorrect / columnTotal) * 100);
+
+    let rowCorrect = 0;
+    let rowIncorrect = 0;
 
     console.log('\n\nChecking row-major files...');
 
-    spriteFiles = fs.readdirSync(`D:/rsdev/sprites-row-major`).filter(fileName => {
-        return fileName.endsWith('.png');
-    });
+    spriteFiles = fs.readdirSync(path.join(debugDir, 'sprites-row-major'))
+        .filter(fileName => fileName.endsWith('.png'));
+
     for(let i = 0; i < spriteFiles.length; i++) {
         const spriteFile: Buffer = fs.readFileSync(path.join(debugDir, 'sprites-row-major', spriteFiles[i]));
-        spriteCodec.encode({
+        const result = spriteCodec.encode({
             fileIndex: i,
             fileName: spriteFiles[i].replace('.png', '')
         }, spriteFile, {
             debug,
             forceStorageMethod: 'row-major'
         });
+
+        if(result === null) {
+            rowIncorrect++;
+        } else {
+            rowCorrect++;
+        }
     }
 
-    // const [ rowCorrect, rowIncorrect ] = spriteCodecDebugSettings.expectedTotals;
-    // const rowTotal = rowCorrect + rowIncorrect;
-    // const rowPercentRight = Math.round((rowCorrect / rowTotal) * 100);
+    const rowTotal = rowCorrect + rowIncorrect;
+    const rowPercentRight = Math.round((rowCorrect / rowTotal) * 100);
 
-    // console.log('');
-    // console.log(`Row-Major: ${rowPercentRight}% (${rowCorrect}:${rowIncorrect} of ${rowTotal})`);
-    // console.log(`Column-Major: ${columnPercentRight}% (${columnCorrect}:${columnIncorrect} of ${columnTotal})`);
-    // console.log('');
+    console.log('');
+    console.log(`Row-Major: ${rowPercentRight}% (${rowCorrect}:${rowIncorrect} of ${rowTotal})`);
+    console.log(`Column-Major: ${columnPercentRight}% (${columnCorrect}:${columnIncorrect} of ${columnTotal})`);
+    console.log('');
 }
 
 (async () => {
@@ -79,7 +94,7 @@ function validateSpriteFormats(debugDir: string): void {
     // await clientFileStore.getIndex('sprites').decompressArchive(false, true);
 
 
-    // validateSpriteFormats();
+    // validateSpriteFormats(`D:/rsdev`);
 
     ([
         [ 780, 'sideicons_interface,6', 'row-major' ],

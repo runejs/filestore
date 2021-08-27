@@ -111,9 +111,12 @@ const spriteCodec: FileTranscoder<SpriteCodecOptions> = {
             return null;
         }
 
-        encodeSpriteSheet(file.fileIndex, file.fileName, images, options);
+        if(!encodeSpriteSheet(file.fileIndex, file.fileName, images, options)) {
+            logger.warn(`Issues found during sprite encoding.`);
+            return null;
+        }
 
-        return null;
+        return new ByteBuffer(1);
     }
 };
 

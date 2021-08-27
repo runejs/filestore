@@ -47,7 +47,7 @@ export class Filestore {
         this.configDir = options?.configDir || filestoreDir;
         this.channels = loadFilestore(filestoreDir);
 
-        fileNames = getFileNames(this.configDir);
+        fileNames = getFileNames(filestoreDir);
 
         this.binaryStore = new BinaryStore(this);
         this.configStore = new ConfigStore(this);

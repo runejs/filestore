@@ -30,7 +30,7 @@
     },
     "homepage": "https://github.com/runejs/filestore#readme",
     "dependencies": {
-        "@runejs/core": "^1.4.0",
+        "@runejs/core": "^1.5.4",
         "canvas": "^2.6.1",
         "compressjs": "^1.0.3",
         "crc-32": "^1.2.0",

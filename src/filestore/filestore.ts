@@ -38,12 +38,11 @@ export class Filestore {
     public readonly indexes = new Map<number, FileIndex>();
 
     public constructor(
-            filestoreDir: string,
-            options?: {
-                configDir?: string,
-                xteas?: { [key: number]: XteaDefinition }
-            }
-        ) {
+        filestoreDir: string,
+        options?: {
+            configDir?: string;
+            xteas?: { [key: number]: XteaDefinition };
+        }) {
         this.filestoreDir = filestoreDir;
         this.configDir = options?.configDir || filestoreDir;
         this.channels = loadFilestore(filestoreDir);

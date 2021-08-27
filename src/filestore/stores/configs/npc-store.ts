@@ -42,8 +42,7 @@ export class NpcConfig {
     model: {
         models?: number[];
         headModels?: number[];
-    } = {
-    };
+    } = {};
 
     /**
      * Additional rendering details.
@@ -109,9 +108,12 @@ export class NpcStore {
         const buffer = npcFile.content;
         npcConfig.gameId = npcFile.fileId;
 
-        while(true) {
+        let run = true;
+
+        while(run) {
             const opcode = buffer.get('BYTE', 'UNSIGNED');
             if(opcode === 0) {
+                run = false;
                 break;
             }
 
@@ -225,17 +227,17 @@ export class NpcStore {
 
             npcList[npcId] = this.decodeNpcFile(npcFile);
 
-            if (npcList[npcId].childrenIds) {
+            if(npcList[npcId].childrenIds) {
                 this.children.set(npcList[npcId].gameId, npcList[npcId].childrenIds);
             }
         }
 
-        for (let childrenEntry of this.children.entries()) {
+        for(const childrenEntry of this.children.entries()) {
             const parentId = childrenEntry[0];
             const childrenIds = childrenEntry[1];
 
-            for (let childId of childrenIds) {
-                if (npcList[childId]) {
+            for(const childId of childrenIds) {
+                if(npcList[childId]) {
                     npcList[childId].parentId = parentId;
                 }
             }

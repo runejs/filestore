@@ -104,20 +104,26 @@ export class RegionStore {
         let objectId = -1;
         landscapeFile.content.readerIndex = 0;
 
-        while(true) {
+        let objectLoop = true;
+
+        while(objectLoop) {
             const objectIdOffset = landscapeFile.content.get('SMART');
 
             if(objectIdOffset === 0) {
+                objectLoop = false;
                 break;
             }
 
             objectId += objectIdOffset;
             let objectPositionInfo = 0;
 
-            while(true) {
+            let positionLoop = true;
+
+            while(positionLoop) {
                 const objectPositionInfoOffset = landscapeFile.content.get('SMART');
 
                 if(objectPositionInfoOffset === 0) {
+                    positionLoop = false;
                     break;
                 }
 
@@ -179,13 +185,17 @@ export class RegionStore {
                 for(let y = 0; y < 64; y++) {
                     tileSettings[level][x][y] = 0;
 
-                    while(true) {
+                    let run = true;
+
+                    while(run) {
                         const opcode = buffer.get('BYTE', 'UNSIGNED');
 
                         if(opcode === 0) {
+                            run = false;
                             break;
                         } else if(opcode === 1) {
                             tileHeights[level][x][y] = buffer.get('BYTE', 'UNSIGNED');
+                            run = false;
                             break;
                         } else if(opcode <= 49) {
                             tileOverlayIds[level][x][y] = buffer.get('BYTE');

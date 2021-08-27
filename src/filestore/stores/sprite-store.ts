@@ -4,6 +4,7 @@ import { PNG } from 'pngjs';
 
 import { Filestore, getFileName } from '../filestore';
 import { FileData } from '../file-data';
+import { pngToBase64 } from '../util';
 
 
 export function toRgb(num: number): number[] {
@@ -57,25 +58,7 @@ export class Sprite {
      * First converts the Sprite into a base64 PNG image.
      */
     public async toBase64(): Promise<string> {
-        return new Promise(async (resolve, reject) => {
-            const png = this.toPng();
-
-            try {
-                png.pack();
-
-                const chunks = [];
-
-                png.on('data', (chunk) => {
-                    chunks.push(chunk);
-                });
-                png.on('end', () => {
-                    const str = Buffer.concat(chunks).toString('base64');
-                    resolve(str);
-                });
-            } catch(error) {
-                reject(error);
-            }
-        });
+        return await pngToBase64(this.toPng());
     }
 
     /**

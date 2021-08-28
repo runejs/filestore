@@ -1,6 +1,6 @@
 import { FileStore } from '../file-store';
 import fs from 'fs';
-import path, { join } from 'path';
+import path from 'path';
 import JSZip from 'jszip';
 import { logger } from '@runejs/core';
 import { FileMetadata, IndexManifest} from '../index-manifest';
@@ -326,14 +326,20 @@ export class IndexedArchive {
             return null;
         }
 
-        const filePath = path.join(this.filePath, fileEntry.name);
+        const folderPath = path.join(this.filePath, fileEntry.name);
+        const filePath = path.join(this.filePath, fileEntry.name + this.config.fileExtension);
+        let finalPath: string = folderPath;
 
-        if(!fs.existsSync(filePath)) {
-            logger.error(`File ${fileIndex} was not found.`);
-            return null;
+        if(!fs.existsSync(folderPath)) {
+            finalPath = filePath;
+
+            if(!fs.existsSync(filePath)) {
+                logger.error(`File ${fileIndex} was not found.`);
+                return null;
+            }
         }
 
-        const fileStats = fs.statSync(filePath);
+        const fileStats = fs.statSync(finalPath);
 
         /*const file = zipArchive.files[fileEntry.file] ?? zipArchive.files[fileEntry.file + '/'];
 
@@ -350,7 +356,7 @@ export class IndexedArchive {
             }
             return fileGroup;
         } else {
-            const fileData = loadFileData && fileStats ? new ByteBuffer(fs.readFileSync(filePath)) : null;
+            const fileData = loadFileData && fileStats ? new ByteBuffer(fs.readFileSync(finalPath)) : null;
             return new FlatFile(this, fileIndex, fileData);
         }
     }
@@ -368,7 +374,7 @@ export class IndexedArchive {
             throw new Error(`${this.filePath} does not exist!`);
         }
 
-        const manifestFilePath = path.join(this.filePath, '.manifest.json');
+        const manifestFilePath = path.join(this.filePath, '.index');
 
         if(!fs.existsSync(manifestFilePath)) {
             throw new Error(`No manifest file found for index ${this.indexName}!`);
@@ -473,11 +479,11 @@ export class IndexedArchive {
     }
 
     public get filePath(): string {
-        return join(this.fileStore.fileStorePath, `${this.indexName}`);
+        return path.join(this.fileStore.fileStorePath, `${this.indexName}`);
     }
 
     public get outputFilePath(): string {
-        return join(this.storeOutputDir, `${this.indexName}`);
+        return path.join(this.storeOutputDir, `${this.indexName}`);
     }
 
     public get storeOutputDir(): string {

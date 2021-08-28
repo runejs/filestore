@@ -82,6 +82,7 @@ export class FileGroup extends IndexedFile {
 
             const filePath = path.join(this.archive.filePath, this.fileEntry.name, fileName);
             if(!fs.existsSync(filePath)) {
+                logger.warn(`Grouped file ${filePath} not found.`);
                 continue;
             }
 

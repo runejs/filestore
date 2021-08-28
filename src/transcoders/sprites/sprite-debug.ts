@@ -147,7 +147,7 @@ export const dumpOctreeData = (quantizer: ColorQuantizer): void => {
         paletteData += `Level ${i + 1}: ${JSON.stringify(quantizer.buckets[i].map(node => node?.colors), null, 4)}\n`;
     }
 
-    const spriteSheetName = quantizer.spriteSheet.fileName.replace(/ /g, '_');
+    const spriteSheetName = quantizer.spriteSheet.fileInfo.fileName.replace(/ /g, '_');
 
     fs.writeFileSync(path.join(outputDir, `${spriteSheetName}_palette.txt`), paletteData);
     fs.writeFileSync(path.join(outputDir, `${spriteSheetName}_octree.json`), data);
@@ -155,7 +155,7 @@ export const dumpOctreeData = (quantizer: ColorQuantizer): void => {
 
 
 export const dumpSpriteSheetData = (spriteSheet: SpriteSheet): void => {
-    const { fileName, palette, sprites } = spriteSheet;
+    const { fileInfo: { fileName }, palette, sprites } = spriteSheet;
 
     const spriteSheetDir = createSpriteSheetDebugDirectory(fileName);
 

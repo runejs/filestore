@@ -4,24 +4,24 @@ import { logger } from '@runejs/core';
 require('json5/lib/register');
 
 
-export type CodecInstruction =
+export type JsonInstructions =
     string |
     [ string, string?, string? ] |
     [ string, string?, string? ][] |
     [ string, [ string, string?, string? ] ] |
     [ string, [ string, string?, string? ][] ];
 
-export interface CodecInstructions {
+export interface FileInstructions {
     type?: string;
-    [key: string]: CodecInstruction;
+    [key: string]: JsonInstructions;
 }
 
 export interface NormalizedInstructions {
-    [key: number]: CodecInstruction;
+    [key: number]: JsonInstructions;
 }
 
 
-export class JsonFileCodec {
+export class JsonFileTranscoder {
 
     private _fileType: string | undefined;
     private _instructions: NormalizedInstructions = {};
@@ -36,26 +36,31 @@ export class JsonFileCodec {
         };
 
         fileData.readerIndex = 0;
+        let run = false;
 
-        while(true) {
+        while(run) {
             if(!fileData.readable) {
+                run = false;
                 break;
             }
 
             const key = fileData.get('byte', 'unsigned');
             if(key === 0) {
                 // End of file
+                run = false;
                 break;
             }
 
-            const instruction: CodecInstruction = this._instructions[key];
+            const instruction: JsonInstructions = this._instructions[key];
             if(!instruction) {
                 logger.error(`Instruction ${key} not found for ${this._fileType} file ${fileId}.`);
+                run = false;
                 break;
             }
 
             if(!Array.isArray(instruction)) {
                 logger.error(`Instruction ${key} is malformed for ${this._fileType} file ${fileId}.`);
+                run = false;
                 break;
             }
 
@@ -189,7 +194,7 @@ export class JsonFileCodec {
         return decoded;
     }
 
-    protected normalizeInstructions(instructions: CodecInstructions): void {
+    protected normalizeInstructions(instructions: FileInstructions): void {
         const instructionKeys = Object.keys(instructions);
         if(!instructionKeys?.length) {
             return;
@@ -200,7 +205,7 @@ export class JsonFileCodec {
                 continue;
             }
 
-            const instruction: CodecInstruction = instructions[stringKey];
+            const instruction: JsonInstructions = instructions[stringKey];
 
             if(stringKey.includes('-')) {
                 // Key range
@@ -222,13 +227,13 @@ export class JsonFileCodec {
                 for(let i = 0; i < diff + 1; i++) {
                     if(typeof instruction !== 'string') {
                         if(typeof instruction[0] === 'string') {
-                            const newInstruction: CodecInstruction = [ ...instruction ];
+                            const newInstruction: JsonInstructions = [ ...instruction ];
                             newInstruction[0] = `${instruction[0]}[${i}]`;
                             this._instructions[min + i] = newInstruction;
                         } else if(Array.isArray(instruction[0])) {
                             for(const lineItem of instruction) {
                                 if(Array.isArray(lineItem)) {
-                                    const newInstruction: CodecInstruction = [ ...lineItem ];
+                                    const newInstruction: JsonInstructions = [ ...lineItem ];
                                     newInstruction[0] = `${lineItem[0]}[${i}]`;
                                     this._instructions[min + i] = newInstruction;
                                 }
@@ -253,7 +258,7 @@ export class JsonFileCodec {
     }
 
     protected loadCodecInstructions(): void {
-        let instructions: CodecInstructions | undefined;
+        let instructions: FileInstructions | undefined;
 
         try {
             instructions = require(`../../codec/${this.codecInstructionFile}`);

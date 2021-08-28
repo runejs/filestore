@@ -2,6 +2,8 @@ import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { RGBA } from '../../util/colors';
+import { TranscodedFile } from '../file-transcoder';
+import { FileInfo } from '../../file-store/file';
 
 
 /**
@@ -18,21 +20,21 @@ import { RGBA } from '../../util/colors';
 export type SpriteStorageMethod = 'row-major' | 'column-major';
 
 
-export class SpriteSheet {
+export class SpriteSheet extends TranscodedFile {
 
-    public readonly fileIndex: number;
-    public readonly fileName: string;
+    public readonly fileInfo: FileInfo;
 
     public sprites: Sprite[];
     public maxWidth: number;
     public maxHeight: number;
     public palette: RGBA[];
 
-    public constructor(fileIndex: number, fileName: string, images: PNG[]);
-    public constructor(fileIndex: number, fileName: string, spriteCount: number);
-    public constructor(fileIndex: number, fileName: string, spriteCountOrImages: number | PNG[]) {
-        this.fileIndex = fileIndex;
-        this.fileName = fileName;
+    public constructor(fileInfo: FileInfo, images: PNG[]);
+    public constructor(fileInfo: FileInfo, spriteCount: number);
+    public constructor(fileInfo: FileInfo, spriteCountOrImages: number | PNG[]) {
+        super('sprites', fileInfo);
+
+        this.fileInfo = fileInfo;
 
         if(typeof spriteCountOrImages === 'number') {
             this.sprites = new Array(spriteCountOrImages);
@@ -76,7 +78,7 @@ export class Sprite {
     }
 
     public decompress(fileBuffer: ByteBuffer): PNG {
-        this.settings = fileBuffer.get('byte', 'unsigned');
+        this.settings = fileBuffer.get('byte', 'unsigned'); // alpha flag
 
         const {
             width, height, offsetX, offsetY,

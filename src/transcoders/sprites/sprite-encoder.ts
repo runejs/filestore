@@ -1,21 +1,20 @@
 import { PNG } from 'pngjs';
 import { SpriteSheet } from './sprite-sheet';
-import { ByteBuffer } from '@runejs/core/buffer';
 import { RGBA } from '../../util';
 import { sortPalette } from './sorter';
-import { SpriteCodecOptions } from './sprite.codec';
+import { SpriteCodecOptions } from './sprite.transcoder';
 import { printSpritePaletteIndices } from './sprite-debug';
-import { PixelHistogram, PngSpriteData, PngSpriteReader } from './png-sprite-reader';
+import { PixelHistogram, PngSpriteReader } from './png-sprite-reader';
+import { TranscodingResponse } from '../file-transcoder';
+import { FileInfo } from '../../file-store/file';
 
 
-export interface EncodedSpriteSheet {
-    data: ByteBuffer;
-    successful: boolean;
-}
+export const encodeSpriteSheet = (
+    fileInfo: FileInfo,
+    pngSprites: PNG[],
+    options?: SpriteCodecOptions): TranscodingResponse<SpriteSheet> => {
 
-
-export const encodeSpriteSheet = (fileIndex: number, fileName: string, pngSprites: PNG[], options?: SpriteCodecOptions): EncodedSpriteSheet | null => {
-    const spriteSheet = new SpriteSheet(fileIndex, fileName, pngSprites);
+    const spriteSheet = new SpriteSheet(fileInfo, pngSprites);
     const pngSpriteReader = new PngSpriteReader(spriteSheet, pngSprites);
     const spriteHistograms: PixelHistogram[] = new Array(pngSprites.length);
     let palette = spriteSheet.palette;
@@ -38,7 +37,8 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, pngSprite
         const sprite = pngSpriteReader.spriteData[spriteIndex];
         const { width, height } = sprite;
         const histogram = spriteHistograms[spriteIndex];
-        const { pixelIndices: { row: rowPixelIndices, col: colPixelIndices }} = histogram;
+        const { pixelIndices: { row: rowPixelIndices, col: colPixelIndices },
+            alphas: { row: rowAlphas, col: colAlphas }} = histogram;
 
         const rowOrderWeight = histogram.calculateWeight('row');
         const colOrderWeight = histogram.calculateWeight('col');
@@ -63,10 +63,17 @@ export const encodeSpriteSheet = (fileIndex: number, fileName: string, pngSprite
 
         sprite.storageMethod = computedStorageMethod;
         sprite.indexedPixels = computedStorageMethod === 'column-major' ? colPixelIndices : rowPixelIndices;
-        // sprite.alphas = computedStorageMethod === 'column-major' ? columnAlphas : rowAlphas; @TODO
+        sprite.alphas = computedStorageMethod === 'column-major' ? colAlphas : rowAlphas;
+
+
 
         // @TODO construct sprite mini-buffer
     }
 
-    return { data: new ByteBuffer(1), successful }; // @TODO
+    spriteSheet.setData('js5', null); // @TODO construct spritesheet file buffer
+
+    return {
+        file: spriteSheet,
+        successful
+    };
 };

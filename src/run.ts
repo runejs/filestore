@@ -1,6 +1,6 @@
 import { FileStore } from './file-store';
 import { logger } from '@runejs/core';
-import spriteCodec from './transcoders/sprites/sprite.codec';
+import spriteCodec from './transcoders/sprites/sprite.transcoder';
 import { ClientFileStore } from './client-store';
 import * as fs from 'fs';
 import path from 'path';
@@ -87,14 +87,14 @@ function validateSpriteFormats(debugDir: string): void {
     });
 
     // Decode a packed client cache with this vvv
-    // await clientFileStore.decompressArchives(false);
+    await clientFileStore.decompressArchives(false);
     // await ArchiveDecompressor.writeFileNames();
 
     // Decode a single packed client cache archive with this line vvv
     // await clientFileStore.getIndex('sprites').decompressArchive(false, true);
 
 
-    validateSpriteFormats(`D:/rsdev`);
+    // validateSpriteFormats(`D:/rsdev`);
 
     /*([
         [ 780, 'sideicons_interface,6', 'row-major' ],

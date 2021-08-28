@@ -40,6 +40,7 @@ export class PixelHistogram {
     public colorRanges: MajorOrderPair<ColorRange[]>;
     public indexRating: MajorOrderPair<number>;
     public pixelIndices: MajorOrderPair<number[]>;
+    public alphas: MajorOrderPair<number[]>;
 
     public constructor(sprite: PngSpriteData) {
         this.sprite = sprite;
@@ -71,6 +72,14 @@ export class PixelHistogram {
         const ranges = this.colorRanges = { row: [], col: [] };
         const uses = this.colorUses = {};
         const diffs = this.indexRating = { row: 0, col: 0 };
+        this.pixelIndices = {
+            row: new Array(width * height),
+            col: new Array(width * height)
+        };
+        this.alphas = {
+            row: new Array(width * height),
+            col: new Array(width * height)
+        };
         let previousPaletteIndex = 0;
         let i = 0;
 
@@ -85,6 +94,7 @@ export class PixelHistogram {
                     uses[argb]++;
                 }
 
+                this.alphas.row[i] = color.alpha ?? 255;
                 const paletteIndex = this.pixelIndices.row[i++] = this.readPixel(color, ranges.row, palette);
                 if(paletteIndex !== 0) {
                     diffs.row += Math.abs(paletteIndex - previousPaletteIndex);
@@ -93,12 +103,12 @@ export class PixelHistogram {
             }
         }
 
-        i = 0;
-
         // column-major
         for(let x = 0; x < width; x++) {
             for(let y = 0; y < height; y++) {
-                const paletteIndex = this.pixelIndices.col[i++] = this.readPixel(pixels[y + minY][x + minX], ranges.col, palette);
+                const color = pixels[y + minY][x + minX];
+                this.alphas.col[width * y + x] = color.alpha ?? 255;
+                const paletteIndex = this.pixelIndices.col[width * y + x] = this.readPixel(color, ranges.col, palette);
                 if(paletteIndex !== 0) {
                     diffs.row += Math.abs(paletteIndex - previousPaletteIndex);
                     previousPaletteIndex = paletteIndex;

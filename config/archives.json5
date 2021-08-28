@@ -71,10 +71,10 @@
     },
     sprites: {
         index: 8,
-        fileExtension: '.png',
+        fileExtension: '.dat', // '.png',
         compression: 'gzip',
         filesNamed: true,
-        content: 'encoded'
+        // content: 'encoded'
     },
     textures: {
         index: 9,

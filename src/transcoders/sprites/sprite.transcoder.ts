@@ -1,11 +1,12 @@
 import { ByteBuffer } from '@runejs/core/buffer';
-import { FileTranscoder, TranscoderOptions } from '../file-transcoder';
+import { FileTranscoder, toBuffer, TranscoderOptions } from '../file-transcoder';
 import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
 import { dumpSpriteSheetData } from './sprite-debug';
 import { Sprite, SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
 import { encodeSpriteSheet } from './sprite-encoder';
-import { RGBA } from '../../util/colors';
+import { RGBA } from '../../util';
+import { Buffer } from 'buffer';
 
 
 
@@ -14,18 +15,18 @@ export interface SpriteCodecOptions extends TranscoderOptions {
 }
 
 
-const spriteCodec: FileTranscoder<SpriteCodecOptions> = {
+const spriteCodec: FileTranscoder<SpriteSheet, SpriteCodecOptions> = {
     archive: 'sprites',
     revision: '414-458',
 
-    decode: (file, buffer, options?) => {
-        // Reverse the buffer so we can pull the sprite information from the footer
-        const reversedBuffer = new ByteBuffer(new ByteBuffer(buffer).reverse());
+    decode: (fileInfo, fileData, options?) => {
+        // Reverse the fileData so we can pull the sprite information from the footer
+        const reversedBuffer = new ByteBuffer(new ByteBuffer(fileData).reverse());
 
         // Read the number of sprites in this pack
         const spriteCount = reversedBuffer.get('short', 'unsigned', 'le');
 
-        const spriteSheet = new SpriteSheet(file.fileIndex, file.fileName, spriteCount);
+        const spriteSheet = new SpriteSheet(fileInfo, spriteCount);
 
         // Individual sprite metadata - height, width, offsetY, offsetX
         for(let i = spriteCount - 1; i >= 0; i--) {
@@ -61,64 +62,53 @@ const spriteCodec: FileTranscoder<SpriteCodecOptions> = {
             spriteSheet.palette[i] = new RGBA(color, 255);
         }
 
-        // Now read the individual sprites from the beginning of the file
+        // Now read the individual sprites from the beginning of the fileInfo
         const spriteBuffers = spriteSheet.sprites.map(sprite => {
             try {
-                const decodedSprite: PNG = sprite.decompress(buffer);
-                return decodedSprite ? PNG.sync.write(decodedSprite) : null;
+                const decodedSprite: PNG = sprite.decompress(
+                    fileData instanceof ByteBuffer ? fileData : new ByteBuffer(fileData));
+                return decodedSprite ? new ByteBuffer(PNG.sync.write(decodedSprite)) : null;
             } catch(error) {
-                if(buffer?.length) {
+                if(fileData?.length) {
                     logger.error(`Error decoding sprite:`, error);
                 }
                 return null;
             }
-        }) as Buffer[];
+        });
+
+        spriteSheet.setData('rjs', spriteBuffers);
 
         if(options?.debug) {
             dumpSpriteSheetData(spriteSheet);
         }
 
-        return spriteBuffers;
+        return spriteSheet;
     },
 
-    encode: (file, data, options?) => {
-        if(!data?.length || !data[0]) {
-            return null;
-        }
-
-        let images: PNG[];
-
-        if(data[0] instanceof Buffer) {
-            images = (data as Buffer[]).map((b, i) => {
-                try {
-                    return PNG.sync.read(b);
-                } catch(error) {
-                    logger.error(`Error encoding sprite[${i}]:`, file, error);
-                    return null;
-                }
-            })?.filter(png => png?.data?.length ?? 0 > 0);
-        } else {
+    encode: (fileInfo, fileData, options?) => {
+        const data: Buffer[] = toBuffer(fileData);
+        let images: PNG[] = data.map((b, i) => {
             try {
-                images = [ PNG.sync.read(data as Buffer) ];
+                return PNG.sync.read(b);
             } catch(error) {
-                logger.error(`Error encoding sprite:`, file, error);
+                logger.error(`Error encoding sprite[${i}]:`, fileInfo, error);
                 return null;
             }
-        }
+        }).map(png => png?.data?.length ? png : null);
 
         if(!images?.length) {
             logger.error(`Unable to encode sprite file.`);
             return null;
         }
 
-        const encodedSpriteSheet = encodeSpriteSheet(file.fileIndex, file.fileName, images, options);
+        const transcodingResponse = encodeSpriteSheet(fileInfo, images, options);
 
-        if(!encodedSpriteSheet?.successful) {
+        if(!transcodingResponse?.successful || !transcodingResponse?.file) {
             logger.warn(`Issues found during sprite encoding.`);
             return null;
         }
 
-        return encodedSpriteSheet.data;
+        return transcodingResponse.file;
     }
 };
 

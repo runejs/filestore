@@ -101,23 +101,27 @@ export class RegionStore {
 
         const landscapeObjects = [];
 
+        let objectLoop = true;
         let objectId = -1;
         landscapeFile.content.readerIndex = 0;
 
-        while(true) {
-            const objectIdOffset = landscapeFile.content.get('SMART');
+        while(objectLoop) {
+            const objectIdOffset = landscapeFile.content.get('smart');
 
             if(objectIdOffset === 0) {
+                objectLoop = false;
                 break;
             }
 
-            objectId += objectIdOffset;
+            let positionLoop = true;
             let objectPositionInfo = 0;
+            objectId += objectIdOffset;
 
-            while(true) {
-                const objectPositionInfoOffset = landscapeFile.content.get('SMART');
+            while(positionLoop) {
+                const objectPositionInfoOffset = landscapeFile.content.get('smart');
 
                 if(objectPositionInfoOffset === 0) {
+                    positionLoop = false;
                     break;
                 }
 
@@ -128,7 +132,7 @@ export class RegionStore {
                 const x = (objectPositionInfo >> 6 & 0x3f) + worldX;
                 const y = (objectPositionInfo & 0x3f) + worldY;
                 const level = objectPositionInfo >> 12 & 0x3;
-                const objectMetadata = landscapeFile.content.get('BYTE', 'UNSIGNED');
+                const objectMetadata = landscapeFile.content.get('byte', 'unsigned');
                 const type = objectMetadata >> 2;
                 const orientation = objectMetadata & 0x3;
 
@@ -180,15 +184,15 @@ export class RegionStore {
                     tileSettings[level][x][y] = 0;
 
                     while(true) {
-                        const opcode = buffer.get('BYTE', 'UNSIGNED');
+                        const opcode = buffer.get('byte', 'unsigned');
 
                         if(opcode === 0) {
                             break;
                         } else if(opcode === 1) {
-                            tileHeights[level][x][y] = buffer.get('BYTE', 'UNSIGNED');
+                            tileHeights[level][x][y] = buffer.get('byte', 'unsigned');
                             break;
                         } else if(opcode <= 49) {
-                            tileOverlayIds[level][x][y] = buffer.get('BYTE');
+                            tileOverlayIds[level][x][y] = buffer.get('byte', 'unsigned');
                             tileOverlayPaths[level][x][y] = (opcode - 2) / 4;
                             tileOverlayOrientations[level][x][y] = opcode - 2 & 3;
                         } else if(opcode <= 81) {

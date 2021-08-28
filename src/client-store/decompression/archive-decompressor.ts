@@ -1,16 +1,17 @@
 import { FileIndex } from '../file-index';
 import fs from 'fs';
 import { logger } from '@runejs/core';
-import { ArchiveName, getArchiveConfig, getIndexName, IndexName } from '../../file-store/archive';
+import { ArchiveName, getArchiveConfig, getIndexName } from '../../file-store/archive';
 import { FileErrorMap, IndexedFileMap, IndexManifest } from '../../file-store';
 import { createHash } from 'crypto';
 import { ClientFileGroup } from '../client-file-group';
 import * as CRC32 from 'crc-32';
 import path from 'path';
-import { decode } from '../../transcoders/archives';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { extractIndexedFile } from '../data';
 import { getFileName } from '../file-naming';
+import Js5Transcoder from '../../transcoders/js5-transcoder';
+import { Buffer } from 'buffer';
 
 
 export class ArchiveDecompressor {
@@ -149,11 +150,18 @@ export class ArchiveDecompressor {
                     // folder.file(groupedFileName + fileExt, Buffer.from(groupedFile.content));
 
                     if(!debug) {
-                        fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt),
-                            decode(archiveName, {
-                                fileIndex: groupedFileIndex,
-                                fileName: `${fileName}`
-                            }, groupedFile.content, { debug }) as Buffer);
+                        const transcodedFile = Js5Transcoder.decode(archiveName, {
+                            fileIndex: groupedFileIndex,
+                            fileName: `${fileName}`
+                        }, groupedFile.content, { debug });
+
+                        if(transcodedFile?.length) {
+                            fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt), transcodedFile as Buffer | string);
+                        } else {
+                            pushError(errors, groupedFileIndex, file.name, file.nameHash,
+                                `Grouped file ${groupedFileIndex} transcoding failed`);
+                            continue;
+                        }
                     }
 
                     if(groupedFileIndex !== childArrayIndex) {
@@ -182,10 +190,10 @@ export class ArchiveDecompressor {
                     continue;
                 }
 
-                const decodedContent = decode(archiveName, {
+                const decodedContent = Js5Transcoder.decode(archiveName, {
                     fileIndex,
                     fileName: `${fileName}`
-                }, fileContents, { debug });
+                }, fileContents, { debug }, true);
 
                 if(!decodedContent?.length) {
                     pushError(errors, fileIndex, file.name, file.nameHash, `Error decoding file content`);

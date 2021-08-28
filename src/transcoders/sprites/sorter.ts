@@ -1,4 +1,3 @@
-import { ColorUsageMap } from './sprite-encoder';
 import { HSL, RGB, RGBA } from '../../util';
 
 
@@ -16,7 +15,7 @@ function sortableColor(rgb: RGB, t = 1): Sort[] {
 
     // let { r: redPercent, g: greenPercent, b: bluePercent } = rgb.percentValues;
 
-    const mod = 10;
+    const mod = 16;
 
     const r = Math.floor((red + 1) / mod);
     const g = Math.floor((green + 1) / mod);
@@ -32,21 +31,21 @@ function sortableColor(rgb: RGB, t = 1): Sort[] {
 
     return [
         {
+            val: r,
+            dir: 'asc'
+        },
+        {
             val: g,
-            dir: 'desc'
+            dir: 'asc'
         },
         {
             val: b,
             dir: 'asc'
         },
         {
-            val: r,
+            val: hsl.saturation,
             dir: 'desc'
         },
-        // {
-        //     val: hsl.saturation,
-        //     dir: 'desc'
-        // },
     ];
 
     /*const colorMod = 32;
@@ -175,7 +174,7 @@ export const colorSorter = (a: RGBA, b: RGBA): number => {
 };
 
 
-export const frequencySorter = (a: any, b: any, usageMap: ColorUsageMap): number => {
+export const frequencySorter = (a: any, b: any, usageMap: any): number => {
     if(a.code === '-' || b.code === '-' || a.color.isTransparent || b.color.isTransparent) {
         return 0;
     }

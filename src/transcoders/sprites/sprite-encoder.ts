@@ -1,293 +1,72 @@
 import { PNG } from 'pngjs';
-import { SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
+import { SpriteSheet } from './sprite-sheet';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { RGBA } from '../../util';
-import { printSpritePaletteIndices } from './sprite-debug';
 import { sortPalette } from './sorter';
 import { SpriteCodecOptions } from './sprite.codec';
-import { ColorQuantizer } from './color-quantizer';
+import { printSpritePaletteIndices } from './sprite-debug';
+import { PixelHistogram, PngSpriteData, PngSpriteReader } from './png-sprite-reader';
 
 
-export type ColorUsageMap = { [key: number]: ColorUsage };
-
-export type RgbRange = { rgb: number, count: number };
-export type AlphaRange = { alpha: number, count: number };
-
-
-export class ColorUsage {
-
-    public rgb: number;
-    public rangeCount: number = 1;
-    public totalUses: number = 1;
-
-    public constructor(rgb: number, totalUses: number) {
-        this.rgb = rgb;
-        this.totalUses = totalUses;
-    }
-
-    public get average(): number {
-        return (this.totalUses || 1) / (this.rangeCount || 1);
-    }
-
+export interface EncodedSpriteSheet {
+    data: ByteBuffer;
+    successful: boolean;
 }
 
 
-export interface ImageData {
-    minX: number;
-    maxX: number;
-    minY: number;
-    maxY: number;
-    pixels: RGBA[][];
-    hasAlpha: boolean;
-    width?: number;
-    height?: number;
-    storageMethod?: SpriteStorageMethod;
-}
-
-
-const mapColorUsage = (ranges: RgbRange[]): ColorUsageMap => {
-    const usageMap: ColorUsageMap = {};
-
-    for(const range of ranges) {
-        if(range.rgb === 0) {
-            continue;
-        }
-
-        const colorUsage = usageMap[range.rgb];
-
-        if(!colorUsage) {
-            usageMap[range.rgb] = new ColorUsage(range.rgb, range.count);
-        } else {
-            colorUsage.rangeCount++;
-            colorUsage.totalUses += range.count;
-        }
-    }
-
-    return usageMap;
-};
-
-
-const addPixelRangeData = (rgba: RGBA, rgbRanges: RgbRange[], alphaRanges: AlphaRange[]): void => {
-    if(!rgbRanges?.length) {
-        rgbRanges.push({ rgb: rgba.argb, count: 1 });
-        alphaRanges.push({ alpha: rgba.alpha, count: 1 });
-    } else {
-        const lastEntry = rgbRanges[rgbRanges.length - 1];
-        if(lastEntry && lastEntry.rgb === rgba.argb) {
-            lastEntry.count++;
-        } else {
-            rgbRanges.push({ rgb: rgba.argb, count: 1 });
-        }
-
-        const lastAlphaEntry = alphaRanges[alphaRanges.length - 1];
-        if(lastAlphaEntry && lastAlphaEntry.alpha === rgba.alpha) {
-            lastAlphaEntry.count++;
-        } else {
-            alphaRanges.push({ alpha: rgba.alpha, count: 1 });
-        }
-    }
-};
-
-
-
-const readImageData = (spriteSheet: SpriteSheet, image: PNG, colorQuantizer?: ColorQuantizer): ImageData => {
-    const pngData = new ByteBuffer(image.data);
-    const { maxWidth, maxHeight, maxArea, palette } = spriteSheet;
-    let minX = -1, minY = -1, maxX = -1, maxY = -1;
-    let x = 0, y = 0;
-    const pixels: RGBA[][] = new Array(maxHeight);
-    let hasAlpha: boolean = false;
-
-    for(let i = 0; i < maxArea; i++) {
-        let rgb = pngData.get('int24', 'u');
-        let alpha = pngData.get('byte', 'u');
-
-        if(x === 0) {
-            pixels[y] = new Array(maxWidth);
-        }
-
-        if(rgb === 1) {
-            // rgb = 0;
-            alpha = 255;
-        }
-
-        const color = new RGBA(rgb, alpha);
-        pixels[y][x] = color;
-
-        if(!color.isTransparent) {
-            colorQuantizer?.addColor(color);
-
-            const paletteMapIdx = palette.findIndex(c => c.equals(color));
-            if(paletteMapIdx === -1) {
-                palette.push(color);
-            }
-
-            if(!hasAlpha && alpha !== 255) {
-                hasAlpha = true;
-            }
-
-            if(minX === -1 || x < minX) {
-                minX = x;
-            }
-            if(minY === -1 || y < minY) {
-                minY = y;
-            }
-            if(x > maxX) {
-                maxX = x;
-            }
-            if(y > maxY) {
-                maxY = y;
-            }
-        }
-
-        x++;
-        if(x >= maxWidth) {
-            x = 0;
-            y++;
-        }
-    }
-
-    if(minX < 0) {
-        minX = 0;
-    }
-    if(minY < 0) {
-        minY = 0;
-    }
-
-    const width = maxX - minX + 1;
-    const height = maxY - minY + 1;
-
-    return { minX, maxX, minY, maxY, width, height, pixels, hasAlpha };
-};
-
-
-export const encodeSpriteSheet = (fileIndex: number, fileName: string, images: PNG[], options?: SpriteCodecOptions): boolean => {
-    const spriteSheet = new SpriteSheet(fileIndex, fileName, images);
-    const imageData: ImageData[] = new Array(spriteSheet.sprites.length);
-    const histogram: { [key: number]: number } = {};
-    const { palette: spriteSheetPalette } = spriteSheet;
-    const rowRanges: RgbRange[] = [];
-    const columnRanges: RgbRange[] = [];
-    const rowAlphaRanges: AlphaRange[] = [];
-    const columnAlphaRanges: AlphaRange[] = [];
-
-    // const depth = 3;
-    // const colorQuantizer: ColorQuantizer = new ColorQuantizer(spriteSheet, depth);
-
-    for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
-        const image = images[imageIdx];
-
-        imageData[imageIdx] = readImageData(spriteSheet, image/*, colorQuantizer*/);
-
-        if(options?.debug && options?.forceStorageMethod) {
-            imageData[imageIdx].storageMethod = options.forceStorageMethod;
-        }
-
-        const { pixels, width, height, minX, minY } = imageData[imageIdx];
-
-        // row-major duplicate pixel range detection & histogram generation
-        for(let y = 0; y < height; y++) {
-            for(let x = 0; x < width; x++) {
-                const rgb = pixels[y + minY][x + minX];
-
-                if(!histogram[rgb.argb]) {
-                    histogram[rgb.argb] = 1;
-                } else {
-                    histogram[rgb.argb] += 1;
-                }
-
-                if(!rgb.isTransparent) {
-                    addPixelRangeData(rgb, rowRanges, rowAlphaRanges);
-                }
-            }
-        }
-
-        // column-major duplicate pixel range detection
-        for(let x = 0; x < width; x++) {
-            for(let y = 0; y < height; y++) {
-                const rgb = pixels[y + minY][x + minX];
-
-                if(!rgb.isTransparent) {
-                    addPixelRangeData(rgb, columnRanges, columnAlphaRanges);
-                }
-            }
-        }
-    }
-
-    // colorQuantizer.addSpriteSheetColors();
-    // const palette = colorQuantizer.generateColorPalette(histogram);
-
-    // if(options?.debug) {
-    //     dumpOctreeData(colorQuantizer);
-    // }
-
-    const palette = [ new RGBA(0, 0, 0, 0), ...sortPalette(spriteSheetPalette) ];
+export const encodeSpriteSheet = (fileIndex: number, fileName: string, pngSprites: PNG[], options?: SpriteCodecOptions): EncodedSpriteSheet | null => {
+    const spriteSheet = new SpriteSheet(fileIndex, fileName, pngSprites);
+    const pngSpriteReader = new PngSpriteReader(spriteSheet, pngSprites);
+    const spriteHistograms: PixelHistogram[] = new Array(pngSprites.length);
+    let palette = spriteSheet.palette;
     let successful: boolean = true;
 
-    for(let imageIdx = 0; imageIdx < images.length; imageIdx++) {
-        const { pixels, width, height, minX, minY } = imageData[imageIdx];
+    for(let spriteIndex = 0; spriteIndex < pngSprites.length; spriteIndex++) {
+        const sprite = pngSpriteReader.readSprite(spriteIndex);
 
-        const area = width * height;
-
-        const rowIndexedPixels: number[] = new Array(area);
-        const columnIndexedPixels: number[] = new Array(area);
-
-        let pixelIdx = 0;
-        let previousPaletteIdx = 0;
-        let columnDiff: number = 0;
-        let rowDiff: number = 0;
-
-        // Build the array of palette indices for row-major order
-        for(let y = 0; y < height; y++) {
-            for(let x = 0; x < width; x++) {
-                const rgb = pixels[y + minY][x + minX];
-                let paletteIdx = palette.findIndex(c => c.equals(rgb));
-                if(paletteIdx <= 0) {
-                    continue;
-                }
-                rowIndexedPixels[pixelIdx++] = paletteIdx;
-                rowDiff = Math.abs(paletteIdx - previousPaletteIdx);
-                previousPaletteIdx = paletteIdx;
-            }
+        if(options?.debug && options?.forceStorageMethod) {
+            sprite.storageMethod = options.forceStorageMethod;
         }
 
-        previousPaletteIdx = 0;
+        spriteHistograms[spriteIndex] = new PixelHistogram(sprite);
+    }
 
-        // Build the array of palette indices for column-major order
-        for(let x = 0; x < width; x++) {
-            for(let y = 0; y < height; y++) {
-                const rgb = pixels[y + minY][x + minX];
-                let paletteIdx = palette.findIndex(c => c.equals(rgb));
-                if(paletteIdx <= 0) {
-                    continue;
-                }
-                columnIndexedPixels[width * y + x] = paletteIdx;
-                columnDiff = Math.abs(paletteIdx - previousPaletteIdx);
-                previousPaletteIdx = paletteIdx;
-            }
-        }
+    palette = [ new RGBA(0, 0, 0, 0), ...sortPalette(palette) ];
+    spriteHistograms.forEach(histogram => histogram?.buildHistogram(palette));
 
-        const columnDelta = Math.abs(columnDiff) + columnRanges.length;
-        const rowDelta = Math.abs(rowDiff) + rowRanges.length;
+    for(let spriteIndex = 0; spriteIndex < pngSprites.length; spriteIndex++) {
+        const sprite = pngSpriteReader.spriteData[spriteIndex];
+        const { width, height } = sprite;
+        const histogram = spriteHistograms[spriteIndex];
+        const { pixelIndices: { row: rowPixelIndices, col: colPixelIndices }} = histogram;
 
-        const computedStorageMethod = columnDelta < rowDelta ? 'column-major' : 'row-major';
+        const rowOrderWeight = histogram.calculateWeight('row');
+        const colOrderWeight = histogram.calculateWeight('col');
+
+        const computedStorageMethod = colOrderWeight < rowOrderWeight ? 'column-major' : 'row-major';
 
         if(options?.debug) {
             if(options?.forceStorageMethod === 'row-major') {
-                // printSpritePaletteIndices('row-major', maxWidth, maxHeight, rowIndexedPixels, palette);
+                printSpritePaletteIndices('row-major', width, height, rowPixelIndices, palette);
             } else if(options?.forceStorageMethod === 'column-major') {
-                // printSpritePaletteIndices('column-major', maxWidth, maxHeight, columnIndexedPixels, palette);
+                printSpritePaletteIndices('column-major', width, height, colPixelIndices, palette);
             }
 
-            console.log(`Column diff ${columnDiff}`);
-            console.log(`Row diff ${rowDiff}`);
+            console.log(`Column diff ${colOrderWeight}`);
+            console.log(`Row diff ${rowOrderWeight}`);
 
-            if(computedStorageMethod !== imageData[imageIdx].storageMethod) {
+            if(computedStorageMethod !== sprite.storageMethod) {
                 console.warn(`Computed storage method does not match the original.`);
                 successful = false;
             }
         }
+
+        sprite.storageMethod = computedStorageMethod;
+        sprite.indexedPixels = computedStorageMethod === 'column-major' ? colPixelIndices : rowPixelIndices;
+        // sprite.alphas = computedStorageMethod === 'column-major' ? columnAlphas : rowAlphas; @TODO
+
+        // @TODO construct sprite mini-buffer
     }
 
-    return successful;
+    return { data: new ByteBuffer(1), successful }; // @TODO
 };

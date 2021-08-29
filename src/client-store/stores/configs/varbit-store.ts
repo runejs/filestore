@@ -87,7 +87,7 @@ export class VarbitStore {
             return null;
         }
 
-        const varbitCount = this.varbitArchive.files.size;
+        const varbitCount = this.varbitArchive.children.size;
         const varbitList: VarbitConfig[] = new Array(varbitCount);
 
         for(let varbitId = 0; varbitId < varbitCount; varbitId++) {

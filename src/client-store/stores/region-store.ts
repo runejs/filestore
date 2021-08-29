@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import path from 'path';
 
 import { ClientFileStore } from '../client-file-store';
-import { FileIndex } from '../file-index';
+import { ClientArchive } from '../client-archive';
 
 
 export const maxRegions = 32768;
@@ -60,7 +60,7 @@ export class RegionStore {
 
     public readonly xteas: { [key: number]: XteaDefinition } = {};
 
-    private readonly regionIndex: FileIndex;
+    private readonly regionIndex: ClientArchive;
 
     public constructor(private fileStore: ClientFileStore, xteas?: { [p: number]: XteaDefinition }) {
         this.regionIndex = this.fileStore.getIndex('maps');

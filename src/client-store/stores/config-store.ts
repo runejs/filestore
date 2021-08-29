@@ -1,5 +1,5 @@
 import { ClientFileStore } from '../client-file-store';
-import { FileIndex } from '../file-index';
+import { ClientArchive } from '../client-archive';
 import { ClientFileGroup } from '../client-file-group';
 import { NpcStore, ObjectStore, ItemStore, VarbitStore } from './configs';
 
@@ -73,7 +73,7 @@ export class ConfigStore {
     /**
      * The configuration file/archive index.
      */
-    public readonly configIndex: FileIndex;
+    public readonly configIndex: ClientArchive;
 
     public constructor(private fileStore: ClientFileStore) {
         this.configIndex = fileStore.getIndex('configs');

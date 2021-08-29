@@ -261,7 +261,7 @@ export class TextureStore {
 
     public async writeToDisk(): Promise<void> {
         rmdirSync('./unpacked/textures', {recursive: true});
-        const ids = this.fileStore.getIndex('textures').getArchive(0).files.keys();
+        const ids = this.fileStore.getIndex('textures').getArchive(0).children.keys();
         for (const id of ids) {
             try {
                 const texture = this.getTexture(id);

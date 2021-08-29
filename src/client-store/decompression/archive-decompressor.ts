@@ -1,24 +1,28 @@
-import { FileIndex } from '../file-index';
-import fs from 'fs';
-import { logger } from '@runejs/core';
-import { ArchiveName, getArchiveConfig, getIndexName } from '../../file-store/archive';
-import { FileErrorMap, IndexedFileMap, IndexManifest } from '../../file-store';
-import { createHash } from 'crypto';
-import { ClientFileGroup } from '../client-file-group';
 import * as CRC32 from 'crc-32';
+import fs from 'fs';
 import path from 'path';
+import { Buffer } from 'buffer';
+import { createHash } from 'crypto';
+
+import { logger } from '@runejs/core';
 import { ByteBuffer } from '@runejs/core/buffer';
+
+import { ArchiveName, getArchiveConfig, getIndexName, FileMetadata, FileMetadataMap, IndexManifest } from '../../file-store';
+import { ClientArchive } from '../client-archive';
+import { ClientFileGroup } from '../client-file-group';
 import { extractIndexedFile } from '../data';
 import { getFileName } from '../file-naming';
 import Js5Transcoder from '../../transcoders/js5-transcoder';
-import { Buffer } from 'buffer';
 
 
 export class ArchiveDecompressor {
 
+    public readonly archive: ClientArchive;
+
     public static readonly decodedFileNames: { [key: number]: string } = {};
 
-    public constructor(private readonly fileIndex: FileIndex) {
+    public constructor(archive: ClientArchive) {
+        this.archive = archive;
     }
 
     public static writeFileNames(): void {
@@ -47,11 +51,11 @@ export class ArchiveDecompressor {
 
         logger.info(`Writing ${this.storePath}...`);
 
-        const archiveConfig = getArchiveConfig(this.fileIndex.indexId);
+        const archiveConfig = getArchiveConfig(this.archive.archiveIndex);
 
-        // const storeZip = new JSZip();
-        const fileKeys = Array.from(this.fileIndex.files.keys());
-        const fileCount = fileKeys.length;
+        const fileMetadataMap: FileMetadataMap = new Map<number, FileMetadata>();
+        const fileKeys = Array.from(this.archive.files.keys());
+        const fileCount = this.archive.files.size;
         const fileExt = archiveConfig.fileExtension;
         const childNameMap = archiveConfig.children;
         let childNames: { [key: number]: string } = {};
@@ -60,37 +64,22 @@ export class ArchiveDecompressor {
             Object.keys(childNameMap).forEach(childName => childNames[childNameMap[childName]] = childName);
         }
 
-        logger.info(`${fileCount} files found within this index.`);
+        logger.info(`${fileCount} files found within this archive.`);
 
-        const fileIndexMap: IndexedFileMap = {};
-        const errors: FileErrorMap = {};
-
-        const pushError = (errors: FileErrorMap, fileIdx: number, name: string, nameHash: number, error) => {
-            // logger.error(error);
-
-            if(errors[fileIdx]) {
-                errors[fileIdx].errors.push(error);
-            } else {
-                errors[fileIdx] = {
-                    name, nameHash, errors: [ error ]
-                };
-            }
-        }
-
-        const archiveName = getIndexName(this.fileIndex.indexId) as ArchiveName;
+        const archiveName = getIndexName(this.archive.archiveIndex) as ArchiveName;
 
         for(const fileKey of fileKeys) {
             const fileIndex = Number(fileKey);
             if(isNaN(fileIndex)) {
-                pushError(errors, fileIndex, undefined, undefined,
+                this.reportFileError(fileMetadataMap, fileIndex, undefined, undefined,
                     `File ${fileIndex} has an invalid index`);
                 continue;
             }
 
-            const file = this.fileIndex.files.get(fileIndex);
+            const file = this.archive.files.get(fileIndex);
 
             if(!file) {
-                pushError(errors, fileIndex, undefined, undefined, `File not found`);
+                this.reportFileError(fileMetadataMap, fileIndex, undefined, undefined, `File not found`);
                 continue;
             }
 
@@ -100,18 +89,16 @@ export class ArchiveDecompressor {
 
             const hash = createHash('sha256');
 
-            if(archiveConfig.content !== 'encoded' &&
-                file instanceof ClientFileGroup &&
-                !archiveConfig.flattenFileGroups) {
+            if(archiveConfig.content !== 'encoded' && file instanceof ClientFileGroup && !archiveConfig.flattenFileGroups) {
                 // Write sub-archive/folder
 
                 const fileGroup = file as ClientFileGroup;
                 // const folder = storeZip.folder(`${fileName}`);
                 fileGroup.decodeArchiveFiles();
-                const groupFileKeys = Array.from(fileGroup.files.keys());
+                const groupFileKeys = Array.from(fileGroup.children.keys());
                 const groupFileCount = groupFileKeys.length;
 
-                fileIndexMap[fileIndex] = {
+                fileMetadataMap[fileIndex] = {
                     name: `${fileName}/`,
                     nameHash: fileGroup.nameHash ?? undefined,
                     size: fileGroup.groupCompressedSize ?? 0,
@@ -132,7 +119,7 @@ export class ArchiveDecompressor {
                     const groupedFileIndex = Number(groupedFileKey);
                     if(isNaN(groupedFileIndex)) {
                         childArrayIndex++;
-                        pushError(errors, groupedFileIndex, file.name, file.nameHash,
+                        this.reportFileError(fileMetadataMap, groupedFileIndex, file.name, file.nameHash,
                             `Grouped file ${groupedFileIndex} has an invalid index`);
                         continue;
                     }
@@ -142,7 +129,7 @@ export class ArchiveDecompressor {
                         getFileName(groupedFile.nameHash) : '');
 
                     if(!groupedFile?.content) {
-                        pushError(errors, groupedFileIndex, file.name, file.nameHash,
+                        this.reportFileError(fileMetadataMap, groupedFileIndex, file.name, file.nameHash,
                             `Grouped file ${groupedFileIndex} not found`);
                         continue;
                     }
@@ -158,7 +145,7 @@ export class ArchiveDecompressor {
                         if(transcodedFile?.length) {
                             fs.writeFileSync(path.join(folderPath, groupedFileName + fileExt), transcodedFile as Buffer | string);
                         } else {
-                            pushError(errors, groupedFileIndex, file.name, file.nameHash,
+                            this.reportFileError(fileMetadataMap, groupedFileIndex, file.name, file.nameHash,
                                 `Grouped file ${groupedFileIndex} transcoding failed`);
                             continue;
                         }
@@ -168,7 +155,7 @@ export class ArchiveDecompressor {
                         logger.warn(`Grouped file ${childArrayIndex} is out of order - expected ${groupedFileIndex}`);
                     }
 
-                    fileIndexMap[fileIndex].children[childArrayIndex++] = groupedFileName + (fileExt ?? '');
+                    fileMetadataMap[fileIndex].children[childArrayIndex++] = groupedFileName + (fileExt ?? '');
                 }
             } else {
                 // Write single file
@@ -179,14 +166,15 @@ export class ArchiveDecompressor {
                     decompressedFile = file.decompress();
                 } catch(error) {
                     if(error?.message === 'MISSING_ENCRYPTION_KEYS') {
-                        pushError(errors, fileIndex, file.name, file.nameHash, `Missing encryption keys for file ${fileIndex}`);
+                        this.reportFileError(fileMetadataMap, fileIndex, file.name, file.nameHash,
+                            `Missing encryption keys for file ${fileIndex}`);
                     }
                 }
 
                 const fileContents = decompressedFile ?? file.content;
 
                 if(!fileContents) {
-                    pushError(errors, fileIndex, file.name, file.nameHash, `File not found`);
+                    this.reportFileError(fileMetadataMap, fileIndex, file.name, file.nameHash, `File not found`);
                     continue;
                 }
 
@@ -196,7 +184,7 @@ export class ArchiveDecompressor {
                 }, fileContents, { debug }, true);
 
                 if(!decodedContent?.length) {
-                    pushError(errors, fileIndex, file.name, file.nameHash, `Error decoding file content`);
+                    this.reportFileError(fileMetadataMap, fileIndex, file.name, file.nameHash, `Error decoding file content`);
                     continue;
                 }
 
@@ -229,7 +217,7 @@ export class ArchiveDecompressor {
 
                 fileName = `${fileName}`;
 
-                fileIndexMap[fileIndex] = {
+                fileMetadataMap[fileIndex] = {
                     name: fileName + (isGroup ? '/' : ''),
                     nameHash: file.nameHash ?? undefined,
                     size: fileContents.length,
@@ -244,37 +232,37 @@ export class ArchiveDecompressor {
             }
         }
 
-        const indexEntry = extractIndexedFile(this.fileIndex.indexId, 255, this.fileIndex.filestoreChannels);
+        const indexEntry = extractIndexedFile(this.archive.archiveIndex, 255, this.archive.filestoreChannels);
 
         const manifest: IndexManifest = {
-            index: this.fileIndex.indexId,
+            index: this.archive.archiveIndex,
             crc: CRC32.buf(indexEntry.dataFile),
             sha256: createHash('sha256').update(indexEntry.dataFile).digest('hex'),
-            version: this.fileIndex.version,
-            files: fileIndexMap
+            version: this.archive.version,
+            files: fileMetadataMap
         };
 
-        if(Object.keys(errors).length) {
-            manifest.errors = errors;
+        fs.writeFileSync(path.join(this.storePath, `.index`), JSON.stringify(manifest, null, 4));
+    }
+
+    private reportFileError(metadataMap: FileMetadataMap, fileIndex: number, name: string, nameHash: number, message: string): void;
+    private reportFileError(metadataMap: FileMetadataMap, fileIndex: number, name: string, nameHash: number, messages: string[]): void;
+    private reportFileError(metadataMap: FileMetadataMap, fileIndex: number, name: string, nameHash: number, messages: string[] | string): void {
+        if(!Array.isArray(messages)) {
+            messages = [ messages ];
         }
 
-        // storeZip.file(`.manifest.json`, JSON.stringify(manifest, null, 4));
-        fs.writeFileSync(path.join(this.storePath, `.index`), JSON.stringify(manifest, null, 4));
-
-        // vvv now stored inline within the .index file
-        /*if(Object.keys(errors).length) {
-            // storeZip.file(`.error-log.json`, JSON.stringify(errors, null, 4));
-            fs.writeFileSync(path.join(this.storePath, `.errors`), JSON.stringify(errors, null, 4));
-        }*/
-
-        /*await new Promise<void>(resolve => {
-            storeZip.generateNodeStream({ type: 'nodebuffer', streamFiles: true })
-                .pipe(fs.createWriteStream(this.storePath))
-                .on('finish', () => {
-                    logger.info(`${this.storePath} written.`);
-                    resolve();
-                });
-        });*/
+        if(metadataMap[fileIndex]) {
+            if(metadataMap[fileIndex].errors) {
+                metadataMap[fileIndex].errors.push(...messages);
+            } else {
+                metadataMap[fileIndex].errors = [ ...messages ];
+            }
+        } else {
+            metadataMap[fileIndex] = {
+                name, nameHash, errors: [ ...messages ]
+            };
+        }
     }
 
     public static get outputDir(): string {
@@ -286,7 +274,7 @@ export class ArchiveDecompressor {
     }
 
     public get storePath(): string {
-        return path.join(ArchiveDecompressor.storeOutputDir, `${this.fileIndex.name}`);
+        return path.join(ArchiveDecompressor.storeOutputDir, `${this.archive.name}`);
     }
 
 }

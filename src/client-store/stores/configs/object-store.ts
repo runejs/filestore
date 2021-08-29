@@ -281,7 +281,7 @@ export class ObjectStore {
             return null;
         }
 
-        const objectCount = this.objectArchive.files.size;
+        const objectCount = this.objectArchive.children.size;
         const objectList: ObjectConfig[] = new Array(objectCount);
 
         for(let objectId = 0; objectId < objectCount; objectId++) {

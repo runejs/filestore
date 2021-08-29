@@ -121,7 +121,7 @@ export abstract class IndexedFile extends FileInfo {
     }
 
     public get fullFileName(): string {
-        return this.indexManifest?.files[this.fileIndex]?.name ?? '';
+        return this.indexManifest?.files[this.fileIndex]?.name ?? `${this.fileIndex}`;
     }
 
     public get fileVersion(): number | undefined {

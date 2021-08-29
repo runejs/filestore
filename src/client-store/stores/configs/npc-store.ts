@@ -212,7 +212,7 @@ export class NpcStore {
             return null;
         }
 
-        const npcCount = this.npcArchive.files.size;
+        const npcCount = this.npcArchive.children.size;
         const npcList: NpcConfig[] = new Array(npcCount);
 
         for(let npcId = 0; npcId < npcCount; npcId++) {

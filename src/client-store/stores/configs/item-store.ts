@@ -420,7 +420,7 @@ export class ItemStore {
             return null;
         }
 
-        const itemCount = this.itemArchive.files.size;
+        const itemCount = this.itemArchive.children.size;
         const itemList: ItemConfig[] = new Array(itemCount);
 
         for(let itemId = 0; itemId < itemCount; itemId++) {

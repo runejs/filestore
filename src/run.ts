@@ -137,40 +137,9 @@ function validateSpriteFormats(debugDir: string): void {
         // logger.info(`Unpacking archive ${i}...`);
         logger.info(`Indexing archive ${i}...`);
         await fileStore.indexedArchives.get(i).indexArchiveFiles();
-    }*/
-
-    // await fileStore.generateCrcTable();
-
-    /*
-    @TODO vvv Cleanup Sprite Codec Testing
-    await fileStore.getArchive('sprites').unpack(true, false);
-
-    const spriteArchive = fileStore.getArchive('sprites');
-    const spriteKeys = Object.keys(spriteArchive.files);
-
-    const spritesDir = path.join('output', 'sprites');
-    if(fs.existsSync(spritesDir)) {
-        fs.rmSync(spritesDir, { recursive: true });
     }
 
-    fs.mkdirSync(spritesDir, { recursive: true });
-
-    for(const spriteKey of spriteKeys) {
-        const sprite: IndexedFile = spriteArchive.files[spriteKey];
-        if(sprite.fileData) {
-            const image = spriteCodec.decode(sprite.fileData);
-
-            try {
-                image.pack();
-
-                const pngBuffer = PNG.sync.write(image);
-                fs.writeFileSync(path.join(spritesDir, `${sprite.fileName}.png`), pngBuffer);
-            } catch(error) {
-                logger.error(`Error writing sprite ${spriteKey}.`);
-            }
-        }
-    }
-    const sprite = fileStore.getArchive('sprites').files[494].fileData;*/
+    await fileStore.generateCrcTable();*/
 
     const end = Date.now();
     const duration = end - start;

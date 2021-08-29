@@ -2,7 +2,7 @@ import { logger } from '@runejs/core';
 import { ByteBuffer } from '@runejs/core/buffer';
 
 import { ClientFileStore } from '../client-file-store';
-import { FileIndex } from '../file-index';
+import { ClientArchive } from '../client-archive';
 
 
 export class RsModel {
@@ -446,7 +446,7 @@ export class ColorUtils {
  */
 export class ModelStore {
 
-    private readonly modelFileIndex: FileIndex;
+    private readonly modelFileIndex: ClientArchive;
 
     public constructor(private fileStore: ClientFileStore) {
         this.modelFileIndex = this.fileStore.getIndex('models');

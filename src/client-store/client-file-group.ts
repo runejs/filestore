@@ -1,7 +1,7 @@
 import { ByteBuffer } from '@runejs/core/buffer';
 
 import { ClientFile } from './client-file';
-import { FileIndex } from './file-index';
+import { ClientArchive } from './client-archive';
 import { ClientStoreChannel, extractIndexedFile } from './data';
 import { decompressFile } from '../compression';
 
@@ -9,12 +9,12 @@ import { decompressFile } from '../compression';
 export class ClientFileGroup extends ClientFile {
 
     /**
-     * A map of files housed within this Archive.
+     * A list of files housed within this file group.
      */
-    public files: Map<number, ClientFile>;
+    public children: Map<number, ClientFile> = new Map<number, ClientFile>();
 
     /**
-     * The type of file, either an `archive` or a plain `file`.
+     * The type of file, either a `group` or a plain `file`.
      */
     public type: 'group' | 'file' = 'group';
 
@@ -23,23 +23,23 @@ export class ClientFileGroup extends ClientFile {
     private decoded: boolean = false;
 
     /**
-     * Creates a new `Archive` object.
-     * @param id The ID of the Archive within it's File Index.
-     * @param index The File Index that this Archive belongs to.
-     * @param filestoreChannels The main filestore channel for data access.
+     * Creates a new file group object.
+     * @param fileIndex The index of the group within it's archive.
+     * @param archive The archive that the group belongs to.
+     * @param filestoreChannels The main file store channel for data access.
      */
-    public constructor(id: number, index: FileIndex, filestoreChannels: ClientStoreChannel);
+    public constructor(fileIndex: number, archive: ClientArchive, filestoreChannels: ClientStoreChannel);
 
     /**
-     * Creates a new `Archive` object.
+     * Creates a new file group object.
      * @param fileData Data about a file that's being recognized as an Archive.
-     * @param index The File Index that this Archive belongs to.
-     * @param filestoreChannels The main filestore channel for data access.
+     * @param archive The archive that the group belongs to.
+     * @param filestoreChannels The main file store channel for data access.
      */
-    public constructor(fileData: ClientFile, index: FileIndex, filestoreChannels: ClientStoreChannel);
+    public constructor(fileData: ClientFile, archive: ClientArchive, filestoreChannels: ClientStoreChannel);
 
-    public constructor(idOrFileData: number | ClientFile, index: FileIndex, filestoreChannels: ClientStoreChannel) {
-        super(typeof idOrFileData === 'number' ? idOrFileData : idOrFileData.fileId, index, filestoreChannels);
+    public constructor(idOrFileData: number | ClientFile, archive: ClientArchive, filestoreChannels: ClientStoreChannel) {
+        super(typeof idOrFileData === 'number' ? idOrFileData : idOrFileData.fileId, archive, filestoreChannels);
 
         if(typeof idOrFileData !== 'number') {
             const fileData = idOrFileData as ClientFile;
@@ -50,48 +50,48 @@ export class ClientFileGroup extends ClientFile {
             this.version = version;
             this.compression = compression;
         }
-
-        this.files = new Map<number, ClientFile>();
     }
 
     /**
-     * Fetches a file from this Archive by ID.
-     * @param fileId The ID of the file to find.
+     * Fetches a file from this group by index.
+     * @param childIndex The index of the file to find.
      */
-    public getFile(fileId: number): ClientFile | null {
-        return this.files.get(fileId) || null;
+    public getFile(childIndex: number): ClientFile | null {
+        return this.children.get(childIndex) || null;
     }
 
     /**
-     * Decodes the packed Archive files from the filestore on disk.
+     * Decodes the packed group files from the file store on disk.
      */
     public decodeArchiveFiles(): void {
         if(this.decoded) {
             return;
         }
 
-        const archiveEntry = extractIndexedFile(this.fileId, this.index.indexId, this.filestoreChannels);
+        const archiveEntry = extractIndexedFile(this.fileId, this.index.archiveIndex, this.filestoreChannels);
         archiveEntry.dataFile.readerIndex = 0;
         this.groupCompressedSize = archiveEntry.dataFile.length;
         const { compression, version, buffer } = decompressFile(archiveEntry.dataFile);
         buffer.readerIndex = 0;
-        const archiveSize = this.files.size;
+        const groupSize = this.children.size;
 
         this.content = buffer;
 
         this.version = version;
         this.content = buffer;
         this.compression = compression;
-        this.files.clear();
-        buffer.readerIndex = (buffer.length - 1);
-        const stripeCount = buffer.get('byte', 'unsigned');
 
-        const stripeLengths: number[][] = new Array(stripeCount).fill(new Array(archiveSize));
-        const sizes: number[] = new Array(archiveSize).fill(0);
-        buffer.readerIndex = (buffer.length - 1 - stripeCount * archiveSize * 4);
+        buffer.readerIndex = (buffer.length - 1);
+
+        const stripeCount = buffer.get('byte', 'unsigned');
+        const stripeLengths: number[][] = new Array(stripeCount).fill(new Array(groupSize));
+        const sizes: number[] = new Array(groupSize).fill(0);
+
+        buffer.readerIndex = (buffer.length - 1 - stripeCount * groupSize * 4);
+
         for(let stripe = 0; stripe < stripeCount; stripe++) {
             let currentLength = 0;
-            for(let id = 0; id < archiveSize; id++) {
+            for(let id = 0; id < groupSize; id++) {
                 const stripeSize = buffer.get('int');
                 currentLength += stripeSize;
 
@@ -100,25 +100,25 @@ export class ClientFileGroup extends ClientFile {
             }
         }
 
-        for(let id = 0; id < archiveSize; id++) {
-            const fileData = new ClientFile(id, this.index, this.filestoreChannels);
-            fileData.content = new ByteBuffer(sizes[id]);
-            this.files.set(id, fileData);
+        for(let childIndex = 0; childIndex < groupSize; childIndex++) {
+            const fileData = new ClientFile(childIndex, this.index, this.filestoreChannels);
+            fileData.content = new ByteBuffer(sizes[childIndex]);
+            this.children.set(childIndex, fileData);
         }
 
         buffer.readerIndex = 0;
 
         for(let chunk = 0; chunk < stripeCount; chunk++) {
-            for(let id = 0; id < archiveSize; id++) {
+            for(let id = 0; id < groupSize; id++) {
                 const chunkSize = stripeLengths[chunk][id];
-                this.files.get(id).content.putBytes(buffer.getSlice(buffer.readerIndex, chunkSize));
+                this.children.get(id).content.putBytes(buffer.getSlice(buffer.readerIndex, chunkSize));
 
                 let sourceEnd: number = buffer.readerIndex + chunkSize;
                 if(buffer.readerIndex + chunkSize >= buffer.length) {
                     sourceEnd = buffer.length;
                 }
 
-                buffer.copy(this.files.get(id).content, 0, buffer.readerIndex, sourceEnd);
+                buffer.copy(this.children.get(id).content, 0, buffer.readerIndex, sourceEnd);
                 buffer.readerIndex = sourceEnd;
             }
         }

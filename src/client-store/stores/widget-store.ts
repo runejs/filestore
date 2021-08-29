@@ -1,6 +1,6 @@
 import { ByteBuffer } from '@runejs/core/buffer';
 
-import { FileIndex } from '../file-index';
+import { ClientArchive } from '../client-archive';
 import { ClientFileStore } from '../client-file-store';
 import { ClientFile } from '../client-file';
 import { ClientFileGroup } from '../client-file-group';
@@ -186,7 +186,7 @@ export class WidgetStore {
     /**
      * The main file index of the widget store.
      */
-    public readonly widgetFileIndex: FileIndex;
+    public readonly widgetFileIndex: ClientArchive;
 
     public constructor(private fileStore: ClientFileStore) {
         this.widgetFileIndex = fileStore.getIndex('widgets');
@@ -218,7 +218,7 @@ export class WidgetStore {
             const widgetParent = new ParentWidget(id);
             const archive: ClientFileGroup = file as ClientFileGroup;
             archive.decodeArchiveFiles();
-            const widgetChildFiles: ClientFile[] = Array.from(archive.files.values());
+            const widgetChildFiles: ClientFile[] = Array.from(archive.children.values());
             widgetParent.children = new Array(widgetChildFiles.length);
             for(let i = 0; i < widgetChildFiles.length; i++) {
                 widgetParent.children[i] = this.decodeWidgetFile(i, widgetChildFiles[i]);

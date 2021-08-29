@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
 import { logger } from '@runejs/core';
-import { FileMetadata, IndexManifest} from '../index-manifest';
+import { FileMetadata, FileMetadataMap, IndexManifest } from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { compressFile } from '../../compression';
 import { IndexedFile, FlatFile, FileGroup } from '../file';
@@ -14,6 +14,7 @@ import { hashFileName } from '../../util';
 export class IndexedArchive {
 
     public files: { [key: number]: IndexedFile } = {};
+    public fileList: IndexedFile[];
     public readonly fileStore: FileStore;
     public readonly config: ArchiveConfig;
     public readonly indexId: number;
@@ -21,7 +22,6 @@ export class IndexedArchive {
 
     private loaded: boolean = false;
     private _manifest: IndexManifest;
-    private _fileErrors: { [key: string]: string[] };
 
     public constructor(fileStore: FileStore, indexId: number, indexName?: string) {
         this.fileStore = fileStore;
@@ -36,32 +36,34 @@ export class IndexedArchive {
      * Re-indexes the entire archive, evaluating each file and file group for changes to append to the manifest file.
      */
     public async indexArchiveFiles(): Promise<void> {
+        // @TODO this is very broken for the config archive
+
         await this.unpack(false);
-
-        /*const storeZip = await this.loadZip();
-
-        if(!storeZip) {
-            return;
-        }*/
 
         logger.info(`Indexing ${this.filePath}...`);
         logger.info(`Original file count: ${Object.keys(this.files).length}`);
-
-        const originalManifestErrors = this._manifest.errors;
 
         const newManifest: IndexManifest = {
             index: this.indexId,
             crc: 0,
             sha256: '',
             version: this._manifest.version ?? undefined,
-            files: {}
+            files: new Map<number, FileMetadata>()
         };
 
+        // @TODO this is brooooooken beyond drunk me to fix
         const originalFileIndex = (fileName: string, fileList: IndexedFile[]): number => {
+            if(this.config.children) {
+
+            }
             const folderCheck = fileName.replace('/', '');
             const originalFile = fileList.find(indexedFile =>
-                indexedFile.fullFileName === fileName || indexedFile.fullFileName === folderCheck);
-            return originalFile?.fileIndex ?? -1;
+                indexedFile.fileName === fileName || indexedFile.fileName === folderCheck);
+            const result = originalFile?.fileIndex ?? -1;
+            if(result === -1) {
+                console.log(fileList);
+            }
+            return result;
         };
 
         const extension = this.config.fileExtension;
@@ -83,12 +85,16 @@ export class IndexedArchive {
                 return false;
             }
 
-            return fileName.endsWith(extension);
+            return fileName.endsWith(extension) || (fileName.indexOf('/') === -1);
         });
 
         const existingFileList: IndexedFile[] = Object.values(this.files);
 
         logger.info(`Found ${fileNames.length} files or file groups.`);
+
+        if(this.indexId === 2) {
+            logger.info(...storeDirectory);
+        }
 
         let newFileIndex = this.createNewFileIndex();
 
@@ -156,7 +162,6 @@ export class IndexedArchive {
         const indexData = await this.generateIndexFile();
         this._manifest.crc = await IndexedFile.generateCrc32(indexData);
         this._manifest.sha256 = await IndexedFile.generateShaHash(indexData);
-        this._manifest.errors = originalManifestErrors;
 
         if(fs.existsSync(this.outputFilePath)) {
             fs.rmSync(this.outputFilePath, { recursive: true });
@@ -198,7 +203,7 @@ export class IndexedArchive {
     public async generateIndexFile(): Promise<ByteBuffer> {
         await this.loadManifestFile();
 
-        const files = this._fileErrors ? { ...this._fileErrors, ...this._manifest.files } : this._manifest.files;
+        const files = this._manifest.files;
         const fileIndexes = Object.keys(files).map(indexStr => parseInt(indexStr, 10))
             .sort((a, b) => a - b);
         const fileCount = fileIndexes.length;
@@ -382,56 +387,12 @@ export class IndexedArchive {
 
         const manifestFileContent = fs.readFileSync(manifestFilePath, 'utf-8');
 
-        if(manifestFileContent) {
-            this._manifest = JSON.parse(manifestFileContent);
-        }
-
-        const errorFilePath = path.join(this.filePath, '.errors.json');
-
-        if(fs.existsSync(errorFilePath)) {
-            const errorFileContent = fs.readFileSync(errorFilePath, 'utf-8');
-            if(errorFileContent) {
-                this._fileErrors = JSON.parse(errorFileContent);
-            }
-        }
-
-        if(!this._manifest) {
+        if(!manifestFileContent) {
             throw new Error(`Error loading manifest for index ${this.indexName}.`);
         }
 
-        /*const zipArchive = await this.loadZip();
+        this._manifest = JSON.parse(manifestFileContent);
 
-        if(!zipArchive) {
-            logger.error(`Store zip not found.`);
-            return this._manifest ?? null;
-        }
-
-        const noFilesError = `No files found within indexed archive ${this.indexId} ${this.indexName}`;
-        if(!zipArchive.files) {
-            logger.error(noFilesError);
-            return this._manifest ?? null;
-        }
-
-        const fileNames = Object.keys(zipArchive.files);
-        if(!fileNames?.length) {
-            logger.error(noFilesError);
-            return this._manifest ?? null;
-        }
-
-        const manifestFile = zipArchive.files['.manifest.json'];
-        if(!manifestFile) {
-            logger.error(`Missing manifest file for indexed archive ${this.indexId} ${this.indexName}`);
-            return this._manifest ?? null;
-        }
-
-        const errorLogFile = zipArchive.files['.errors.json' ];
-        if(errorLogFile) {
-            logger.info(`Error log found for index ${this.indexId}.`);
-            const errorLogContent = await errorLogFile.async('string');
-            this._fileErrors = JSON.parse(errorLogContent) as { [key: string]: string[] };
-        }
-
-        this._manifest = JSON.parse(await manifestFile.async('string')) as IndexManifest;*/
         this.loaded = true;
 
         return this._manifest;
@@ -468,10 +429,6 @@ export class IndexedArchive {
 
     public get manifest(): IndexManifest {
         return this._manifest;
-    }
-
-    public get fileErrors(): { [p: string]: string[] } {
-        return this._fileErrors;
     }
 
     public get archiveName(): string {

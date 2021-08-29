@@ -1,5 +1,5 @@
 import { ClientStoreChannel, loadClientStore } from './data';
-import { FileIndex } from './file-index';
+import { ClientArchive } from './client-archive';
 import {
     BinaryStore,
     ConfigStore,
@@ -40,7 +40,7 @@ export class ClientFileStore {
 
     public readonly channels: ClientStoreChannel;
 
-    public readonly indexes = new Map<number, FileIndex>();
+    public readonly indexes = new Map<number, ClientArchive>();
 
     public readonly xteas: { [key: number]: XteaDefinition };
 
@@ -75,14 +75,14 @@ export class ClientFileStore {
      * Fetches the specified File Index.
      * @param indexId The string or numeric ID of the File Index to find.
      */
-    public getIndex(indexId: number | IndexName): FileIndex {
+    public getIndex(indexId: number | IndexName): ClientArchive {
         if(typeof indexId !== 'number') {
             indexId = archiveConfig[indexId].index;
         }
 
         if(!this.indexes.has(indexId)) {
-            const index = new FileIndex(this, indexId, this.channels);
-            index.decodeIndex();
+            const index = new ClientArchive(this, indexId, this.channels);
+            index.decodePackedArchive();
             this.indexes.set(indexId, index);
 
             return index;
@@ -98,7 +98,7 @@ export class ClientFileStore {
         }
     }
 
-    public getAllIndexes(): FileIndex[] {
+    public getAllIndexes(): ClientArchive[] {
         const archiveNames: ArchiveName[] = Object.keys(archiveConfig).filter(name => name !== 'main') as ArchiveName[];
         return archiveNames.map(archiveName => this.getIndex(archiveConfig[archiveName].index));
     }

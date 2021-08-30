@@ -6,10 +6,11 @@
     "types": "lib/index.d.ts",
     "scripts": {
         "build": "tsc",
-        "start": "ts-node src/run.ts",
+        "start": "ts-node src/dev.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
-        "package": "rimraf lib && npm i && npm run build && npm publish --dry-run"
+        "package": "rimraf lib && npm i && npm run build && npm publish --dry-run",
+        "unpack": "ts-node src/unpack.ts"
     },
     "repository": {
         "type": "git",

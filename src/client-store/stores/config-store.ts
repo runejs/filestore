@@ -1,7 +1,7 @@
 import { ClientFileStore } from '../client-file-store';
-import { ClientArchive } from '../client-archive';
 import { ClientFileGroup } from '../client-file-group';
 import { NpcStore, ObjectStore, ItemStore, VarbitStore } from './configs';
+import { Store } from './store';
 
 
 /**
@@ -48,7 +48,7 @@ export const getConfigId = (config: number): ConfigId => {
 /**
  * Contains various configuration related Archives.
  */
-export class ConfigStore {
+export class ConfigStore extends Store {
 
     /**
      * A Store used to access the Item Archive, containing details about every game item.
@@ -70,25 +70,20 @@ export class ConfigStore {
      */
     public readonly varbitStore: VarbitStore;
 
-    /**
-     * The configuration file/archive index.
-     */
-    public readonly configIndex: ClientArchive;
-
-    public constructor(private fileStore: ClientFileStore) {
-        this.configIndex = fileStore.getIndex('configs');
+    public constructor(fileStore: ClientFileStore) {
+        super(fileStore, 'configs');
         this.itemStore = new ItemStore(this);
         this.npcStore = new NpcStore(this);
         this.objectStore = new ObjectStore(this);
         this.varbitStore = new VarbitStore(this);
     }
 
-    public getArchive(configId: ConfigId | number): ClientFileGroup {
+    public getGroup(configId: ConfigId | number): ClientFileGroup {
         if(typeof configId !== 'number') {
             configId = configIdMap[configId];
         }
 
-        return this.configIndex.getFileGroup(configId);
+        return this.archive.getFileGroup(configId);
     }
 
 }

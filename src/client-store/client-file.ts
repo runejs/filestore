@@ -1,6 +1,6 @@
 import { ByteBuffer } from '@runejs/core/buffer';
 
-import { extractIndexedFile, ClientStoreChannel } from './data';
+import { extractIndexedFile, ClientStoreChannel, ExtractedFile } from './data';
 import { ClientArchive } from './client-archive';
 import { decompressFile } from '../compression';
 import { getFileName } from './file-naming';
@@ -75,18 +75,23 @@ export class ClientFile {
             return this.content;
         }
 
-        const keys = this.archive.clientFileStore.xteas[this.name] || undefined;
+        const keys = this.archive.clientFileStore.xteaKeys[this.name] || undefined;
+        let archiveEntry: ExtractedFile | null;
 
-        this.decompressed = true;
-        const archiveEntry = extractIndexedFile(this.fileIndex, this.archive.archiveIndex, this.clientStoreChannel);
+        try {
+            archiveEntry = extractIndexedFile(this.fileIndex, this.archive.archiveIndex, this.clientStoreChannel);
+        } catch(error) {
+            archiveEntry = null;
+        }
 
-        if(!archiveEntry?.dataFile?.length) {
+        if(!archiveEntry || !archiveEntry.dataFile?.length) {
             logger.error(`Could not find data file for file ${this.fileIndex}`);
             return null;
         }
 
         const { buffer } = decompressFile(archiveEntry.dataFile, keys);
         this.content = buffer;
+        this.decompressed = true;
         return this.content;
     }
 

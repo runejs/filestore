@@ -188,7 +188,7 @@ export class IndexedArchive {
             const indexedFile = await this.loadFile(index, loadFileData);
 
             if(loadFileData && compressFileData) {
-                await indexedFile.compress();
+                await indexedFile?.compress();
             }
 
             this.files[index] = indexedFile;

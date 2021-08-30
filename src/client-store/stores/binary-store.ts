@@ -4,14 +4,16 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { ClientFileStore} from '../client-file-store';
 import { ClientFile } from '../client-file';
 import { getFileName } from '../file-naming';
+import { Store } from './store';
 
 
 /**
  * Controls misc binary file storage.
  */
-export class BinaryStore {
+export class BinaryStore extends Store {
 
-    public constructor(private fileStore: ClientFileStore) {
+    public constructor(fileStore: ClientFileStore) {
+        super(fileStore, 'binary');
     }
 
     /**
@@ -50,7 +52,7 @@ export class BinaryStore {
             return null;
         }
 
-        const binaryIndex = this.fileStore.getIndex('binary');
+        const binaryIndex = this.fileStore.getArchive('binary');
         return binaryIndex.getFile(nameOrId) || null;
     }
 
@@ -59,7 +61,7 @@ export class BinaryStore {
      * @returns The list of decoded files from the binary store.
      */
     public decodeBinaryFileStore(): ClientFile[] {
-        const binaryIndex = this.fileStore.getIndex('binary');
+        const binaryIndex = this.fileStore.getArchive('binary');
         const binaryFileCount = binaryIndex.groups.size;
         const binaryFiles: ClientFile[] = new Array(binaryFileCount);
 

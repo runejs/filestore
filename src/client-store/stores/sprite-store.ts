@@ -5,6 +5,7 @@ import { PNG } from 'pngjs';
 import { ClientFileStore} from '../client-file-store';
 import { ClientFile } from '../client-file';
 import { getFileName } from '../file-naming';
+import { Store } from './store';
 
 
 export function toRgb(color: number): [ number, number, number ] {
@@ -307,10 +308,10 @@ export class SpritePack {
 /**
  * Controls SpritePack file storage.
  */
-export class SpriteStore {
+export class SpriteStore extends Store {
 
-
-    public constructor(private fileStore: ClientFileStore) {
+    public constructor(fileStore: ClientFileStore) {
+        super(fileStore, 'sprites');
     }
 
     public async writeToDisk(): Promise<void> {
@@ -350,7 +351,7 @@ export class SpriteStore {
             return null;
         }
 
-        const spritePackIndex = this.fileStore.getIndex('sprites');
+        const spritePackIndex = this.fileStore.getArchive('sprites');
         const fileData = spritePackIndex.getFile(nameOrId) || null;
         return fileData ? new SpritePack(fileData) : null;
     }
@@ -360,7 +361,7 @@ export class SpriteStore {
      * @returns The list of decoded SpritePack objects from the sprite store.
      */
     public decodeSpriteStore(): SpritePack[] {
-        const spritePackIndex = this.fileStore.getIndex('sprites');
+        const spritePackIndex = this.fileStore.getArchive('sprites');
         const packCount = spritePackIndex.groups.size;
         const spritePacks: SpritePack[] = new Array(packCount);
 

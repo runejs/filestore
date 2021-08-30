@@ -190,12 +190,15 @@ export class Font {
  */
 export class FontStore {
 
+    public readonly fileStore: ClientFileStore;
+
     /**
      * A map of loaded game fonts by name.
      */
     public readonly fonts: Map<FontName, Font>;
 
-    public constructor(private readonly filestore: ClientFileStore) {
+    public constructor(fileStore: ClientFileStore) {
+        this.fileStore = fileStore;
         this.fonts = new Map<FontName, Font>();
     }
 
@@ -204,7 +207,7 @@ export class FontStore {
      */
     public loadFonts(): FontStore {
         for(const fontName of fontNames) {
-            this.fonts.set(fontName, new Font(fontName, this.filestore.spriteStore));
+            this.fonts.set(fontName, new Font(fontName, this.fileStore.spriteStore));
         }
 
         return this;

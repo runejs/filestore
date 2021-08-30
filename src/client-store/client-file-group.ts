@@ -13,6 +13,8 @@ export class ClientFileGroup extends ClientFile {
      */
     public files: Map<number, ClientFile> = new Map<number, ClientFile>();
 
+    public fileIndices: number[];
+
     /**
      * The type of file, either a `group` or a plain `file`.
      */
@@ -128,6 +130,12 @@ export class ClientFileGroup extends ClientFile {
 
                 buffer.copy(this.files.get(id).content, 0, buffer.readerIndex, sourceEnd);
                 buffer.readerIndex = sourceEnd;
+            }
+        }
+
+        for(const [ key, file ] of this.files) {
+            if(!file) {
+                this.files.delete(key);
             }
         }
 

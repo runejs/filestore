@@ -8,3 +8,6 @@
 /dist
 /stores
 /dist/run.*
+/lib/run.*
+/lib/dev.*
+/lib/unpack.*

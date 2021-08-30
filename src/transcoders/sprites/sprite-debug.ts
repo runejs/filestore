@@ -6,6 +6,7 @@ import { ColorType, HCL, HSB, HSL, IColor, LAB, RGBA, padNumber } from '../../ut
 import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
 import { ColorNode, ColorQuantizer, MAX_DEPTH } from './color-quantizer';
+import spriteCodec from './sprite.transcoder';
 
 
 const spriteDebugDir = join('.', 'output', 'debug', 'sprites');
@@ -97,7 +98,7 @@ export const printSpritePaletteIndices = (type: SpriteStorageMethod,
                                           height: number,
                                           indexedPixels: number[],
                                           colorPalette: RGBA[]): void =>
-    debugSpritePaletteIndices(type, width, height, indexedPixels, colorPalette).forEach(line => console.log(line));
+    debugSpritePaletteIndices(type, width, height, indexedPixels, colorPalette).forEach(line => logger.info(line));
 
 
 
@@ -182,4 +183,69 @@ export const dumpSpriteSheetData = (spriteSheet: SpriteSheet): void => {
 
     const paletteImageBuffer = PNG.sync.write(png.pack());
     writeFileSync(join(spriteSheetDir, `palette.png`), paletteImageBuffer);
+};
+
+
+export const validateSpriteFormats = (debugDir: string): void => {
+    logger.info('\n\nChecking column-major files...');
+
+    const debug = true;
+
+    let columnCorrect: number = 0;
+    let columnIncorrect: number = 0;
+    let spriteFiles = fs.readdirSync(path.join(debugDir, 'sprites-column-major'))
+        .filter(fileName => fileName.endsWith('.png'));
+
+    for(let i = 0; i < spriteFiles.length; i++) {
+        const spriteFile: Buffer = fs.readFileSync(path.join(debugDir, 'sprites-column-major', spriteFiles[i]));
+        const result = spriteCodec.encode({
+            fileIndex: i,
+            fileName: spriteFiles[i].replace('.png', '')
+        }, spriteFile, {
+            debug,
+            forceStorageMethod: 'column-major'
+        });
+
+        if(result === null) {
+            columnIncorrect++;
+        } else {
+            columnCorrect++;
+        }
+    }
+
+    const columnTotal = columnCorrect + columnIncorrect;
+    const columnPercentRight = Math.round((columnCorrect / columnTotal) * 100);
+
+    let rowCorrect = 0;
+    let rowIncorrect = 0;
+
+    logger.info('\n\nChecking row-major files...');
+
+    spriteFiles = fs.readdirSync(path.join(debugDir, 'sprites-row-major'))
+        .filter(fileName => fileName.endsWith('.png'));
+
+    for(let i = 0; i < spriteFiles.length; i++) {
+        const spriteFile: Buffer = fs.readFileSync(path.join(debugDir, 'sprites-row-major', spriteFiles[i]));
+        const result = spriteCodec.encode({
+            fileIndex: i,
+            fileName: spriteFiles[i].replace('.png', '')
+        }, spriteFile, {
+            debug,
+            forceStorageMethod: 'row-major'
+        });
+
+        if(result === null) {
+            rowIncorrect++;
+        } else {
+            rowCorrect++;
+        }
+    }
+
+    const rowTotal = rowCorrect + rowIncorrect;
+    const rowPercentRight = Math.round((rowCorrect / rowTotal) * 100);
+
+    logger.info('');
+    logger.info(`Row-Major: ${rowPercentRight}% (${rowCorrect}:${rowIncorrect} of ${rowTotal})`);
+    logger.info(`Column-Major: ${columnPercentRight}% (${columnCorrect}:${columnIncorrect} of ${columnTotal})`);
+    logger.info('');
 };

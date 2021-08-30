@@ -7,6 +7,7 @@ import { ClientFileStore } from './client-file-store';
 import { decompressFile, StoreFile } from '../compression';
 import { getIndexName } from '../file-store';
 import { ArchiveDecompressor } from './decompression/archive-decompressor';
+import { DecompressionOptions } from './decompression/decompression-options';
 
 
 const NAME_FLAG = 0x01;
@@ -259,6 +260,8 @@ export class ClientArchive {
                 fileIndices[i] = accumulator += delta;
             }
 
+            group.fileIndices = fileIndices;
+
             if(fileIndices.length > 1) {
                 fileIndices.forEach(index => group.files.set(index, null));
             } else if(!fileIndices.length || group.files.size <= 1) {
@@ -284,19 +287,9 @@ export class ClientArchive {
         }
     }
 
-    /**
-     * Generates a zip archive of this client cache archive, containing all of it's indexed files.
-     * @param matchMapFiles Defaults to false - Whether or not to ensure that map files have matching decrypted
-     * landscape files. Setting this to true will remove all map files (mX_Y.dat) for which the corresponding
-     * landscape file (if it has one) does not have any XTEA encryption keys. This helps with finding map files
-     * that specifically have valid corresponding landscape files.
-     * @param debug Whether or not to run the decompressor tools in debug mode - this will prevent files from
-     * being written to the disk and will only run the decompression and file conversion code. Debug mode will
-     * still write .index files to /output/stores.
-     */
-    public async decompressArchive(matchMapFiles: boolean = false, debug: boolean = false): Promise<void> {
+    public async decompressArchive(options?: DecompressionOptions): Promise<void> {
         const decompressor = new ArchiveDecompressor(this);
-        await decompressor.decompressArchive(matchMapFiles, debug);
+        await decompressor.decompressArchive(options);
     }
 
     public get name(): string {

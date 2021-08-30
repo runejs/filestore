@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { ClientFileStore} from '../client-file-store';
 import { ClientFile } from '../client-file';
 import { getFileName } from '../file-naming';
+import { Store } from './store';
 
 
 /**
@@ -43,9 +44,10 @@ export class MidiFile {
 /**
  * Controls MIDI file storage.
  */
-export class MusicStore {
+export class MusicStore extends Store {
 
-    public constructor(private fileStore: ClientFileStore) {
+    public constructor(fileStore: ClientFileStore) {
+        super(fileStore, 'music');
     }
 
     /**
@@ -72,7 +74,7 @@ export class MusicStore {
             return null;
         }
 
-        const midiArchiveIndex = this.fileStore.getIndex('music');
+        const midiArchiveIndex = this.fileStore.getArchive('music');
         const fileData = midiArchiveIndex.getFile(nameOrId);
 
         return fileData ? new MidiFile(fileData) : null;
@@ -83,7 +85,7 @@ export class MusicStore {
      * @returns The list of decoded MidiFile objects from the midi store.
      */
     public decodeMusicStore(): MidiFile[] {
-        const midiArchiveIndex = this.fileStore.getIndex('music');
+        const midiArchiveIndex = this.fileStore.getArchive('music');
         const fileCount = midiArchiveIndex.groups.size;
         const midiFiles: MidiFile[] = new Array(fileCount);
 

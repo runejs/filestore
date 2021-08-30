@@ -23,10 +23,9 @@ export class VarbitStore {
     /**
      * The Varbit Archive, containing details about every game varbit.
      */
-    public readonly varbitArchive: ClientFileGroup;
+    private _varbitGroup: ClientFileGroup;
 
     public constructor(private configStore: ConfigStore) {
-        this.varbitArchive = this.configStore.getArchive('varbits');
     }
 
     /**
@@ -34,7 +33,7 @@ export class VarbitStore {
      * @param varbitId The game id of the varbit to find.
      */
     public getVarbit(varbitId: number): VarbitConfig | null {
-        const varbitArchive = this.varbitArchive;
+        const varbitArchive = this.varbitGroup;
 
         if(!varbitArchive) {
             logger.error(`Varbit archive not found.`);
@@ -82,16 +81,16 @@ export class VarbitStore {
      * the resulting VarbitConfig array.
      */
     public decodeVarbitStore(): VarbitConfig[] {
-        if(!this.varbitArchive) {
+        if(!this.varbitGroup) {
             logger.error(`Varbit archive not found.`);
             return null;
         }
 
-        const varbitCount = this.varbitArchive.files.size;
+        const varbitCount = this.varbitGroup.files.size;
         const varbitList: VarbitConfig[] = new Array(varbitCount);
 
         for(let varbitId = 0; varbitId < varbitCount; varbitId++) {
-            const varbitFile = this.varbitArchive.getFile(varbitId) || null;
+            const varbitFile = this.varbitGroup.getFile(varbitId) || null;
 
             if(!varbitFile) {
                 logger.error(`Varbit file not found.`);
@@ -102,6 +101,13 @@ export class VarbitStore {
         }
 
         return varbitList;
+    }
+
+    public get varbitGroup(): ClientFileGroup {
+        if(!this._varbitGroup) {
+            this._varbitGroup = this.configStore.getGroup('varbits');
+        }
+        return this._varbitGroup;
     }
 
 }

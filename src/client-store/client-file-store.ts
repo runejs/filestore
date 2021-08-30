@@ -18,8 +18,8 @@ import {
     WidgetStore,
     XteaDefinition
 } from './stores';
-import { archiveConfig, ArchiveName, IndexName } from '../file-store/archive';
-import { logger } from '@runejs/core';
+import { archiveConfig, ArchiveName, IndexName } from '../file-store';
+import { DecompressionOptions } from './decompression/decompression-options';
 
 
 export class ClientFileStore {
@@ -43,18 +43,18 @@ export class ClientFileStore {
 
     public readonly indexes = new Map<number, ClientArchive>();
 
-    public readonly xteas: { [key: number]: XteaDefinition };
+    public readonly xteaKeys: { [key: number]: XteaDefinition };
 
     public constructor(
             filestoreDir: string,
             options?: {
                 configDir?: string,
-                xteas?: { [key: number]: XteaDefinition }
+                xteaKeys?: { [key: number]: XteaDefinition }
             }
         ) {
         this.filestoreDir = filestoreDir;
         this.configDir = options?.configDir || filestoreDir;
-        this.xteas = options?.xteas || {};
+        this.xteaKeys = options?.xteaKeys || {};
         this.channels = loadClientStore(filestoreDir);
 
         this.binaryStore = new BinaryStore(this);
@@ -63,7 +63,7 @@ export class ClientFileStore {
         this.jingleStore = new JingleStore(this);
         this.modelStore = new ModelStore(this);
         this.musicStore = new MusicStore(this);
-        this.regionStore = new RegionStore(this, options?.xteas);
+        this.regionStore = new RegionStore(this, options?.xteaKeys);
         this.soundStore = new SoundStore(this);
         this.spriteStore = new SpriteStore(this);
         this.widgetStore = new WidgetStore(this);
@@ -74,36 +74,47 @@ export class ClientFileStore {
     }
 
     /**
-     * Fetches the specified File Index.
-     * @param indexId The string or numeric ID of the File Index to find.
+     * Fetches the specified indexed archive.
+     * @param archiveIndex The numeric index of the archive to find.
      */
-    public getIndex(indexId: number | IndexName): ClientArchive {
-        logger.info(indexId);
-        if(typeof indexId !== 'number') {
-            indexId = archiveConfig[indexId].index;
+    public getArchive(archiveIndex: number): ClientArchive;
+
+    /**
+     * Fetches the specified indexed archive.
+     * @param archiveName The name of the archive to find.
+     */
+    public getArchive(archiveName: IndexName): ClientArchive;
+
+    /**
+     * Fetches the specified indexed archive.
+     * @param archiveIndexOrName The string or numeric index of the archive to find.
+     */
+    public getArchive(archiveIndexOrName: number | IndexName): ClientArchive {
+        let archiveIndex: number;
+        if(typeof archiveIndexOrName !== 'number') {
+            archiveIndex = archiveConfig[archiveIndexOrName].index;
+        } else {
+            archiveIndex = archiveIndexOrName;
         }
 
-        if(!this.indexes.has(indexId)) {
-            const index = new ClientArchive(this, indexId, this.channels);
+        if(!this.indexes.has(archiveIndex)) {
+            const index = new ClientArchive(this, archiveIndex, this.channels);
             index.decodePackedArchive();
-            this.indexes.set(indexId, index);
+            this.indexes.set(archiveIndex, index);
             return index;
         } else {
-            return this.indexes.get(indexId);
+            return this.indexes.get(archiveIndex);
         }
     }
 
-    public async decompressArchives(matchMapFiles: boolean = false): Promise<void> {
-        const indexes = this.getAllIndexes();
-        for(const index of indexes) {
-            await index.decompressArchive(matchMapFiles);
-        }
+    public async decompressArchives(options?: DecompressionOptions): Promise<void> {
+        await Promise.all(this.getAllArchives().map(archive => archive.decompressArchive(options)));
     }
 
-    public getAllIndexes(): ClientArchive[] {
+    public getAllArchives(): ClientArchive[] {
         const archiveNames: ArchiveName[] = Object.keys(archiveConfig)
             .filter(name => name !== 'main') as ArchiveName[];
-        return archiveNames.map(archiveName => this.getIndex(archiveConfig[archiveName].index));
+        return archiveNames.map(archiveName => this.getArchive(archiveConfig[archiveName].index));
     }
 
     public get itemStore(): ItemStore {

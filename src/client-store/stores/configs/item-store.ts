@@ -79,10 +79,9 @@ export class ItemStore {
     /**
      * The Item Archive, containing details about every game item.
      */
-    public readonly itemArchive: ClientFileGroup;
+    private _itemGroup: ClientFileGroup;
 
     public constructor(private configStore: ConfigStore) {
-        this.itemArchive = this.configStore.getArchive('items');
     }
 
     /**
@@ -90,7 +89,7 @@ export class ItemStore {
      * @param itemId The game id of the item to find.
      */
     public getItem(itemId: number): ItemConfig | null {
-        const itemArchive = this.itemArchive;
+        const itemArchive = this.itemGroup;
 
         if(!itemArchive) {
             logger.error(`Item archive not found.`);
@@ -415,16 +414,16 @@ export class ItemStore {
      * the resulting ItemConfig array.
      */
     public decodeItemStore(): ItemConfig[] {
-        if(!this.itemArchive) {
+        if(!this.itemGroup) {
             logger.error(`Item archive not found.`);
             return null;
         }
 
-        const itemCount = this.itemArchive.files.size;
+        const itemCount = this.itemGroup.files.size;
         const itemList: ItemConfig[] = new Array(itemCount);
 
         for(let itemId = 0; itemId < itemCount; itemId++) {
-            const itemFile = this.itemArchive.getFile(itemId) || null;
+            const itemFile = this.itemGroup.getFile(itemId) || null;
 
             if(!itemFile) {
                 logger.error(`Item file not found.`);
@@ -435,6 +434,13 @@ export class ItemStore {
         }
 
         return itemList;
+    }
+
+    public get itemGroup(): ClientFileGroup {
+        if(!this._itemGroup) {
+            this._itemGroup = this.configStore.getGroup('items');
+        }
+        return this._itemGroup;
     }
 
 }

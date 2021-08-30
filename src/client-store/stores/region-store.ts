@@ -4,6 +4,7 @@ import path from 'path';
 
 import { ClientFileStore } from '../client-file-store';
 import { ClientArchive } from '../client-archive';
+import { Store } from './store';
 
 
 export const maxRegions = 32768;
@@ -56,14 +57,13 @@ export interface XteaDefinition {
 
 export type TileArray = (Uint8Array[])[];
 
-export class RegionStore {
+export class RegionStore extends Store {
 
     public readonly xteas: { [key: number]: XteaDefinition } = {};
 
-    private readonly regionIndex: ClientArchive;
+    public constructor(fileStore: ClientFileStore, xteas?: { [p: number]: XteaDefinition }) {
+        super(fileStore, 'maps');
 
-    public constructor(private fileStore: ClientFileStore, xteas?: { [p: number]: XteaDefinition }) {
-        this.regionIndex = this.fileStore.getIndex('maps');
         if(xteas) {
             this.xteas = xteas;
         } else {
@@ -93,7 +93,7 @@ export class RegionStore {
     public getLandscapeFile(regionX: number, regionY: number): LandscapeFile | null {
         const keys = this.getMapKeys(regionX, regionY);
 
-        const landscapeFile = this.regionIndex.getFile(`l${regionX}_${regionY}`, keys);
+        const landscapeFile = this.archive.getFile(`l${regionX}_${regionY}`, keys);
         if(!landscapeFile) {
             logger.warn(`Landscape file not found for region ${regionX},${regionY}`);
             return null;
@@ -148,7 +148,7 @@ export class RegionStore {
     }
 
     public getMapFile(regionX: number, regionY: number): MapFile | null {
-        const mapFile = this.regionIndex.getFile(`m${regionX}_${regionY}`);
+        const mapFile = this.archive.getFile(`m${regionX}_${regionY}`);
         if(!mapFile) {
             logger.warn(`Map file not found for region ${regionX},${regionY}`);
             return null;

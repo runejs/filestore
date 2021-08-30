@@ -6,6 +6,7 @@ import { ClientFile } from '../client-file';
 import { ClientFileGroup } from '../client-file-group';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { logger } from '@runejs/core';
+import { Store } from './store';
 
 
 export abstract class WidgetBase {
@@ -181,15 +182,10 @@ export class LineWidget extends WidgetBase {
 /**
  * Controls game interface widget file format and storage.
  */
-export class WidgetStore {
+export class WidgetStore extends Store {
 
-    /**
-     * The main file index of the widget store.
-     */
-    public readonly widgetFileIndex: ClientArchive;
-
-    public constructor(private fileStore: ClientFileStore) {
-        this.widgetFileIndex = fileStore.getIndex('widgets');
+    public constructor(fileStore: ClientFileStore) {
+        super(fileStore, 'widgets');
     }
 
     /**
@@ -211,7 +207,7 @@ export class WidgetStore {
      * @param id The numeric ID of the widget file to decode.
      */
     public decodeWidget(id: number): WidgetBase {
-        const file = this.widgetFileIndex.groups.get(id);
+        const file = this.archive.groups.get(id);
         if(file.type === 'file') {
             return this.decodeWidgetFile(id, file);
         } else if(file.type === 'group') {
@@ -251,7 +247,7 @@ export class WidgetStore {
      * @returns The list of decoded WidgetBase objects from the widget store.
      */
     public decodeWidgetStore(): WidgetBase[] {
-        const widgetCount = this.widgetFileIndex.groups.size;
+        const widgetCount = this.archive.groups.size;
         const widgets: WidgetBase[] = new Array(widgetCount);
         for(let widgetId = 0; widgetId < widgetCount; widgetId++) {
             try {

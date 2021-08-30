@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 import { ClientFileStore } from '../client-file-store';
 import { ClientFile } from '../client-file';
+import { Store } from './store';
 
 
 /**
@@ -41,9 +42,10 @@ export class SoundFile {
 /**
  * Controls sound file storage.
  */
-export class SoundStore {
+export class SoundStore extends Store {
 
-    public constructor(private fileStore: ClientFileStore) {
+    public constructor(fileStore: ClientFileStore) {
+        super(fileStore, 'sounds');
     }
 
     /**
@@ -70,7 +72,7 @@ export class SoundStore {
             return null;
         }
 
-        const soundArchiveIndex = this.fileStore.getIndex('sounds');
+        const soundArchiveIndex = this.fileStore.getArchive('sounds');
         const fileData = soundArchiveIndex.getFile(id);
         return fileData ? new SoundFile(fileData) : null;
     }
@@ -80,7 +82,7 @@ export class SoundStore {
      * @returns The list of decoded SoundFile objects from the sound store.
      */
     public decodeSoundStore(): SoundFile[] {
-        const soundArchiveIndex = this.fileStore.getIndex('sounds');
+        const soundArchiveIndex = this.fileStore.getArchive('sounds');
         const fileCount = soundArchiveIndex.groups.size;
         const soundFiles: SoundFile[] = new Array(fileCount);
 

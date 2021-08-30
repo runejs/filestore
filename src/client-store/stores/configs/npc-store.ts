@@ -67,14 +67,14 @@ export class NpcConfig {
  */
 export class NpcStore {
 
+    public readonly children: Map<number, number[]> = new Map();
+
     /**
      * The NPC Archive, containing details about every game NPC.
      */
-    public readonly npcArchive: ClientFileGroup;
-    private readonly children: Map<number, number[]> = new Map();
+    private _npcGroup: ClientFileGroup;
 
     public constructor(private configStore: ConfigStore) {
-        this.npcArchive = this.configStore.getArchive('npcs');
     }
 
     /**
@@ -82,7 +82,7 @@ export class NpcStore {
      * @param npcId The game id of the npc to find.
      */
     public getNpc(npcId: number): NpcConfig | null {
-        const npcArchive = this.npcArchive;
+        const npcArchive = this.npcGroup;
 
         if(!npcArchive) {
             logger.error(`Npc archive not found.`);
@@ -207,16 +207,16 @@ export class NpcStore {
      * the resulting NpcConfig array.
      */
     public decodeNpcStore(): NpcConfig[] {
-        if(!this.npcArchive) {
+        if(!this.npcGroup) {
             logger.error(`Npc archive not found.`);
             return null;
         }
 
-        const npcCount = this.npcArchive.files.size;
+        const npcCount = this.npcGroup.files.size;
         const npcList: NpcConfig[] = new Array(npcCount);
 
         for(let npcId = 0; npcId < npcCount; npcId++) {
-            const npcFile = this.npcArchive.getFile(npcId) || null;
+            const npcFile = this.npcGroup.getFile(npcId) || null;
 
             if(!npcFile) {
                 logger.error(`Npc file not found.`);
@@ -242,6 +242,13 @@ export class NpcStore {
         }
 
         return npcList;
+    }
+
+    public get npcGroup(): ClientFileGroup {
+        if(!this._npcGroup) {
+            this._npcGroup = this.configStore.getGroup('npcs');
+        }
+        return this._npcGroup;
     }
 
 }

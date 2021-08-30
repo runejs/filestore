@@ -12,6 +12,7 @@ import { ClientArchive } from '../client-archive';
 import { extractIndexedFile } from '../data';
 import { getFileName } from '../file-naming';
 import Js5Transcoder from '../../transcoders/js5-transcoder';
+import { DecompressionOptions } from './decompression-options';
 
 
 export class ArchiveDecompressor {
@@ -36,7 +37,10 @@ export class ArchiveDecompressor {
 
     // @TODO automated file verification/validation system
 
-    public async decompressArchive(matchMapFiles: boolean = false, debug: boolean = false): Promise<void> {
+    public async decompressArchive(options?: DecompressionOptions): Promise<void> {
+        options = DecompressionOptions.create(options);
+        const { debug, matchMapFiles } = options;
+
         if(!debug) {
             if(fs.existsSync(this.storePath)) {
                 fs.rmSync(this.storePath, {

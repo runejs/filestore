@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 import { ClientFileStore } from '../client-file-store';
 import { ClientFile } from '../client-file';
+import { Store } from './store';
 
 
 /**
@@ -41,9 +42,10 @@ export class OggFile {
 /**
  * Controls short jingle (.ogg) file storage.
  */
-export class JingleStore {
+export class JingleStore extends Store {
 
-    public constructor(private fileStore: ClientFileStore) {
+    public constructor(fileStore: ClientFileStore) {
+        super(fileStore, 'jingles');
     }
 
     /**
@@ -70,7 +72,7 @@ export class JingleStore {
             return null;
         }
 
-        const oggArchiveIndex = this.fileStore.getIndex('jingles');
+        const oggArchiveIndex = this.fileStore.getArchive('jingles');
         const fileData = oggArchiveIndex.getFile(id);
         return fileData ? new OggFile(fileData) : null;
     }
@@ -80,7 +82,7 @@ export class JingleStore {
      * @returns The list of decoded OggFile objects from the OGG store.
      */
     public decodeJingleStore(): OggFile[] {
-        const oggArchiveIndex = this.fileStore.getIndex('jingles');
+        const oggArchiveIndex = this.fileStore.getArchive('jingles');
         const fileCount = oggArchiveIndex.groups.size;
         const oggFiles: OggFile[] = new Array(fileCount);
 

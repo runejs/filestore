@@ -92,10 +92,9 @@ export class ObjectStore {
     /**
      * The Object Archive, containing details about every game object.
      */
-    public readonly objectArchive: ClientFileGroup;
+    private _objectGroup: ClientFileGroup;
 
     public constructor(private configStore: ConfigStore) {
-        this.objectArchive = this.configStore.getArchive('objects');
     }
 
     /**
@@ -103,7 +102,7 @@ export class ObjectStore {
      * @param objectId The game id of the object to find.
      */
     public getObject(objectId: number): ObjectConfig | null {
-        const objectArchive = this.objectArchive;
+        const objectArchive = this.objectGroup;
 
         if(!objectArchive) {
             logger.error(`Object archive not found.`);
@@ -276,16 +275,16 @@ export class ObjectStore {
      * the resulting ObjectConfig array.
      */
     public decodeObjectStore(): ObjectConfig[] {
-        if(!this.objectArchive) {
+        if(!this.objectGroup) {
             logger.error(`Object archive not found.`);
             return null;
         }
 
-        const objectCount = this.objectArchive.files.size;
+        const objectCount = this.objectGroup.files.size;
         const objectList: ObjectConfig[] = new Array(objectCount);
 
         for(let objectId = 0; objectId < objectCount; objectId++) {
-            const objectFile = this.objectArchive.getFile(objectId) || null;
+            const objectFile = this.objectGroup.getFile(objectId) || null;
 
             if(!objectFile) {
                 logger.error(`Object file not found.`);
@@ -296,6 +295,13 @@ export class ObjectStore {
         }
 
         return objectList;
+    }
+
+    public get objectGroup(): ClientFileGroup {
+        if(!this._objectGroup) {
+            this._objectGroup = this.configStore.getGroup('objects');
+        }
+        return this._objectGroup;
     }
 
 }

@@ -15,52 +15,55 @@ const NAME_FLAG = 0x01;
 export class ClientArchive {
 
     /**
-     * The client file store instance for reference.
+     * The client file store that this archive belongs to.
      */
     public readonly clientFileStore: ClientFileStore;
 
     /**
-     * The index of this archive within the JS5 filestore.
+     * The client store channel from which the archive data was pulled from.
+     */
+    public readonly clientStoreChannel: ClientStoreChannel;
+
+    /**
+     * The index of this archive within the JS5 client file store.
      */
     public readonly archiveIndex: number;
 
     /**
-     * The file format used by the File Index.
+     * The file format used by the archive (usually `5`).
      */
     public format: number;
 
     /**
-     * The current version of the File Index, if versioned.
+     * The current version of the archive, if versioned.
      */
     public version: number;
 
     /**
-     * The method used by the File Index for data compression.
+     * The file compression method used to compress the archive and it's file.
      */
     public compression: number;
 
     /**
-     * Additional settings and information about the File Index (name & whirlpool information).
+     * Save the hashed name of each file in the archive's index data.
      */
-    public settings: number;
+    public saveFileNames: number;
 
     /**
-     * An array of all files housed within this File Index. Either `ClientFileGroup` or `ClientFile`.
+     * A map of all indexed file groups in this archive.
      */
-    public files: Map<number, ClientFile | ClientFileGroup> = new Map<number, ClientFileGroup | ClientFile>();
-
-    public readonly filestoreChannels: ClientStoreChannel;
+    public groups: Map<number, ClientFileGroup> = new Map<number, ClientFileGroup>();
 
     /**
-     * Creates a new File Index with the specified index ID and filestore channel.
-     * @param clientFileStore The client file store instance for reference.
-     * @param indexId The ID of this File Index.
-     * @param filestoreChannels The main filestore channel for data access.
+     * Creates a new client store archive instance with the specified index.
+     * @param clientFileStore The client file store that the archive belongs to.
+     * @param archiveIndex The index of this archive within the file store.
+     * @param clientStoreChannel The client file store channel for data access.
      */
-    public constructor(clientFileStore: ClientFileStore, indexId: number, filestoreChannels: ClientStoreChannel) {
+    public constructor(clientFileStore: ClientFileStore, archiveIndex: number, clientStoreChannel: ClientStoreChannel) {
         this.clientFileStore = clientFileStore;
-        this.archiveIndex = indexId;
-        this.filestoreChannels = filestoreChannels;
+        this.archiveIndex = archiveIndex;
+        this.clientStoreChannel = clientStoreChannel;
     }
 
     /**
@@ -90,7 +93,7 @@ export class ClientArchive {
         if(typeof fileIndexOrName === 'string') {
             fileData = this.findByName(fileIndexOrName) as ClientFile;
         } else {
-            fileData = this.files[fileIndexOrName as number] as ClientFile;
+            fileData = this.groups[fileIndexOrName as number] as ClientFile;
         }
 
         if(!fileData) {
@@ -117,28 +120,28 @@ export class ClientArchive {
      * @param fileGroupIndex The index of the file group to fetch.
      * @returns The requested file group object, or null if no file group was found.
      */
-    public getArchive(fileGroupIndex: number): ClientFileGroup | null;
+    public getFileGroup(fileGroupIndex: number): ClientFileGroup | null;
 
     /**
      * Fetches a file group from this index.
      * @param fileGroupName The name of the file group to fetch.
      * @returns The requested file group object, or null if no file group was found.
      */
-    public getArchive(fileGroupName: string): ClientFileGroup | null;
+    public getFileGroup(fileGroupName: string): ClientFileGroup | null;
 
     /**
      * Fetches a file group from this index.
      * @param fileGroupIndexOrName The ID or name of the file group to fetch.
      * @returns The requested Archive object, or null if no Archive was found.
      */
-    public getArchive(fileGroupIndexOrName: number | string): ClientFileGroup | null;
-    public getArchive(fileGroupIndexOrName: number | string): ClientFileGroup | null {
+    public getFileGroup(fileGroupIndexOrName: number | string): ClientFileGroup | null;
+    public getFileGroup(fileGroupIndexOrName: number | string): ClientFileGroup | null {
         let archive: ClientFileGroup;
 
         if(typeof fileGroupIndexOrName === 'string') {
             archive = this.findByName(fileGroupIndexOrName) as ClientFileGroup;
         } else {
-            archive = this.files[fileGroupIndexOrName as number] as ClientFileGroup;
+            archive = this.groups[fileGroupIndexOrName as number] as ClientFileGroup;
         }
 
         if(!archive) {
@@ -149,7 +152,7 @@ export class ClientArchive {
             throw new Error(`Requested item ${fileGroupIndexOrName} in index ${this.archiveIndex} is of type FileData, not Archive.`);
         }
 
-        archive.decodeArchiveFiles();
+        archive.decodeGroupFiles();
 
         return archive;
     }
@@ -161,7 +164,7 @@ export class ClientArchive {
      */
     public findByName(fileName: string): ClientFileGroup | ClientFile | null {
         const nameHash = hashFileName(fileName);
-        for(const [ , file ] of this.files) {
+        for(const [ , file ] of this.groups) {
             if(file?.nameHash === nameHash) {
                 return file;
             }
@@ -169,9 +172,13 @@ export class ClientArchive {
         return null;
     }
 
+    /**
+     * Fetches the archive's index data from the client store data channel.
+     */
     public getIndexFile(): StoreFile {
         try {
-            const archiveIndex = extractIndexedFile(this.archiveIndex, 255, this.filestoreChannels);
+            const archiveIndex = extractIndexedFile(this.archiveIndex, 255, this.clientStoreChannel);
+            archiveIndex.dataFile.readerIndex = 0;
             return decompressFile(archiveIndex.dataFile);
         } catch(error) {
             logger.error(`Error decoding index ${this.archiveIndex}:`);
@@ -181,94 +188,95 @@ export class ClientArchive {
     }
 
     /**
-     * Decodes the archive file data from the packed client cache on disk.
+     * Decodes the archive file data from the client store data channel.
      */
     public decodePackedArchive(): void {
         const indexFile = this.getIndexFile();
         if(!indexFile) {
+            logger.error(`Index file error.`);
             return;
         }
+
+        logger.info(`Decoding archive ${this.name}...`);
 
         const { compression, version, buffer } = indexFile;
 
         buffer.readerIndex = 0;
 
+        this.groups.clear();
         this.version = version;
         this.compression = compression; // index manifests are also compressed to the same level as standard files
 
         this.format = buffer.get('byte', 'unsigned');
-        this.settings = buffer.get('byte', 'unsigned');
+        this.saveFileNames = buffer.get('byte', 'unsigned');
 
         const fileCount = buffer.get('short', 'unsigned');
 
-        const indexes: number[] = new Array(fileCount);
+        const groupIndices: number[] = new Array(fileCount);
+
+        logger.info(`${fileCount} file(s) found.`);
 
         let accumulator = 0;
+        // @TODO next
         for(let i = 0; i < fileCount; i++) {
             const delta = buffer.get('short', 'unsigned');
-            const fileIndex = accumulator += delta;
-            indexes[i] = fileIndex;
-            this.files.set(fileIndex, new ClientFile(fileIndex, this, this.filestoreChannels));
+            groupIndices[i] = accumulator += delta;
+            this.groups.set(groupIndices[i], new ClientFileGroup(groupIndices[i], this, this.clientStoreChannel));
         }
 
-        if((this.settings & NAME_FLAG) !== 0) {
-            for(const index of indexes) {
-                this.files.get(index).nameHash = buffer.get('int');
+        if((this.saveFileNames & NAME_FLAG) !== 0) {
+            for(const groupIndex of groupIndices) {
+                this.groups.get(groupIndex).nameHash = buffer.get('int');
             }
         }
 
         /* read the crc values */
-        for(const index of indexes) {
-            this.files.get(index).crc = buffer.get('int');
+        for(const groupIndex of groupIndices) {
+            this.groups.get(groupIndex).crc = buffer.get('int');
         }
 
         /* read the version numbers */
-        for(const index of indexes) {
-            this.files.get(index).version = buffer.get('int');
+        for(const groupIndex of groupIndices) {
+            this.groups.get(groupIndex).version = buffer.get('int');
         }
 
         /* read the child count */
-        const childIndexes: Map<number, number[]> = new Map<number, number[]>();
+        const groupFileIndices: Map<number, number[]> = new Map<number, number[]>();
 
-        for(const index of indexes) {
-            // group child count
-            childIndexes.set(index, new Array(buffer.get('short', 'unsigned')));
+        for(const groupIndex of groupIndices) {
+            // group file count
+            groupFileIndices.set(groupIndex, new Array(buffer.get('short', 'unsigned')));
         }
 
-        /* read the child indexes */
-        for(const index of indexes) {
+        /* read the file groupIndices */
+        for(const groupIndex of groupIndices) {
+            const group = this.groups.get(groupIndex);
+            const fileIndices = groupFileIndices.get(groupIndex);
+
             accumulator = 0;
-            for(let i = 0; i < childIndexes.get(index).length; i++) {
+            for(let i = 0; i < fileIndices.length; i++) {
                 const delta = buffer.get('short', 'unsigned');
-                childIndexes.get(index)[i] = (accumulator += delta);
+                fileIndices[i] = accumulator += delta;
             }
 
-            const file = this.files.get(index);
-
-            if(childIndexes.get(index).length > 1) {
-                if(file.type === 'file') {
-                    this.files.set(index, new ClientFileGroup(file, this, this.filestoreChannels));
-                }
-
-                const fileGroup = this.files.get(index) as ClientFileGroup;
-
-                for(const childIndex of childIndexes.get(index)) {
-                    fileGroup.children.set(childIndex, new ClientFile(childIndex, this, this.filestoreChannels));
-                }
+            if(fileIndices.length > 1) {
+                fileIndices.forEach(index => group.files.set(index, null));
+            } else if(!fileIndices.length || group.files.size <= 1) {
+                group.singleFile = true;
+                group.files.set(0, new ClientFile(groupIndex, this, this.clientStoreChannel));
             }
         }
 
         /* read the child name hashes */
-        if((this.settings & NAME_FLAG) !== 0) {
-            for(const index of indexes) {
-                const fileGroup = this.files.get(index) as ClientFileGroup;
-
-                if(fileGroup?.children?.size) {
-                    for(const childIndex of childIndexes.get(index)) {
+        if((this.saveFileNames & NAME_FLAG) !== 0) {
+            for(const groupIndex of groupIndices) {
+                const fileGroup = this.groups.get(groupIndex);
+                if(fileGroup?.files?.size) {
+                    const fileIndices = groupFileIndices.get(groupIndex);
+                    for(const childIndex of fileIndices) {
                         const nameHash = buffer.get('int');
-
-                        if(fileGroup.children.get(childIndex)) {
-                            fileGroup.children.get(childIndex).nameHash = nameHash;
+                        if(fileGroup.files.get(childIndex)) {
+                            fileGroup.files.get(childIndex).nameHash = nameHash;
                         }
                     }
                 }
@@ -287,9 +295,6 @@ export class ClientArchive {
      * still write .index files to /output/stores.
      */
     public async decompressArchive(matchMapFiles: boolean = false, debug: boolean = false): Promise<void> {
-        if(!this.files.size) {
-            this.decodePackedArchive();
-        }
         const decompressor = new ArchiveDecompressor(this);
         await decompressor.decompressArchive(matchMapFiles, debug);
     }

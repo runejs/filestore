@@ -88,7 +88,7 @@ export class ConfigStore {
             configId = configIdMap[configId];
         }
 
-        return this.configIndex.getArchive(configId);
+        return this.configIndex.getFileGroup(configId);
     }
 
 }

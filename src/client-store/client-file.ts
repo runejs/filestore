@@ -4,6 +4,7 @@ import { extractIndexedFile, ClientStoreChannel } from './data';
 import { ClientArchive } from './client-archive';
 import { decompressFile } from '../compression';
 import { getFileName } from './file-naming';
+import { logger } from '@runejs/core';
 
 
 export class ClientFile {
@@ -11,12 +12,12 @@ export class ClientFile {
     /**
      * The ID of this file within it's File Index.
      */
-    public readonly fileId: number;
+    public readonly fileIndex: number;
 
     /**
      * The File Index that this file belongs to.
      */
-    public readonly index: ClientArchive;
+    public readonly archive: ClientArchive;
 
     /**
      * A numeric hash of the file's name.
@@ -48,19 +49,19 @@ export class ClientFile {
      */
     public type: 'group' | 'file' = 'file';
 
-    protected readonly filestoreChannels: ClientStoreChannel;
+    protected readonly clientStoreChannel: ClientStoreChannel;
     private decompressed: boolean = false;
 
     /**
      * Creates a new `FileData` object.
-     * @param fileId The ID of the file within it's File Index.
-     * @param index The File Index that this file belongs to.
-     * @param filestoreChannels The main filestore channel for data access.
+     * @param fileIndex The ID of the file within it's File Index.
+     * @param archive The File Index that this file belongs to.
+     * @param clientStoreChannel The main filestore channel for data access.
      */
-    public constructor(fileId: number, index: ClientArchive, filestoreChannels: ClientStoreChannel) {
-        this.fileId = fileId;
-        this.index = index;
-        this.filestoreChannels = filestoreChannels;
+    public constructor(fileIndex: number, archive: ClientArchive, clientStoreChannel: ClientStoreChannel) {
+        this.fileIndex = fileIndex;
+        this.archive = archive;
+        this.clientStoreChannel = clientStoreChannel;
     }
 
     /**
@@ -74,11 +75,17 @@ export class ClientFile {
             return this.content;
         }
 
-        const keys = this.index.clientFileStore.xteas[this.name] || undefined;
+        const keys = this.archive.clientFileStore.xteas[this.name] || undefined;
 
         this.decompressed = true;
-        const archiveEntry = extractIndexedFile(this.fileId, this.index.archiveIndex, this.filestoreChannels);
-        const { buffer } = decompressFile(archiveEntry?.dataFile, keys);
+        const archiveEntry = extractIndexedFile(this.fileIndex, this.archive.archiveIndex, this.clientStoreChannel);
+
+        if(!archiveEntry?.dataFile?.length) {
+            logger.error(`Could not find data file for file ${this.fileIndex}`);
+            return null;
+        }
+
+        const { buffer } = decompressFile(archiveEntry.dataFile, keys);
         this.content = buffer;
         return this.content;
     }
@@ -87,7 +94,7 @@ export class ClientFile {
      * The actual string name of the file, if it has one.
      */
     public get name(): string {
-        return `${getFileName(this.nameHash) ?? this.nameHash ?? this.fileId}`;
+        return `${getFileName(this.nameHash) ?? this.nameHash ?? this.fileIndex}`;
     }
 
 }

@@ -34,7 +34,7 @@ export class MidiFile {
     }
 
     public get fileId(): number {
-        return this.fileData?.fileId || -1;
+        return this.fileData?.fileIndex || -1;
     }
 
 }
@@ -84,7 +84,7 @@ export class MusicStore {
      */
     public decodeMusicStore(): MidiFile[] {
         const midiArchiveIndex = this.fileStore.getIndex('music');
-        const fileCount = midiArchiveIndex.files.size;
+        const fileCount = midiArchiveIndex.groups.size;
         const midiFiles: MidiFile[] = new Array(fileCount);
 
         for(let midiId = 0; midiId < fileCount; midiId++) {

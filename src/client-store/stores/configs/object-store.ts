@@ -128,7 +128,7 @@ export class ObjectStore {
         const objectConfig = new ObjectConfig();
 
         const buffer = objectFile.content;
-        objectConfig.gameId = objectFile.fileId;
+        objectConfig.gameId = objectFile.fileIndex;
 
         while(true) {
             const opcode = buffer.get('BYTE', 'UNSIGNED');
@@ -281,7 +281,7 @@ export class ObjectStore {
             return null;
         }
 
-        const objectCount = this.objectArchive.children.size;
+        const objectCount = this.objectArchive.files.size;
         const objectList: ObjectConfig[] = new Array(objectCount);
 
         for(let objectId = 0; objectId < objectCount; objectId++) {

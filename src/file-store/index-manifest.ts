@@ -5,19 +5,19 @@ export interface IndexMetadata {
 }
 
 
-export interface FileMetadata extends IndexMetadata {
+export interface FileGroupMetadata extends IndexMetadata {
     name: string;
     nameHash?: number;
     size?: number;
-    children?: string[];
+    fileNames?: string[];
     errors?: string[];
 }
 
 
-export type FileMetadataMap = Map<number, FileMetadata>;
+export type FileGroupMetadataMap = { [key: number]: FileGroupMetadata };
 
 
 export interface IndexManifest extends IndexMetadata {
     index: number;
-    files: FileMetadataMap;
+    groups: FileGroupMetadataMap;
 }

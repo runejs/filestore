@@ -31,7 +31,7 @@ export class BinaryStore {
                     if(!existsSync('./unpacked/binary')) {
                         mkdirSync('./unpacked/binary');
                     }
-                    writeFileSync(`./unpacked/binary/${binaryFile.fileId}_${fileName}`, Buffer.from(binaryFile.content));
+                    writeFileSync(`./unpacked/binary/${binaryFile.fileIndex}_${fileName}`, Buffer.from(binaryFile.content));
                     resolve();
                 } catch(error) {
                     reject(error);
@@ -60,7 +60,7 @@ export class BinaryStore {
      */
     public decodeBinaryFileStore(): ClientFile[] {
         const binaryIndex = this.fileStore.getIndex('binary');
-        const binaryFileCount = binaryIndex.files.size;
+        const binaryFileCount = binaryIndex.groups.size;
         const binaryFiles: ClientFile[] = new Array(binaryFileCount);
 
         for(let binaryFileId = 0; binaryFileId < binaryFileCount; binaryFileId++) {

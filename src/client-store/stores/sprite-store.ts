@@ -135,8 +135,8 @@ export class SpritePack {
                 }
 
                 if(this._sprites.length > 1) {
-                    if(!existsSync(`./unpacked/sprite-packs/${this.fileData.fileId}_${fileName}`)) {
-                        mkdirSync((`./unpacked/sprite-packs/${this.fileData.fileId}_${fileName}`));
+                    if(!existsSync(`./unpacked/sprite-packs/${this.fileData.fileIndex}_${fileName}`)) {
+                        mkdirSync((`./unpacked/sprite-packs/${this.fileData.fileIndex}_${fileName}`));
                     }
 
                     for(let i = 0; i < this._sprites.length; i++) {
@@ -162,7 +162,7 @@ export class SpritePack {
                             png.pack();
 
                             const pngBuffer = PNG.sync.write(png);
-                            writeFileSync(`./unpacked/sprite-packs/${ this.fileData.fileId }_${ fileName }/${ i }.png`, pngBuffer);
+                            writeFileSync(`./unpacked/sprite-packs/${ this.fileData.fileIndex }_${ fileName }/${ i }.png`, pngBuffer);
                         } catch(e) {
                             logger.error(`Error writing sprite to disk`, e);
                         }
@@ -177,7 +177,7 @@ export class SpritePack {
 
                         const pngBuffer = PNG.sync.write(png);
 
-                        writeFileSync(`./unpacked/sprite-packs/${this.fileData.fileId}_${fileName}.png`, pngBuffer);
+                        writeFileSync(`./unpacked/sprite-packs/${this.fileData.fileIndex}_${fileName}.png`, pngBuffer);
                     }
                 }
                 resolve();
@@ -194,7 +194,7 @@ export class SpritePack {
         const buffer = this.fileData.decompress();
 
         if(buffer.length === 0) {
-            throw new Error(`Empty file content for Sprite Pack ${this.fileData.fileId}.`);
+            throw new Error(`Empty file content for Sprite Pack ${this.fileData.fileIndex}.`);
         } else {
             buffer.readerIndex = (buffer.length - 2);
             const spriteCount = buffer.get('short', 'unsigned');
@@ -299,7 +299,7 @@ export class SpritePack {
     }
 
     public get packId(): number {
-        return this.fileData?.fileId || -1;
+        return this.fileData?.fileIndex || -1;
     }
 }
 
@@ -361,7 +361,7 @@ export class SpriteStore {
      */
     public decodeSpriteStore(): SpritePack[] {
         const spritePackIndex = this.fileStore.getIndex('sprites');
-        const packCount = spritePackIndex.files.size;
+        const packCount = spritePackIndex.groups.size;
         const spritePacks: SpritePack[] = new Array(packCount);
 
         for(let spritePackId = 0; spritePackId < packCount; spritePackId++) {

@@ -1,5 +1,5 @@
 import JSZip, { JSZipObject } from 'jszip';
-import { FileMetadata } from '../index-manifest';
+import { FileGroupMetadata } from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { IndexedFile } from './indexed-file';
 import { IndexedArchive } from '../archive';
@@ -14,17 +14,17 @@ export class FileGroup extends IndexedFile {
     private _files: JSZipObject[] = [];
     private _fileData: Buffer[] = [];
     private fileNames: string[] = [];
-    private fileEntry: FileMetadata;
+    private fileEntry: FileGroupMetadata;
     private filesLoaded: boolean = false;
 
     public constructor(archive: IndexedArchive,
                        fileIndex: number,
-                       fileEntry: FileMetadata,
+                       fileEntry: FileGroupMetadata,
                        zippedFolder?: JSZip) {
         super(archive, fileIndex);
         this.fileEntry = fileEntry;
         this._folder = zippedFolder;
-        this.fileName = this.indexManifest?.files[this.fileIndex]?.name
+        this.fileName = this.indexManifest?.groups[this.fileIndex]?.name
             ?.replace(this.archive.config.fileExtension, '') ?? undefined;
     }
 
@@ -71,11 +71,11 @@ export class FileGroup extends IndexedFile {
 
     public async loadFiles(): Promise<void> {
         this.filesLoaded = false;
-        const childCount = this.fileEntry.children.length;
+        const childCount = this.fileEntry.fileNames.length;
         const promises: Promise<void>[] = new Array(childCount);
         this._fileData = new Array(childCount);
         for(let i = 0; i < childCount; i++) {
-            const fileName = this.fileEntry.children[i];
+            const fileName = this.fileEntry.fileNames[i];
             if(!fileName) {
                 continue;
             }

@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
 import { logger } from '@runejs/core';
-import { FileMetadata, FileMetadataMap, IndexManifest } from '../index-manifest';
+import { FileGroupMetadata, FileGroupMetadataMap, IndexManifest } from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { compressFile } from '../../compression';
 import { IndexedFile, FlatFile, FileGroup } from '../file';
@@ -48,7 +48,7 @@ export class IndexedArchive {
             crc: 0,
             sha256: '',
             version: this._manifest.version ?? undefined,
-            files: new Map<number, FileMetadata>()
+            groups: {}
         };
 
         // @TODO this is brooooooken beyond drunk me to fix
@@ -108,7 +108,7 @@ export class IndexedArchive {
 
             const fileStats = fs.statSync(indexedFilePath);
             const oldFileIndex: number = originalFileIndex(fileName, existingFileList);
-            const oldFile: FileMetadata | null = oldFileIndex !== -1 ? this._manifest.files[oldFileIndex] ?? null : null;
+            const oldFile: FileGroupMetadata | null = oldFileIndex !== -1 ? this._manifest.groups[oldFileIndex] ?? null : null;
             const fileIndex = oldFileIndex !== -1 ? oldFileIndex : newFileIndex++;
 
             let nameHash: number | undefined;
@@ -118,7 +118,7 @@ export class IndexedArchive {
                 nameHash = /[a-z]/ig.test(actualFileName) ? hashFileName(actualFileName) : parseInt(actualFileName, 10);
             }
 
-            const newFile: FileMetadata = newManifest.files[fileIndex] = {
+            const newFile: FileGroupMetadata = newManifest.groups[fileIndex] = {
                 name: fileName,
                 nameHash: nameHash ?? undefined,
                 version: oldFile?.version ?? 0
@@ -128,7 +128,7 @@ export class IndexedArchive {
 
             if(fileStats.isDirectory()) {
                 // Read the child file names
-                newFile.children = fs.readdirSync(indexedFilePath);
+                newFile.fileNames = fs.readdirSync(indexedFilePath);
                 indexedFile = new FileGroup(this, fileIndex, newFile);
                 await (indexedFile as FileGroup).loadFiles();
             } else {
@@ -182,7 +182,7 @@ export class IndexedArchive {
     public async unpack(loadFileData: boolean = true,
                         compressFileData: boolean = true,
                         forceAsync: boolean = false): Promise<void> {
-        const fileIndexes = Object.keys(this._manifest.files).map(indexStr => parseInt(indexStr, 10));
+        const fileIndexes = Object.keys(this._manifest.groups).map(indexStr => parseInt(indexStr, 10));
 
         for(const index of fileIndexes) {
             const indexedFile = await this.loadFile(index, loadFileData);
@@ -203,7 +203,7 @@ export class IndexedArchive {
     public async generateIndexFile(): Promise<ByteBuffer> {
         await this.loadManifestFile();
 
-        const files = this._manifest.files;
+        const files = this._manifest.groups;
         const fileIndexes = Object.keys(files).map(indexStr => parseInt(indexStr, 10))
             .sort((a, b) => a - b);
         const fileCount = fileIndexes.length;
@@ -246,20 +246,20 @@ export class IndexedArchive {
         // Write file group child counts
         for(const fileIndex of fileIndexes) {
             const file = files[fileIndex];
-            buffer.put(file?.children?.length || 1, 'short');
+            buffer.put(file?.fileNames?.length || 1, 'short');
         }
 
         // Write file group children
         for(const fileIndex of fileIndexes) {
             const file = files[fileIndex];
-            const childCount = file?.children?.length || 1;
+            const childCount = file?.fileNames?.length || 1;
 
             writtenFileIndex = 0;
 
             // Write child indexes
             for(let i = 0; i < childCount; i++) {
-                if(file?.children) {
-                    const child = file.children[i];
+                if(file?.fileNames) {
+                    const child = file.fileNames[i];
                     const idxStr = child.substr(0, child.indexOf('.'));
                     const index = parseInt(idxStr, 10);
 
@@ -277,9 +277,9 @@ export class IndexedArchive {
         if(this.config.filesNamed) {
             for(const fileIndex of fileIndexes) {
                 const file = files[fileIndex];
-                if(file?.children) {
-                    for(let i = 0; i < file.children.length; i++) {
-                        const childFile = file.children[i];
+                if(file?.fileNames?.length) {
+                    for(let i = 0; i < file.fileNames.length; i++) {
+                        const childFile = file.fileNames[i];
                         if(!childFile) {
                             buffer.put(0, 'int');
                         } else {
@@ -325,7 +325,7 @@ export class IndexedArchive {
             // zipArchive = await this.loadZip();
         }
 
-        const fileEntry: FileMetadata = this._manifest.files[`${fileIndex}`];
+        const fileEntry: FileGroupMetadata = this._manifest.groups[`${fileIndex}`];
         if(!fileEntry) {
             logger.error(`File ${fileIndex} was not found within the archive manifest.`);
             return null;

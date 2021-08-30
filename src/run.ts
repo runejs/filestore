@@ -86,6 +86,8 @@ function validateSpriteFormats(debugDir: string): void {
         xteas: await xteaRegions()
     });
 
+    console.log('yeet');
+
     // Decode a packed client cache with this vvv
     await clientFileStore.decompressArchives(false);
     // await ArchiveDecompressor.writeFileNames();

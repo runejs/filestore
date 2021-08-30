@@ -3,6 +3,7 @@ import { ByteBuffer } from '@runejs/core/buffer';
 import Xtea from './xtea';
 import Bzip2 from './bzip2';
 import Gzip from './gzip';
+import { logger } from '@runejs/core';
 
 
 export interface StoreFile {
@@ -64,11 +65,11 @@ export const compressFile = (file: StoreFile): ByteBuffer => {
 
 
 export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile => {
-    buffer.readerIndex = 0;
-
     if(!buffer || buffer.length === 0) {
         return { compression: -1, buffer: null, version: -1 };
     }
+
+    buffer.readerIndex = 0;
 
     const compression = buffer.get('byte', 'unsigned');
     const compressedLength = buffer.get('int', 'unsigned');
@@ -111,21 +112,26 @@ export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile =
 
         buffer.copy(encryptedFileData, 0, buffer.readerIndex);
 
-        const decompressed: ByteBuffer = compression === 1 ?
-            Bzip2.decompress(encryptedFileData) : Gzip.decompress(encryptedFileData);
+        try {
+            const decompressed: ByteBuffer = compression === 1 ?
+                Bzip2.decompress(encryptedFileData) : Gzip.decompress(encryptedFileData);
 
-        buffer.readerIndex = buffer.readerIndex + compressedLength;
+            buffer.readerIndex = buffer.readerIndex + compressedLength;
 
-        if(decompressed.length !== uncompressedLength) {
-            throw new Error(`Compression length mismatch`);
+            if(decompressed.length !== uncompressedLength) {
+                throw new Error(`Compression length mismatch`);
+            }
+
+            // Read the file footer
+            let version = 0;
+            if(buffer.readable >= 2) {
+                version = buffer.get('short');
+            }
+
+            return { compression, buffer: decompressed, version };
+        } catch(error) {
+            logger.error(error);
+            return { compression, buffer: null };
         }
-
-        // Read the file footer
-        let version = 0;
-        if(buffer.readable >= 2) {
-            version = buffer.get('short');
-        }
-
-        return { compression, buffer: decompressed, version };
     }
 };

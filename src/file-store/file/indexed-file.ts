@@ -30,7 +30,7 @@ export abstract class IndexedFile extends FileInfo {
         super();
         this.fileIndex = fileIndex;
         this.fileData = fileData;
-        this.fileName = this.indexManifest?.files[this.fileIndex]?.name
+        this.fileName = this.indexManifest?.groups[this.fileIndex]?.name
             ?.replace(this.archive.config.fileExtension, '') ?? undefined;
     }
 
@@ -121,11 +121,11 @@ export abstract class IndexedFile extends FileInfo {
     }
 
     public get fullFileName(): string {
-        return this.indexManifest?.files[this.fileIndex]?.name ?? `${this.fileIndex}`;
+        return this.indexManifest?.groups[this.fileIndex]?.name ?? `${this.fileIndex}`;
     }
 
     public get fileVersion(): number | undefined {
-        return this.indexManifest?.files[this.fileIndex]?.version ?? undefined;
+        return this.indexManifest?.groups[this.fileIndex]?.version ?? undefined;
     }
 
     public get fileCompression(): number {

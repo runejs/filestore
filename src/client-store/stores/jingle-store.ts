@@ -32,7 +32,7 @@ export class OggFile {
     }
 
     public get fileId(): number {
-        return this.fileData?.fileId || -1;
+        return this.fileData?.fileIndex || -1;
     }
 
 }
@@ -81,7 +81,7 @@ export class JingleStore {
      */
     public decodeJingleStore(): OggFile[] {
         const oggArchiveIndex = this.fileStore.getIndex('jingles');
-        const fileCount = oggArchiveIndex.files.size;
+        const fileCount = oggArchiveIndex.groups.size;
         const oggFiles: OggFile[] = new Array(fileCount);
 
         for(let oggId = 0; oggId < fileCount; oggId++) {

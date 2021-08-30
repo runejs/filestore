@@ -107,7 +107,7 @@ export class NpcStore {
         const npcConfig = new NpcConfig();
 
         const buffer = npcFile.content;
-        npcConfig.gameId = npcFile.fileId;
+        npcConfig.gameId = npcFile.fileIndex;
 
         while(true) {
             const opcode = buffer.get('BYTE', 'UNSIGNED');
@@ -212,7 +212,7 @@ export class NpcStore {
             return null;
         }
 
-        const npcCount = this.npcArchive.children.size;
+        const npcCount = this.npcArchive.files.size;
         const npcList: NpcConfig[] = new Array(npcCount);
 
         for(let npcId = 0; npcId < npcCount; npcId++) {

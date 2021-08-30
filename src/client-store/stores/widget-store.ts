@@ -211,14 +211,14 @@ export class WidgetStore {
      * @param id The numeric ID of the widget file to decode.
      */
     public decodeWidget(id: number): WidgetBase {
-        const file = this.widgetFileIndex.files.get(id);
+        const file = this.widgetFileIndex.groups.get(id);
         if(file.type === 'file') {
             return this.decodeWidgetFile(id, file);
         } else if(file.type === 'group') {
             const widgetParent = new ParentWidget(id);
             const archive: ClientFileGroup = file as ClientFileGroup;
-            archive.decodeArchiveFiles();
-            const widgetChildFiles: ClientFile[] = Array.from(archive.children.values());
+            archive.decodeGroupFiles();
+            const widgetChildFiles: ClientFile[] = Array.from(archive.files.values());
             widgetParent.children = new Array(widgetChildFiles.length);
             for(let i = 0; i < widgetChildFiles.length; i++) {
                 widgetParent.children[i] = this.decodeWidgetFile(i, widgetChildFiles[i]);
@@ -251,7 +251,7 @@ export class WidgetStore {
      * @returns The list of decoded WidgetBase objects from the widget store.
      */
     public decodeWidgetStore(): WidgetBase[] {
-        const widgetCount = this.widgetFileIndex.files.size;
+        const widgetCount = this.widgetFileIndex.groups.size;
         const widgets: WidgetBase[] = new Array(widgetCount);
         for(let widgetId = 0; widgetId < widgetCount; widgetId++) {
             try {

@@ -32,7 +32,7 @@ export class SoundFile {
     }
 
     public get fileId(): number {
-        return this.fileData?.fileId || -1;
+        return this.fileData?.fileIndex || -1;
     }
 
 }
@@ -81,7 +81,7 @@ export class SoundStore {
      */
     public decodeSoundStore(): SoundFile[] {
         const soundArchiveIndex = this.fileStore.getIndex('sounds');
-        const fileCount = soundArchiveIndex.files.size;
+        const fileCount = soundArchiveIndex.groups.size;
         const soundFiles: SoundFile[] = new Array(fileCount);
 
         for(let soundId = 0; soundId < fileCount; soundId++) {

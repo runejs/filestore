@@ -59,7 +59,7 @@ export class VarbitStore {
         const varbitConfig = new VarbitConfig();
 
         const buffer = varbitFile.content;
-        varbitConfig.gameId = varbitFile.fileId;
+        varbitConfig.gameId = varbitFile.fileIndex;
 
         while(true) {
             const opcode = buffer.get('BYTE', 'UNSIGNED');
@@ -87,7 +87,7 @@ export class VarbitStore {
             return null;
         }
 
-        const varbitCount = this.varbitArchive.children.size;
+        const varbitCount = this.varbitArchive.files.size;
         const varbitList: VarbitConfig[] = new Array(varbitCount);
 
         for(let varbitId = 0; varbitId < varbitCount; varbitId++) {

@@ -19,6 +19,7 @@ import {
     XteaDefinition
 } from './stores';
 import { archiveConfig, ArchiveName, IndexName } from '../file-store/archive';
+import { logger } from '@runejs/core';
 
 
 export class ClientFileStore {
@@ -68,7 +69,8 @@ export class ClientFileStore {
         this.widgetStore = new WidgetStore(this);
         this.textureStore = new TextureStore(this);
 
-        this.fontStore.loadFonts();
+        // this should be called as-needed
+        // this.fontStore.loadFonts();
     }
 
     /**
@@ -76,6 +78,7 @@ export class ClientFileStore {
      * @param indexId The string or numeric ID of the File Index to find.
      */
     public getIndex(indexId: number | IndexName): ClientArchive {
+        logger.info(indexId);
         if(typeof indexId !== 'number') {
             indexId = archiveConfig[indexId].index;
         }
@@ -84,7 +87,6 @@ export class ClientFileStore {
             const index = new ClientArchive(this, indexId, this.channels);
             index.decodePackedArchive();
             this.indexes.set(indexId, index);
-
             return index;
         } else {
             return this.indexes.get(indexId);
@@ -99,7 +101,8 @@ export class ClientFileStore {
     }
 
     public getAllIndexes(): ClientArchive[] {
-        const archiveNames: ArchiveName[] = Object.keys(archiveConfig).filter(name => name !== 'main') as ArchiveName[];
+        const archiveNames: ArchiveName[] = Object.keys(archiveConfig)
+            .filter(name => name !== 'main') as ArchiveName[];
         return archiveNames.map(archiveName => this.getIndex(archiveConfig[archiveName].index));
     }
 

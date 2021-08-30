@@ -141,7 +141,7 @@ export class RegionStore {
         }
 
         return {
-            fileId: landscapeFile.fileId,
+            fileId: landscapeFile.fileIndex,
             regionX, regionY,
             landscapeObjects
         };
@@ -206,7 +206,7 @@ export class RegionStore {
         }
 
         return {
-            fileId: mapFile.fileId,
+            fileId: mapFile.fileIndex,
             regionX, regionY,
             tileHeights, tileOverlayIds, tileOverlayOrientations,
             tileOverlayPaths, tileSettings, tileUnderlayIds

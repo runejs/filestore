@@ -282,7 +282,7 @@ export class ItemStore {
         const itemConfig = new ItemConfig();
 
         const buffer = itemFile.content;
-        itemConfig.gameId = itemFile.fileId;
+        itemConfig.gameId = itemFile.fileIndex;
 
         while(true) {
             const opcode = buffer.get('BYTE', 'UNSIGNED');
@@ -420,7 +420,7 @@ export class ItemStore {
             return null;
         }
 
-        const itemCount = this.itemArchive.children.size;
+        const itemCount = this.itemArchive.files.size;
         const itemList: ItemConfig[] = new Array(itemCount);
 
         for(let itemId = 0; itemId < itemCount; itemId++) {

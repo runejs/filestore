@@ -261,7 +261,7 @@ export class TextureStore {
 
     public async writeToDisk(): Promise<void> {
         rmdirSync('./unpacked/textures', {recursive: true});
-        const ids = this.fileStore.getArchive('textures').getFileGroup(0).files.keys();
+        const ids = this.fileStore.getArchive('textures').groups.get(0).files.keys();
         for (const id of ids) {
             try {
                 const texture = this.getTexture(id);
@@ -279,12 +279,12 @@ export class TextureStore {
             logger.warn(`Invalid texture id specified: ${id}`);
             return null;
         }
-        const file = this.fileStore.getArchive('textures').getFileGroup(0).getFile(id);
+        const file = this.fileStore.getArchive('textures').groups.get(0).getFile(id);
         if (file == null) {
             logger.warn(`Texture file ${id} not found`);
             return null;
         }
-        const buffer = file.content
+        const buffer = file.fileData
         buffer.readerIndex = 0;
         const texture = new Texture();
         texture.id = id;

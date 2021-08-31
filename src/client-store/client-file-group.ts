@@ -48,9 +48,9 @@ export class ClientFileGroup extends ClientFile {
         super(typeof idOrFileData === 'number' ? idOrFileData : idOrFileData.fileIndex, archive, filestoreChannels);
 
         if(typeof idOrFileData !== 'number') {
-            const fileData = idOrFileData as ClientFile;
-            const { content, nameHash, crc, version, compression } = fileData;
-            this.content = content;
+            const clientFile = idOrFileData as ClientFile;
+            const { fileData, nameHash, crc, version, compression } = clientFile;
+            this.fileData = fileData;
             this.nameHash = nameHash;
             this.crc = crc;
             this.version = version;
@@ -74,7 +74,7 @@ export class ClientFileGroup extends ClientFile {
      * Decodes the packed group files from the file store on disk.
      */
     public decodeGroupFiles(): void {
-        if(this.decoded) {
+        if(this.singleFile || this.decoded) {
             return;
         }
 
@@ -85,10 +85,10 @@ export class ClientFileGroup extends ClientFile {
         buffer.readerIndex = 0;
         const groupSize = this.files.size;
 
-        this.content = buffer;
+        this.fileData = buffer;
 
         this.version = version;
-        this.content = buffer;
+        this.fileData = buffer;
         this.compression = compression;
 
         buffer.readerIndex = (buffer.length - 1);
@@ -112,7 +112,7 @@ export class ClientFileGroup extends ClientFile {
 
         for(let childIndex = 0; childIndex < groupSize; childIndex++) {
             const fileData = new ClientFile(childIndex, this.archive, this.clientStoreChannel);
-            fileData.content = new ByteBuffer(sizes[childIndex]);
+            fileData.fileData = new ByteBuffer(sizes[childIndex]);
             this.files.set(childIndex, fileData);
         }
 
@@ -121,14 +121,14 @@ export class ClientFileGroup extends ClientFile {
         for(let chunk = 0; chunk < stripeCount; chunk++) {
             for(let id = 0; id < groupSize; id++) {
                 const chunkSize = stripeLengths[chunk][id];
-                this.files.get(id).content.putBytes(buffer.getSlice(buffer.readerIndex, chunkSize));
+                this.files.get(id).fileData.putBytes(buffer.getSlice(buffer.readerIndex, chunkSize));
 
                 let sourceEnd: number = buffer.readerIndex + chunkSize;
                 if(buffer.readerIndex + chunkSize >= buffer.length) {
                     sourceEnd = buffer.length;
                 }
 
-                buffer.copy(this.files.get(id).content, 0, buffer.readerIndex, sourceEnd);
+                buffer.copy(this.files.get(id).fileData, 0, buffer.readerIndex, sourceEnd);
                 buffer.readerIndex = sourceEnd;
             }
         }

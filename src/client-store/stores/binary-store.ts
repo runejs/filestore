@@ -5,6 +5,8 @@ import { ClientFileStore} from '../client-file-store';
 import { ClientFile } from '../client-file';
 import { getFileName } from '../file-naming';
 import { Store } from './store';
+import { ClientArchive } from '../client-archive';
+import { IndexedArchive } from '../../file-store';
 
 
 /**
@@ -23,8 +25,7 @@ export class BinaryStore extends Store {
     public async writeToDisk(binaryFile?: ClientFile): Promise<void> {
         if(!binaryFile) {
             // Write all files
-            const binaryFiles: ClientFile[] = this.decodeBinaryFileStore();
-            binaryFiles.forEach(file => this.writeToDisk(file));
+            Array.from(this.decodeBinaryFileStore()).forEach(([ , file ]) => this.writeToDisk(file));
         } else {
             // Write single file
             return new Promise((resolve, reject) => {
@@ -33,7 +34,7 @@ export class BinaryStore extends Store {
                     if(!existsSync('./unpacked/binary')) {
                         mkdirSync('./unpacked/binary');
                     }
-                    writeFileSync(`./unpacked/binary/${binaryFile.fileIndex}_${fileName}`, Buffer.from(binaryFile.content));
+                    writeFileSync(`./unpacked/binary/${binaryFile.fileIndex}_${fileName}`, Buffer.from(binaryFile.fileData));
                     resolve();
                 } catch(error) {
                     reject(error);
@@ -43,40 +44,31 @@ export class BinaryStore extends Store {
     }
 
     /**
-     * Fetches the specified binary file.
-     * @param nameOrId The name or ID of the binary file.
-     * @returns The binary FileData object, or null if the file is not found.
-     */
-    public getBinaryFile(nameOrId: string | number): ClientFile | null {
-        if(!nameOrId) {
-            return null;
-        }
-
-        const binaryIndex = this.fileStore.getArchive('binary');
-        return binaryIndex.getFile(nameOrId) || null;
-    }
-
-    /**
      * Decodes all binary files within the binary store.
      * @returns The list of decoded files from the binary store.
      */
-    public decodeBinaryFileStore(): ClientFile[] {
-        const binaryIndex = this.fileStore.getArchive('binary');
-        const binaryFileCount = binaryIndex.groups.size;
-        const binaryFiles: ClientFile[] = new Array(binaryFileCount);
+    public decodeBinaryFileStore(): Map<number, ClientFile> {
+        const binaryFiles: Map<number, ClientFile> = new Map<number, ClientFile>();
+        const archive = this.archive as ClientArchive;
 
-        for(let binaryFileId = 0; binaryFileId < binaryFileCount; binaryFileId++) {
-            const fileData = binaryIndex.getFile(binaryFileId);
-            if(!fileData) {
-                binaryFiles[binaryFileId] = null;
+        for(const [ binaryFileId, binaryFile ] of archive.groups) {
+            if(!binaryFile?.fileData) {
                 logger.warn(`No file found for binary file ID ${binaryFileId}.`);
                 continue;
             }
 
-            binaryFiles[binaryFileId] = fileData;
+            binaryFiles.set(binaryFileId, binaryFile);
         }
 
         return binaryFiles;
+    }
+
+    public get archive(): ClientArchive | IndexedArchive {
+        if(this.flatFileStore) {
+            return this.indexedArchive;
+        } else {
+            return this.clientArchive;
+        }
     }
 
 }

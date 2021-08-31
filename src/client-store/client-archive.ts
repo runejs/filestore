@@ -84,78 +84,23 @@ export class ClientArchive {
     /**
      * Fetches a single file from this index.
      * @param fileIndexOrName The index or name of the file to fetch.
-     * @param keys The XTEA keys.
      * @returns The requested FileData object, or null if no matching file was found.
      */
-    public getFile(fileIndexOrName: number | string, keys?: number[]): ClientFile | null;
-    public getFile(fileIndexOrName: number | string, keys?: number[]): ClientFile | null {
+    public getFile(fileIndexOrName: number | string): ClientFile | null;
+    public getFile(fileIndexOrName: number | string): ClientFile | null {
         let fileData: ClientFile;
 
         if(typeof fileIndexOrName === 'string') {
             fileData = this.findByName(fileIndexOrName) as ClientFile;
         } else {
-            fileData = this.groups[fileIndexOrName as number] as ClientFile;
+            fileData = this.groups.get(fileIndexOrName) as ClientFile;
         }
 
         if(!fileData) {
             return null;
         }
 
-        if(fileData.type === 'group') {
-            logger.error(fileData);
-            throw new Error(`Requested item ${fileIndexOrName} in index ${this.archiveIndex} is of type Archive, not FileData.`);
-        }
-
-        try {
-            fileData.decompress();
-        } catch (e) {
-            logger.warn(`Unable to decompress file ${fileIndexOrName} in index ${this.archiveIndex} with keys ${keys}`);
-            return null;
-        }
-
         return fileData;
-    }
-
-    /**
-     * Fetches a file group from this index.
-     * @param fileGroupIndex The index of the file group to fetch.
-     * @returns The requested file group object, or null if no file group was found.
-     */
-    public getFileGroup(fileGroupIndex: number): ClientFileGroup | null;
-
-    /**
-     * Fetches a file group from this index.
-     * @param fileGroupName The name of the file group to fetch.
-     * @returns The requested file group object, or null if no file group was found.
-     */
-    public getFileGroup(fileGroupName: string): ClientFileGroup | null;
-
-    /**
-     * Fetches a file group from this index.
-     * @param fileGroupIndexOrName The ID or name of the file group to fetch.
-     * @returns The requested Archive object, or null if no Archive was found.
-     */
-    public getFileGroup(fileGroupIndexOrName: number | string): ClientFileGroup | null;
-    public getFileGroup(fileGroupIndexOrName: number | string): ClientFileGroup | null {
-        let archive: ClientFileGroup;
-
-        if(typeof fileGroupIndexOrName === 'string') {
-            archive = this.findByName(fileGroupIndexOrName) as ClientFileGroup;
-        } else {
-            archive = this.groups[fileGroupIndexOrName as number] as ClientFileGroup;
-        }
-
-        if(!archive) {
-            return null;
-        }
-
-        if(archive.type === 'file') {
-            throw new Error(`Requested item ${fileGroupIndexOrName} in index ${this.archiveIndex} is of type FileData, not Archive.`);
-        }
-
-        archive.decodeGroupFiles();
-
-        return archive;
     }
 
     /**
@@ -178,9 +123,7 @@ export class ClientArchive {
      */
     public getIndexFile(): StoreFile {
         try {
-            const archiveIndex = extractIndexedFile(this.archiveIndex, 255, this.clientStoreChannel);
-            archiveIndex.dataFile.readerIndex = 0;
-            return decompressFile(archiveIndex.dataFile);
+            return decompressFile(extractIndexedFile(this.archiveIndex, 255, this.clientStoreChannel).dataFile);
         } catch(error) {
             logger.error(`Error decoding index ${this.archiveIndex}:`);
             logger.error(error);
@@ -204,7 +147,6 @@ export class ClientArchive {
 
         buffer.readerIndex = 0;
 
-        this.groups.clear();
         this.version = version;
         this.compression = compression; // index manifests are also compressed to the same level as standard files
 
@@ -266,7 +208,9 @@ export class ClientArchive {
                 fileIndices.forEach(index => group.files.set(index, null));
             } else if(!fileIndices.length || group.files.size <= 1) {
                 group.singleFile = true;
-                group.files.set(0, new ClientFile(groupIndex, this, this.clientStoreChannel));
+                const file = new ClientFile(groupIndex, this, this.clientStoreChannel);
+                file.nameHash = group.nameHash;
+                group.files.set(0, file);
             }
         }
 
@@ -274,7 +218,7 @@ export class ClientArchive {
         if((this.saveFileNames & NAME_FLAG) !== 0) {
             for(const groupIndex of groupIndices) {
                 const fileGroup = this.groups.get(groupIndex);
-                if(fileGroup?.files?.size) {
+                if(!fileGroup.singleFile && fileGroup?.files?.size) {
                     const fileIndices = groupFileIndices.get(groupIndex);
                     for(const childIndex of fileIndices) {
                         const nameHash = buffer.get('int');

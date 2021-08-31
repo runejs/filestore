@@ -2,6 +2,7 @@ import { ClientFileStore } from '../client-file-store';
 import { ClientFileGroup } from '../client-file-group';
 import { NpcStore, ObjectStore, ItemStore, VarbitStore } from './configs';
 import { Store } from './store';
+import { FileGroup, FileStore, IndexedFile } from '../../file-store';
 
 
 /**
@@ -70,7 +71,9 @@ export class ConfigStore extends Store {
      */
     public readonly varbitStore: VarbitStore;
 
-    public constructor(fileStore: ClientFileStore) {
+    public constructor(clientFileStore: ClientFileStore);
+    public constructor(flatFileStore: FileStore);
+    public constructor(fileStore: ClientFileStore | FileStore) {
         super(fileStore, 'configs');
         this.itemStore = new ItemStore(this);
         this.npcStore = new NpcStore(this);
@@ -78,12 +81,16 @@ export class ConfigStore extends Store {
         this.varbitStore = new VarbitStore(this);
     }
 
-    public getGroup(configId: ConfigId | number): ClientFileGroup {
+    public getGroup(configId: ConfigId | number): ClientFileGroup | FileGroup {
         if(typeof configId !== 'number') {
             configId = configIdMap[configId];
         }
 
-        return this.archive.getFileGroup(configId);
+        if(this.flatFileStore) {
+            return this.indexedArchive.files.get(configId) as FileGroup;
+        }
+
+        return this.clientArchive.groups.get(configId);
     }
 
 }

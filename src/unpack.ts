@@ -34,10 +34,11 @@ run(async args => {
     }
 
     const options = UnpackOptions.create(args as any);
+    const xteaKeys = await loadXteaRegionFiles(`config/xteas`);
 
     const clientFileStore = new ClientFileStore(options.cache, {
         configDir: options.config,
-        xteaKeys: !options.skipXtea ? (await loadXteaRegionFiles(`config/xteas`)) : {}
+        xteaKeys: !options.skipXtea ? xteaKeys : {}
     });
 
     const decompressionOptions = DecompressionOptions.create({

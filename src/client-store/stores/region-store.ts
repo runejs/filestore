@@ -67,7 +67,7 @@ export class RegionStore extends Store {
         if(xteas) {
             this.xteas = xteas;
         } else {
-            const array = JSON.parse(readFileSync(path.join(this.fileStore.configDir, 'map-keys.json'), 'utf8'));
+            const array = JSON.parse(readFileSync(path.join(this.clientFileStore.configDir, 'map-keys.json'), 'utf8'));
             for(let i = 0; i < array.length; i++) {
                 const object: XteaDefinition = array[i];
                 this.xteas[object.name] = object;
@@ -91,9 +91,7 @@ export class RegionStore extends Store {
     }
 
     public getLandscapeFile(regionX: number, regionY: number): LandscapeFile | null {
-        const keys = this.getMapKeys(regionX, regionY);
-
-        const landscapeFile = this.archive.getFile(`l${regionX}_${regionY}`, keys);
+        const landscapeFile = this.clientArchive.getFile(`l${regionX}_${regionY}`);
         if(!landscapeFile) {
             logger.warn(`Landscape file not found for region ${regionX},${regionY}`);
             return null;
@@ -103,10 +101,10 @@ export class RegionStore extends Store {
 
         let objectLoop = true;
         let objectId = -1;
-        landscapeFile.content.readerIndex = 0;
+        landscapeFile.fileData.readerIndex = 0;
 
         while(objectLoop) {
-            const objectIdOffset = landscapeFile.content.get('smart');
+            const objectIdOffset = landscapeFile.fileData.get('smart');
 
             if(objectIdOffset === 0) {
                 objectLoop = false;
@@ -118,7 +116,7 @@ export class RegionStore extends Store {
             objectId += objectIdOffset;
 
             while(positionLoop) {
-                const objectPositionInfoOffset = landscapeFile.content.get('smart');
+                const objectPositionInfoOffset = landscapeFile.fileData.get('smart');
 
                 if(objectPositionInfoOffset === 0) {
                     positionLoop = false;
@@ -132,7 +130,7 @@ export class RegionStore extends Store {
                 const x = (objectPositionInfo >> 6 & 0x3f) + worldX;
                 const y = (objectPositionInfo & 0x3f) + worldY;
                 const level = objectPositionInfo >> 12 & 0x3;
-                const objectMetadata = landscapeFile.content.get('byte', 'unsigned');
+                const objectMetadata = landscapeFile.fileData.get('byte', 'unsigned');
                 const type = objectMetadata >> 2;
                 const orientation = objectMetadata & 0x3;
 
@@ -148,7 +146,7 @@ export class RegionStore extends Store {
     }
 
     public getMapFile(regionX: number, regionY: number): MapFile | null {
-        const mapFile = this.archive.getFile(`m${regionX}_${regionY}`);
+        const mapFile = this.clientArchive.getFile(`m${regionX}_${regionY}`);
         if(!mapFile) {
             logger.warn(`Map file not found for region ${regionX},${regionY}`);
             return null;
@@ -161,7 +159,7 @@ export class RegionStore extends Store {
         const tileOverlayOrientations: TileArray = new Array(4);
         const tileUnderlayIds: TileArray = new Array(4);
 
-        const buffer = mapFile.content;
+        const buffer = mapFile.fileData;
         buffer.readerIndex = 0;
 
         for(let level = 0; level < 4; level++) {

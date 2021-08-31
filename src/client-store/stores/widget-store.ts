@@ -207,7 +207,7 @@ export class WidgetStore extends Store {
      * @param id The numeric ID of the widget file to decode.
      */
     public decodeWidget(id: number): WidgetBase {
-        const file = this.archive.groups.get(id);
+        const file = this.clientArchive.groups.get(id);
         if(file.type === 'file') {
             return this.decodeWidgetFile(id, file);
         } else if(file.type === 'group') {
@@ -230,11 +230,11 @@ export class WidgetStore extends Store {
      * @param widgetFile The file data of the widget file to decode.
      */
     public decodeWidgetFile(id: number, widgetFile: ClientFile | ClientFileGroup): WidgetBase {
-        if(!widgetFile.content) {
+        if(!widgetFile.fileData) {
             widgetFile.decompress();
         }
 
-        const content = widgetFile.content;
+        const content = widgetFile.fileData;
         if(content[0] === -1) {
             return this.decodeWidgetFormat2(id, content);
         } else {
@@ -247,7 +247,7 @@ export class WidgetStore extends Store {
      * @returns The list of decoded WidgetBase objects from the widget store.
      */
     public decodeWidgetStore(): WidgetBase[] {
-        const widgetCount = this.archive.groups.size;
+        const widgetCount = this.clientArchive.groups.size;
         const widgets: WidgetBase[] = new Array(widgetCount);
         for(let widgetId = 0; widgetId < widgetCount; widgetId++) {
             try {

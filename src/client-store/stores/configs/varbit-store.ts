@@ -2,6 +2,7 @@ import { logger } from '@runejs/core';
 import { ClientFileGroup } from '../../client-file-group';
 import { ConfigStore } from '../config-store';
 import { ClientFile } from '../../client-file';
+import { FileGroup, FlatFile } from '../../../file-store';
 
 
 /**
@@ -21,16 +22,16 @@ export class VarbitConfig {
 export class VarbitStore {
 
     /**
-     * The Varbit Archive, containing details about every game varbit.
+     * The Varbit group, containing details about every game varbit.
      */
-    private _varbitGroup: ClientFileGroup;
+    private _varbitGroup: ClientFileGroup | FileGroup;
 
     public constructor(private configStore: ConfigStore) {
     }
 
     /**
-     * Fetches the VarbitConfig object for the specified varbit game id.
-     * @param varbitId The game id of the varbit to find.
+     * Fetches the VarbitConfig object for the specified varbit id.
+     * @param varbitId The id of the varbit to find.
      */
     public getVarbit(varbitId: number): VarbitConfig | null {
         const varbitArchive = this.varbitGroup;
@@ -40,7 +41,7 @@ export class VarbitStore {
             return null;
         }
 
-        const varbitFile = varbitArchive.getFile(varbitId) || null;
+        const varbitFile = varbitArchive.files.get(varbitId) || null;
 
         if(!varbitFile) {
             logger.error(`Varbit file not found.`);
@@ -54,25 +55,28 @@ export class VarbitStore {
      * Parses a raw varbit data file into a readable VarbitConfig object.
      * @param varbitFile The raw file-store varbit data.
      */
-    public decodeVarbitFile(varbitFile: ClientFile): VarbitConfig {
+    public decodeVarbitFile(varbitFile: ClientFile | FlatFile): VarbitConfig {
         const varbitConfig = new VarbitConfig();
 
-        const buffer = varbitFile.content;
+        const buffer = varbitFile.fileData;
+        let runLoop = true;
+
         varbitConfig.gameId = varbitFile.fileIndex;
 
-        while(true) {
-            const opcode = buffer.get('BYTE', 'UNSIGNED');
+        while(runLoop) {
+            const opcode = buffer.get('byte', 'unsigned');
+
             if(opcode === 0) {
+                runLoop = false;
                 break;
-            }
-            if(opcode === 1) {
-                varbitConfig.index = buffer.get('SHORT', 'UNSIGNED');
-                varbitConfig.leastSignificantBit = buffer.get('BYTE', 'UNSIGNED');
-                varbitConfig.mostSignificantBit = buffer.get('BYTE', 'UNSIGNED');
+            } else if(opcode === 1) {
+                varbitConfig.index = buffer.get('short', 'unsigned');
+                varbitConfig.leastSignificantBit = buffer.get('byte', 'unsigned');
+                varbitConfig.mostSignificantBit = buffer.get('byte', 'unsigned');
             }
         }
 
-        varbitFile.content.readerIndex = 0;
+        buffer.readerIndex = 0;
         return varbitConfig;
     }
 
@@ -80,30 +84,27 @@ export class VarbitStore {
      * Decodes every varbit file within the varbit archive and returns
      * the resulting VarbitConfig array.
      */
-    public decodeVarbitStore(): VarbitConfig[] {
+    public decodeVarbitStore(): Map<number, VarbitConfig> {
         if(!this.varbitGroup) {
             logger.error(`Varbit archive not found.`);
             return null;
         }
 
-        const varbitCount = this.varbitGroup.files.size;
-        const varbitList: VarbitConfig[] = new Array(varbitCount);
+        const varbitMap: Map<number, VarbitConfig> = new Map<number, VarbitConfig>();
 
-        for(let varbitId = 0; varbitId < varbitCount; varbitId++) {
-            const varbitFile = this.varbitGroup.getFile(varbitId) || null;
-
+        for(const [ varbitId, varbitFile ] of this.varbitGroup.files) {
             if(!varbitFile) {
                 logger.error(`Varbit file not found.`);
                 return null;
             }
 
-            varbitList[varbitId] = this.decodeVarbitFile(varbitFile);
+            varbitMap.set(varbitId, this.decodeVarbitFile(varbitFile));
         }
 
-        return varbitList;
+        return varbitMap;
     }
 
-    public get varbitGroup(): ClientFileGroup {
+    public get varbitGroup(): ClientFileGroup | FileGroup {
         if(!this._varbitGroup) {
             this._varbitGroup = this.configStore.getGroup('varbits');
         }

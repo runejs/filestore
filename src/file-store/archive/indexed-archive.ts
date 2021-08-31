@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
 import { logger } from '@runejs/core';
-import { FileGroupMetadata, FileGroupMetadataMap, IndexManifest } from '../index-manifest';
+import { FileGroupMetadata, IndexManifest } from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { compressFile } from '../../compression';
 import { IndexedFile, FlatFile, FileGroup } from '../file';
@@ -13,8 +13,7 @@ import { hashFileName } from '../../util';
 
 export class IndexedArchive {
 
-    public files: { [key: number]: IndexedFile } = {};
-    public fileList: IndexedFile[];
+    public files: Map<number, IndexedFile> = new Map<number, IndexedFile>();
     public readonly fileStore: FileStore;
     public readonly config: ArchiveConfig;
     public readonly indexId: number;
@@ -99,7 +98,6 @@ export class IndexedArchive {
         let newFileIndex = this.createNewFileIndex();
 
         for(let fileName of fileNames) {
-            // const zippedFile = storeZip.files[fileName];
             const indexedFilePath = path.join(this.filePath, fileName);
             if(!fs.existsSync(indexedFilePath)) {
                 logger.error(`File ${fileName} not found.`);
@@ -182,16 +180,16 @@ export class IndexedArchive {
     public async unpack(loadFileData: boolean = true,
                         compressFileData: boolean = true,
                         forceAsync: boolean = false): Promise<void> {
-        const fileIndexes = Object.keys(this._manifest.groups).map(indexStr => parseInt(indexStr, 10));
+        const fileIndices = Object.keys(this._manifest.groups).map(i => Number(i));
 
-        for(const index of fileIndexes) {
+        for(const index of fileIndices) {
             const indexedFile = await this.loadFile(index, loadFileData);
 
             if(loadFileData && compressFileData) {
                 await indexedFile?.compress();
             }
 
-            this.files[index] = indexedFile;
+            this.files.set(index, indexedFile);
         }
 
         this.loaded = true;
@@ -204,8 +202,8 @@ export class IndexedArchive {
         await this.loadManifestFile();
 
         const files = this._manifest.groups;
-        const fileIndexes = Object.keys(files).map(indexStr => parseInt(indexStr, 10))
-            .sort((a, b) => a - b);
+        const fileIndexes = Object.keys(files).map(i => Number(i));
+            // .sort((a, b) => a - b);
         const fileCount = fileIndexes.length;
 
         const buffer = new ByteBuffer(1000 * 1000);
@@ -224,8 +222,7 @@ export class IndexedArchive {
 
         // Write name hashes (if applicable)
         if(this.config.filesNamed) {
-            logger.info(`Writing file names for archive ${this.indexId}.`);
-
+            logger.info(`Writing file names to index ${this.indexId}.`);
             for(const fileIndex of fileIndexes) {
                 buffer.put(files[fileIndex]?.nameHash ?? 0, 'int');
             }
@@ -297,7 +294,6 @@ export class IndexedArchive {
         }
 
         const archiveData = buffer.flipWriter();
-
         const compression = compressionKey[this.config.compression];
 
         return compressFile({
@@ -321,10 +317,6 @@ export class IndexedArchive {
             return null;
         }
 
-        if(!zipArchive) {
-            // zipArchive = await this.loadZip();
-        }
-
         const fileEntry: FileGroupMetadata = this._manifest.groups[`${fileIndex}`];
         if(!fileEntry) {
             logger.error(`File ${fileIndex} was not found within the archive manifest.`);
@@ -346,15 +338,7 @@ export class IndexedArchive {
 
         const fileStats = fs.statSync(finalPath);
 
-        /*const file = zipArchive.files[fileEntry.file] ?? zipArchive.files[fileEntry.file + '/'];
-
-        if(!file) {
-            logger.error(`File ${fileEntry.file} was not found.`);
-            return null;
-        }*/
-
         if(fileStats.isDirectory()) {
-            // const folder = zipArchive.folder(fileEntry.file);
             const fileGroup = new FileGroup(this, fileIndex, fileEntry);
             if(loadFileData) {
                 await fileGroup.loadFiles();

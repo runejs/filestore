@@ -453,14 +453,14 @@ export class ModelStore extends Store {
     }
 
     public getModel(id: number): RsModel | null {
-        const file = this.archive.getFile(id) || null;
+        const file = this.clientArchive.getFile(id) || null;
         if(!file) {
             logger.warn(`Model file ${id} not found`);
             return null;
         }
         const rsModel = new RsModel();
         rsModel.id = id;
-        const buffer = file.content;
+        const buffer = file.fileData;
         buffer.readerIndex = 0;
         let useFaceTypes = false;
         let useFaceTextures = false;

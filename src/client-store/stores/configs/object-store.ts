@@ -2,6 +2,7 @@ import { logger } from '@runejs/core';
 import { ClientFileGroup } from '../../client-file-group';
 import { ConfigStore } from '../config-store';
 import { ClientFile } from '../../client-file';
+import { FileGroup, FlatFile, IndexedFile } from '../../../file-store';
 
 
 /**
@@ -90,11 +91,37 @@ export class ObjectConfig {
 export class ObjectStore {
 
     /**
-     * The Object Archive, containing details about every game object.
+     * The game object group, containing details about every game object.
      */
-    private _objectGroup: ClientFileGroup;
+    private _objectGroup: ClientFileGroup | FileGroup;
 
     public constructor(private configStore: ConfigStore) {
+    }
+
+    /**
+     * Decodes every object file within the object archive and returns
+     * the resulting ObjectConfig array.
+     */
+    public decodeObjectStore(): Map<number, ObjectConfig> {
+        const group = this.objectGroup;
+
+        if(!group) {
+            logger.error(`Object archive not found.`);
+            return null;
+        }
+
+        const objectMap: Map<number, ObjectConfig> = new Map<number, ObjectConfig>();
+
+        for(const [ objectId, objectFile ] of group.files) {
+            if(!objectFile) {
+                logger.error(`Object file not found.`);
+                continue;
+            }
+
+            objectMap.set(objectId, this.decodeObjectFile(objectFile));
+        }
+
+        return objectMap;
     }
 
     /**
@@ -102,14 +129,14 @@ export class ObjectStore {
      * @param objectId The game id of the object to find.
      */
     public getObject(objectId: number): ObjectConfig | null {
-        const objectArchive = this.objectGroup;
+        const group = this.objectGroup;
 
-        if(!objectArchive) {
+        if(!group) {
             logger.error(`Object archive not found.`);
             return null;
         }
 
-        const objectFile = objectArchive.getFile(objectId) || null;
+        const objectFile: ClientFile | FlatFile | null = group.files.get(objectId) || null;
 
         if(!objectFile) {
             logger.error(`Object file not found.`);
@@ -123,19 +150,21 @@ export class ObjectStore {
      * Parses a raw game object data file into a readable ObjectConfig object.
      * @param objectFile The raw file-store game object data.
      */
-    public decodeObjectFile(objectFile: ClientFile): ObjectConfig {
+    public decodeObjectFile(objectFile: ClientFile | FlatFile): ObjectConfig {
         const objectConfig = new ObjectConfig();
+        const buffer = objectFile.fileData;
+        let runLoop = true;
 
-        const buffer = objectFile.content;
         objectConfig.gameId = objectFile.fileIndex;
 
-        while(true) {
+        while(runLoop) {
             const opcode = buffer.get('BYTE', 'UNSIGNED');
             if(opcode === 0) {
+                runLoop = false;
                 break;
             }
 
-            if(opcode == 1) {
+            if(opcode === 1) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 if(length > 0) {
                     if(objectConfig.rendering.objectModels == null) {
@@ -149,9 +178,9 @@ export class ObjectStore {
                         buffer.readerIndex += length * 3;
                     }
                 }
-            } else if(opcode == 2) {
+            } else if(opcode === 2) {
                 objectConfig.name = buffer.getString();
-            } else if(opcode == 5) {
+            } else if(opcode === 5) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 if(length > 0) {
                     if(objectConfig.rendering.objectModels == null) {
@@ -164,32 +193,32 @@ export class ObjectStore {
                         buffer.readerIndex += length * 2;
                     }
                 }
-            } else if(opcode == 14) {
+            } else if(opcode === 14) {
                 objectConfig.rendering.sizeX = buffer.get('BYTE', 'UNSIGNED');
-            } else if(opcode == 15) {
+            } else if(opcode === 15) {
                 objectConfig.rendering.sizeY = buffer.get('BYTE', 'UNSIGNED');
-            } else if(opcode == 17) {
+            } else if(opcode === 17) {
                 objectConfig.solid = false;
-            } else if(opcode == 18) {
+            } else if(opcode === 18) {
                 objectConfig.walkable = false;
-            } else if(opcode == 19) {
+            } else if(opcode === 19) {
                 objectConfig.hasOptions = buffer.get('BYTE', 'UNSIGNED') === 1;
-            } else if(opcode == 21) {
+            } else if(opcode === 21) {
                 objectConfig.rendering.adjustToTerrain = true;
-            } else if(opcode == 22) {
+            } else if(opcode === 22) {
                 objectConfig.rendering.nonFlatShading = true;
-            } else if(opcode == 23) {
+            } else if(opcode === 23) {
                 objectConfig.wall = true;
-            } else if(opcode == 24) {
+            } else if(opcode === 24) {
                 objectConfig.rendering.animationId = buffer.get('SHORT', 'UNSIGNED');
                 if(objectConfig.rendering.animationId == 0xFFFF) {
                     objectConfig.rendering.animationId = -1;
                 }
-            } else if(opcode == 28) {
+            } else if(opcode === 28) {
                 buffer.get('BYTE', 'UNSIGNED');
-            } else if(opcode == 29) {
+            } else if(opcode === 29) {
                 objectConfig.rendering.ambient = buffer.get('BYTE');
-            } else if(opcode == 39) {
+            } else if(opcode === 39) {
                 objectConfig.rendering.contrast = 5 * buffer.get('BYTE');
             } else if(opcode >= 30 && opcode < 35) {
                 if(!objectConfig.options) {
@@ -198,7 +227,7 @@ export class ObjectStore {
 
                 const option = buffer.getString();
                 objectConfig.options[opcode - 30] = option.toLowerCase() === 'hidden' ? null : option;
-            } else if(opcode == 40) {
+            } else if(opcode === 40) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 objectConfig.rendering.recolorToFind = [];
                 objectConfig.rendering.recolorToReplace = [];
@@ -206,35 +235,35 @@ export class ObjectStore {
                     objectConfig.rendering.recolorToFind[index] = (buffer.get('SHORT', 'UNSIGNED')); // old color
                     objectConfig.rendering.recolorToReplace[index] = (buffer.get('SHORT', 'UNSIGNED')); // new color
                 }
-            } else if(opcode == 60) {
+            } else if(opcode === 60) {
                 objectConfig.icon = (buffer.get('SHORT', 'UNSIGNED')); // ??
-            } else if(opcode == 62) {
+            } else if(opcode === 62) {
                 objectConfig.rendering.rotated = true;
-            } else if(opcode == 64) {
+            } else if(opcode === 64) {
                 objectConfig.rendering.castsShadow = false;
-            } else if(opcode == 65) {
+            } else if(opcode === 65) {
                 objectConfig.rendering.modelSizeX = (buffer.get('SHORT', 'UNSIGNED')); // modelSizeX
-            } else if(opcode == 66) {
+            } else if(opcode === 66) {
                 objectConfig.rendering.modelSizeHeight = (buffer.get('SHORT', 'UNSIGNED')); // modelSizeHeight
-            } else if(opcode == 67) {
+            } else if(opcode === 67) {
                 objectConfig.rendering.modelSizeY = (buffer.get('SHORT', 'UNSIGNED')); // modelSizeY
-            } else if(opcode == 68) {
+            } else if(opcode === 68) {
                 objectConfig.rendering.mapSceneID = (buffer.get('SHORT', 'UNSIGNED')); // mapSceneID
-            } else if(opcode == 69) {
+            } else if(opcode === 69) {
                 objectConfig.rendering.face = buffer.get('BYTE', 'UNSIGNED');
-            } else if(opcode == 70) {
+            } else if(opcode === 70) {
                 objectConfig.rendering.translateX = (buffer.get('SHORT'));
-            } else if(opcode == 71) {
+            } else if(opcode === 71) {
                 objectConfig.rendering.translateY = (buffer.get('SHORT'));
-            } else if(opcode == 72) {
+            } else if(opcode === 72) {
                 objectConfig.rendering.translateLevel = (buffer.get('SHORT'));
-            } else if(opcode == 73) {
+            } else if(opcode === 73) {
                 objectConfig.rendering.obstructsGround = true;
-            } else if(opcode == 74) {
+            } else if(opcode === 74) {
                 objectConfig.rendering.hollow = true;
-            } else if(opcode == 75) {
+            } else if(opcode === 75) {
                 objectConfig.supportsItems = buffer.get('BYTE', 'UNSIGNED') === 1; // anInt2533
-            } else if(opcode == 77) {
+            } else if(opcode === 77) {
                 objectConfig.varbitId = buffer.get('SHORT', 'UNSIGNED'); // varbit id
                 if(objectConfig.varbitId == 0xffff) {
                     objectConfig.varbitId = -1;
@@ -252,10 +281,10 @@ export class ObjectStore {
                     }
 
                 }
-            } else if(opcode == 78) {
+            } else if(opcode === 78) {
                 buffer.get('SHORT', 'UNSIGNED'); // anInt2513
                 buffer.get('BYTE', 'UNSIGNED'); // anInt2502
-            } else if(opcode == 79) {
+            } else if(opcode === 79) {
                 buffer.get('SHORT', 'UNSIGNED'); // anInt2499
                 buffer.get('SHORT', 'UNSIGNED'); // anInt2542
                 buffer.get('BYTE', 'UNSIGNED'); // anInt2502
@@ -266,38 +295,11 @@ export class ObjectStore {
             }
         }
 
-        objectFile.content.readerIndex = 0;
+        buffer.readerIndex = 0;
         return objectConfig;
     }
 
-    /**
-     * Decodes every object file within the object archive and returns
-     * the resulting ObjectConfig array.
-     */
-    public decodeObjectStore(): ObjectConfig[] {
-        if(!this.objectGroup) {
-            logger.error(`Object archive not found.`);
-            return null;
-        }
-
-        const objectCount = this.objectGroup.files.size;
-        const objectList: ObjectConfig[] = new Array(objectCount);
-
-        for(let objectId = 0; objectId < objectCount; objectId++) {
-            const objectFile = this.objectGroup.getFile(objectId) || null;
-
-            if(!objectFile) {
-                logger.error(`Object file not found.`);
-                return null;
-            }
-
-            objectList[objectId] = this.decodeObjectFile(objectFile);
-        }
-
-        return objectList;
-    }
-
-    public get objectGroup(): ClientFileGroup {
+    public get objectGroup(): ClientFileGroup | FileGroup {
         if(!this._objectGroup) {
             this._objectGroup = this.configStore.getGroup('objects');
         }

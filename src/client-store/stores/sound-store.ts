@@ -72,8 +72,8 @@ export class SoundStore extends Store {
             return null;
         }
 
-        const soundArchiveIndex = this.fileStore.getArchive('sounds');
-        const fileData = soundArchiveIndex.getFile(id);
+        const soundArchiveIndex = this.clientFileStore.getArchive('sounds');
+        const fileData = soundArchiveIndex.groups.get(id);
         return fileData ? new SoundFile(fileData) : null;
     }
 
@@ -82,7 +82,7 @@ export class SoundStore extends Store {
      * @returns The list of decoded SoundFile objects from the sound store.
      */
     public decodeSoundStore(): SoundFile[] {
-        const soundArchiveIndex = this.fileStore.getArchive('sounds');
+        const soundArchiveIndex = this.clientFileStore.getArchive('sounds');
         const fileCount = soundArchiveIndex.groups.size;
         const soundFiles: SoundFile[] = new Array(fileCount);
 

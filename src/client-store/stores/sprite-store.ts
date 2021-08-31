@@ -351,7 +351,7 @@ export class SpriteStore extends Store {
             return null;
         }
 
-        const spritePackIndex = this.fileStore.getArchive('sprites');
+        const spritePackIndex = this.clientFileStore.getArchive('sprites');
         const fileData = spritePackIndex.getFile(nameOrId) || null;
         return fileData ? new SpritePack(fileData) : null;
     }
@@ -361,7 +361,7 @@ export class SpriteStore extends Store {
      * @returns The list of decoded SpritePack objects from the sprite store.
      */
     public decodeSpriteStore(): SpritePack[] {
-        const spritePackIndex = this.fileStore.getArchive('sprites');
+        const spritePackIndex = this.clientFileStore.getArchive('sprites');
         const packCount = spritePackIndex.groups.size;
         const spritePacks: SpritePack[] = new Array(packCount);
 

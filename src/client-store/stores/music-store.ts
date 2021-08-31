@@ -74,7 +74,7 @@ export class MusicStore extends Store {
             return null;
         }
 
-        const midiArchiveIndex = this.fileStore.getArchive('music');
+        const midiArchiveIndex = this.clientFileStore.getArchive('music');
         const fileData = midiArchiveIndex.getFile(nameOrId);
 
         return fileData ? new MidiFile(fileData) : null;
@@ -85,7 +85,7 @@ export class MusicStore extends Store {
      * @returns The list of decoded MidiFile objects from the midi store.
      */
     public decodeMusicStore(): MidiFile[] {
-        const midiArchiveIndex = this.fileStore.getArchive('music');
+        const midiArchiveIndex = this.clientFileStore.getArchive('music');
         const fileCount = midiArchiveIndex.groups.size;
         const midiFiles: MidiFile[] = new Array(fileCount);
 

@@ -72,9 +72,10 @@ export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile =
     buffer.readerIndex = 0;
 
     const compression = buffer.get('byte', 'unsigned');
-    const compressedLength = buffer.get('int', 'unsigned');
+    const compressedLength = buffer.get('int');
 
     if(Xtea.validKeys(keys)) {
+        console.log(`Compression: ${compression}`);
         // Decode xtea encrypted file
         const readerIndex = buffer.readerIndex;
         let lengthOffset = readerIndex;
@@ -101,7 +102,7 @@ export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile =
         return { compression, buffer: data, version };
     } else {
         // Compressed file
-        const uncompressedLength = buffer.get('int', 'unsigned');
+        const uncompressedLength = buffer.get('int');
         if(uncompressedLength < 0) {
             throw new Error('MISSING_ENCRYPTION_KEYS');
         }

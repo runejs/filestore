@@ -1,29 +1,27 @@
-import JSZip, { JSZipObject } from 'jszip';
 import { FileGroupMetadata } from '../index-manifest';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { IndexedFile } from './indexed-file';
 import { IndexedArchive } from '../archive';
 import * as path from 'path';
-import * as fs from 'fs';
+import * as fs from 'graceful-fs';
 import { logger } from '@runejs/core';
+import { FlatFile } from './flat-file';
 
 
 export class FileGroup extends IndexedFile {
 
-    private _folder: JSZip;
-    private _files: JSZipObject[] = [];
-    private _fileData: Buffer[] = [];
+    public files: Map<number, FlatFile> = new Map<number, FlatFile>();
+
+    // private _fileData: Buffer[] = [];
     private fileNames: string[] = [];
     private fileEntry: FileGroupMetadata;
     private filesLoaded: boolean = false;
 
     public constructor(archive: IndexedArchive,
                        fileIndex: number,
-                       fileEntry: FileGroupMetadata,
-                       zippedFolder?: JSZip) {
+                       fileEntry: FileGroupMetadata) {
         super(archive, fileIndex);
         this.fileEntry = fileEntry;
-        this._folder = zippedFolder;
         this.fileName = this.indexManifest?.groups[this.fileIndex]?.name
             ?.replace(this.archive.config.fileExtension, '') ?? undefined;
     }
@@ -33,17 +31,14 @@ export class FileGroup extends IndexedFile {
             await this.loadFiles();
         }
 
-        // const filePromises: Promise<Buffer>[] = new Array(this.fileCount);
-
-        // this._files.forEach((file, i) => filePromises[i] = file.async('nodebuffer'));
-        const fileData: Buffer[] = this._fileData; // await Promise.all(filePromises);
+        const fileData: Buffer[] = Array.from(this.files.values())
+            .map(file => file?.fileData?.toNodeBuffer() ?? null); // .filter(file => !!file);
         const fileSizes = fileData.map(data => data?.length ?? 0);
         const fileCount = fileData.length;
 
         // Size of all individual files + 1 int (4 bytes) per file containing it's size + 1 byte at the end
         // denoting number of chunks
         const groupSize = fileSizes.reduce((a, c) => a + c) + (fileCount * 4) + 1;
-
         const groupBuffer = new ByteBuffer(groupSize);
 
         // Write individual file contents
@@ -71,54 +66,49 @@ export class FileGroup extends IndexedFile {
 
     public async loadFiles(): Promise<void> {
         this.filesLoaded = false;
-        const childCount = this.fileEntry.fileNames.length;
-        const promises: Promise<void>[] = new Array(childCount);
-        this._fileData = new Array(childCount);
-        for(let i = 0; i < childCount; i++) {
-            const fileName = this.fileEntry.fileNames[i];
+
+        for(const fileName of this.fileEntry.fileNames) {
             if(!fileName) {
                 continue;
             }
 
+            const fileExtensionIndex = fileName.lastIndexOf('.');
+            const childIndex = Number(fileName.substring(0, fileExtensionIndex));
+
             const filePath = path.join(this.archive.filePath, this.fileEntry.name, fileName);
             if(!fs.existsSync(filePath)) {
+                this.files.set(childIndex, null);
                 logger.warn(`Grouped file ${filePath} not found.`);
-                continue;
+            } else {
+                try {
+                    const fileData = fs.readFileSync(filePath);
+                    if(fileData) {
+                        this.files.set(childIndex, new FlatFile(this.archive, childIndex, new ByteBuffer(fileData)));
+                    } else {
+                        this.files.set(childIndex, null);
+                        logger.warn(`Grouped file ${filePath} is empty.`);
+                    }
+                } catch(error) {
+                    logger.error(error);
+                }
+                /*promises.push(new Promise(resolve =>
+                    fs.readFile(filePath, {}, (err, data) => {
+                        if(err) {
+                            logger.error(err);
+                        } else {
+                            if(data) {
+                                this.files.set(childIndex, new FlatFile(this.archive, childIndex, new ByteBuffer(data)));
+                            } else {
+                                this.files.set(childIndex, null);
+                                logger.warn(`Grouped file ${filePath} is empty.`);
+                            }
+                        }
+                        resolve();
+                    })));*/
             }
-
-            promises[i] = new Promise(resolve => fs.readFile(filePath, {},
-                (err, data) => {
-                    this._fileData[i] = !data ? null : data;
-                    resolve();
-                }));
         }
 
-        await Promise.all(promises);
         this.filesLoaded = true;
-    }
-
-    public loadFileInfo(): void {
-        let filePaths: string[] = [];
-        let files: JSZipObject[] = [];
-        this.folder.forEach((filePath, file) => {
-            filePaths.push(filePath);
-            files.push(file);
-        });
-
-        this._files = files;
-        this.fileNames = filePaths;
-    }
-
-    public get files(): JSZip.JSZipObject[] {
-        return this._files;
-    }
-
-    public get fileCount(): number {
-         return this._files.length;
-    }
-
-    public get folder(): JSZip {
-        return this._folder;
     }
 
 }

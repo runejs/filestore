@@ -5,6 +5,7 @@ import { ClientArchive } from './client-archive';
 import { decompressFile } from '../compression';
 import { getFileName } from './file-naming';
 import { logger } from '@runejs/core';
+import { XteaDefinition } from './stores';
 
 
 export class ClientFile {
@@ -27,7 +28,7 @@ export class ClientFile {
     /**
      * A buffer of the file's raw data.
      */
-    public content: ByteBuffer;
+    public fileData: ByteBuffer;
 
     /**
      * CRC value of the file's data.
@@ -70,12 +71,13 @@ export class ClientFile {
      */
     public decompress(): ByteBuffer {
         if(this.decompressed) {
-            this.content.readerIndex = 0;
-            this.content.writerIndex = 0;
-            return this.content;
+            this.fileData.readerIndex = 0;
+            this.fileData.writerIndex = 0;
+            return this.fileData;
         }
 
-        const keys = this.archive.clientFileStore.xteaKeys[this.name] || undefined;
+        const keys = Object.values<XteaDefinition>(this.archive.clientFileStore.xteaKeys)
+            .find(xtea => xtea?.name_hash === this.nameHash);
         let archiveEntry: ExtractedFile | null;
 
         try {
@@ -89,10 +91,10 @@ export class ClientFile {
             return null;
         }
 
-        const { buffer } = decompressFile(archiveEntry.dataFile, keys);
-        this.content = buffer;
+        const { buffer } = decompressFile(archiveEntry.dataFile, keys?.key ?? undefined);
+        this.fileData = buffer;
         this.decompressed = true;
-        return this.content;
+        return this.fileData;
     }
 
     /**

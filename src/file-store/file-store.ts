@@ -114,7 +114,6 @@ export class FileStore {
         for(let indexId = 0; indexId < indexCount; indexId++) {
             const indexedArchive = this.indexedArchives.get(indexId);
             const crc = indexedArchive.manifest.crc;
-            logger.info(`Index ${indexId} CRC = ${crc}`);
             buffer.put(crc, 'int');
         }
 

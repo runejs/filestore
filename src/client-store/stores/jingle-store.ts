@@ -72,7 +72,7 @@ export class JingleStore extends Store {
             return null;
         }
 
-        const oggArchiveIndex = this.fileStore.getArchive('jingles');
+        const oggArchiveIndex = this.clientFileStore.getArchive('jingles');
         const fileData = oggArchiveIndex.getFile(id);
         return fileData ? new OggFile(fileData) : null;
     }
@@ -82,7 +82,7 @@ export class JingleStore extends Store {
      * @returns The list of decoded OggFile objects from the OGG store.
      */
     public decodeJingleStore(): OggFile[] {
-        const oggArchiveIndex = this.fileStore.getArchive('jingles');
+        const oggArchiveIndex = this.clientFileStore.getArchive('jingles');
         const fileCount = oggArchiveIndex.groups.size;
         const oggFiles: OggFile[] = new Array(fileCount);
 

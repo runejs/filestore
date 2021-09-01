@@ -70,6 +70,7 @@ export class ArchiveDecompressor {
 
         const archiveName = getIndexName(this.archive.archiveIndex) as ArchiveName;
         let failures = 0;
+        let successes = 0;
 
         for(const [ groupIndex, fileGroup ] of this.archive.groups) {
             if(isNaN(groupIndex)) {
@@ -221,10 +222,18 @@ export class ArchiveDecompressor {
                         ArchiveDecompressor.decodedFileNames[fileGroup.nameHash] = fileName;
                     }
                 }
+
+                successes++;
             } catch(error) {
                 logger.error(error);
                 failures++;
             }
+        }
+
+        if(successes) {
+            logger.info(`${successes} file(s) were decompressed successfully.`);
+        } else {
+            logger.error(`No files were able to be decompressed from this archive.`);
         }
 
         if(failures) {

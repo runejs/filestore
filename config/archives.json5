@@ -55,7 +55,7 @@
     maps: {
         index: 5,
         fileExtension: '.dat',
-        compression: 'bzip',
+        compression: 'gzip',
         filesNamed: true
     },
     music: {

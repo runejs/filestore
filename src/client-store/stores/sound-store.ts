@@ -45,7 +45,7 @@ export class SoundFile {
 export class SoundStore extends Store {
 
     public constructor(fileStore: ClientFileStore) {
-        super(fileStore, 'sounds');
+        super(fileStore, 'synth_sounds');
     }
 
     /**
@@ -72,7 +72,7 @@ export class SoundStore extends Store {
             return null;
         }
 
-        const soundArchiveIndex = this.clientFileStore.getArchive('sounds');
+        const soundArchiveIndex = this.clientArchive;
         const fileData = soundArchiveIndex.groups.get(id);
         return fileData ? new SoundFile(fileData) : null;
     }
@@ -82,7 +82,7 @@ export class SoundStore extends Store {
      * @returns The list of decoded SoundFile objects from the sound store.
      */
     public decodeSoundStore(): SoundFile[] {
-        const soundArchiveIndex = this.clientFileStore.getArchive('sounds');
+        const soundArchiveIndex = this.clientArchive;
         const fileCount = soundArchiveIndex.groups.size;
         const soundFiles: SoundFile[] = new Array(fileCount);
 

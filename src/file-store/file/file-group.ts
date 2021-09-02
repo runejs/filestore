@@ -10,7 +10,7 @@ import { FlatFile } from './flat-file';
 
 export class FileGroup extends IndexedFile {
 
-    public files: Map<number, FlatFile> = new Map<number, FlatFile>();
+    public groups: Map<number, FlatFile> = new Map<number, FlatFile>();
 
     // private _fileData: Buffer[] = [];
     private fileNames: string[] = [];
@@ -22,8 +22,6 @@ export class FileGroup extends IndexedFile {
                        fileEntry: FileGroupMetadata) {
         super(archive, fileIndex);
         this.fileEntry = fileEntry;
-        this.fileName = this.indexManifest?.groups[this.fileIndex]?.name
-            ?.replace(this.archive.config.fileExtension, '') ?? undefined;
     }
 
     public async packFileData(): Promise<ByteBuffer | undefined> {
@@ -31,7 +29,7 @@ export class FileGroup extends IndexedFile {
             await this.loadFiles();
         }
 
-        const fileData: Buffer[] = Array.from(this.files.values())
+        const fileData: Buffer[] = Array.from(this.groups.values())
             .map(file => file?.fileData?.toNodeBuffer() ?? null); // .filter(file => !!file);
         const fileSizes = fileData.map(data => data?.length ?? 0);
         const fileCount = fileData.length;
@@ -77,15 +75,15 @@ export class FileGroup extends IndexedFile {
 
             const filePath = path.join(this.archive.filePath, this.fileEntry.name, fileName);
             if(!fs.existsSync(filePath)) {
-                this.files.set(childIndex, null);
+                this.groups.set(childIndex, null);
                 logger.warn(`Grouped file ${filePath} not found.`);
             } else {
                 try {
                     const fileData = fs.readFileSync(filePath);
                     if(fileData) {
-                        this.files.set(childIndex, new FlatFile(this.archive, childIndex, new ByteBuffer(fileData)));
+                        this.groups.set(childIndex, new FlatFile(this.archive, childIndex, new ByteBuffer(fileData)));
                     } else {
-                        this.files.set(childIndex, null);
+                        this.groups.set(childIndex, null);
                         logger.warn(`Grouped file ${filePath} is empty.`);
                     }
                 } catch(error) {

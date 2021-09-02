@@ -112,7 +112,7 @@ export class ObjectStore {
 
         const objectMap: Map<number, ObjectConfig> = new Map<number, ObjectConfig>();
 
-        for(const [ objectId, objectFile ] of group.files) {
+        for(const [ objectId, objectFile ] of group.groups) {
             if(!objectFile) {
                 logger.error(`Object file not found.`);
                 continue;
@@ -136,7 +136,7 @@ export class ObjectStore {
             return null;
         }
 
-        const objectFile: ClientFile | FlatFile | null = group.files.get(objectId) || null;
+        const objectFile: ClientFile | FlatFile | null = group.groups.get(objectId) || null;
 
         if(!objectFile) {
             logger.error(`Object file not found.`);

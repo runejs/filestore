@@ -8,6 +8,6 @@ export * from './region-store';
 export * from './sound-store';
 export * from './sprite-store';
 export * from './texture-store';
-export * from './widget-store';
+export * from './interface-store';
 
 export * from './configs';

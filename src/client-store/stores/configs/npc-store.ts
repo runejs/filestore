@@ -90,7 +90,7 @@ export class NpcStore {
             return null;
         }
 
-        const npcFile = npcArchive.files.get(npcId) || null;
+        const npcFile = npcArchive.groups.get(npcId) || null;
 
         if(!npcFile) {
             logger.error(`Npc file not found.`);
@@ -218,7 +218,7 @@ export class NpcStore {
 
         const npcMap: Map<number, NpcConfig> = new Map<number, NpcConfig>();
 
-        for(const [ npcId, npcFile ] of this.npcGroup.files) {
+        for(const [ npcId, npcFile ] of this.npcGroup.groups) {
             if(!npcFile) {
                 logger.error(`Npc file not found.`);
                 return null;

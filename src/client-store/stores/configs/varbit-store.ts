@@ -41,7 +41,7 @@ export class VarbitStore {
             return null;
         }
 
-        const varbitFile = varbitArchive.files.get(varbitId) || null;
+        const varbitFile = varbitArchive.groups.get(varbitId) || null;
 
         if(!varbitFile) {
             logger.error(`Varbit file not found.`);
@@ -92,7 +92,7 @@ export class VarbitStore {
 
         const varbitMap: Map<number, VarbitConfig> = new Map<number, VarbitConfig>();
 
-        for(const [ varbitId, varbitFile ] of this.varbitGroup.files) {
+        for(const [ varbitId, varbitFile ] of this.varbitGroup.groups) {
             if(!varbitFile) {
                 logger.error(`Varbit file not found.`);
                 return null;

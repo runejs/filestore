@@ -85,7 +85,7 @@ export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile =
         decryptedData.copy(buffer, readerIndex, 0);
         buffer.readerIndex = readerIndex;
     } else {
-        logger.error(`Invalid keys: ${keys}`);
+        // logger.error(`Invalid keys: ${keys}`);
     }
 
     if(compression === 0) {

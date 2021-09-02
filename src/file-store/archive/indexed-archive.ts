@@ -52,9 +52,6 @@ export class IndexedArchive {
 
         // @TODO this is brooooooken beyond drunk me to fix
         const originalFileIndex = (fileName: string, fileList: IndexedFile[]): number => {
-            if(this.config.children) {
-
-            }
             const folderCheck = fileName.replace('/', '');
             const originalFile = fileList.find(indexedFile =>
                 indexedFile.fileName === fileName || indexedFile.fileName === folderCheck);
@@ -65,8 +62,7 @@ export class IndexedArchive {
             return result;
         };
 
-        const extension = this.config.fileExtension;
-
+        const extension = this.config.content?.fileExtension;
         const storeDirectory = fs.readdirSync(this.filePath);
 
         const fileNames = storeDirectory.filter(fileName => {
@@ -110,9 +106,8 @@ export class IndexedArchive {
             const fileIndex = oldFileIndex !== -1 ? oldFileIndex : newFileIndex++;
 
             let nameHash: number | undefined;
-            const actualFileName = fileName.replace(this.config.fileExtension, '')
-                .replace('/', '');
-            if(this.config.filesNamed) {
+            const actualFileName = fileName.replace(extension, '').replace('/', '');
+            if(this.config.content?.saveFileNames) {
                 nameHash = /[a-z]/ig.test(actualFileName) ? hashFileName(actualFileName) : parseInt(actualFileName, 10);
             }
 
@@ -210,8 +205,8 @@ export class IndexedArchive {
         let writtenFileIndex = 0;
 
         // Write index file header
-        buffer.put(this.config.format ?? 5);
-        buffer.put(this.config.filesNamed ? 1 : 0);
+        buffer.put(this.config.format ?? 5); // '5' for 'JS5' by default
+        buffer.put(this.config.content?.saveFileNames ? 1 : 0);
         buffer.put(fileCount, 'short');
 
         // Write file indexes
@@ -221,7 +216,7 @@ export class IndexedArchive {
         }
 
         // Write name hashes (if applicable)
-        if(this.config.filesNamed) {
+        if(this.config.content?.saveFileNames) {
             logger.info(`Writing file names to index ${this.indexId}.`);
             for(const fileIndex of fileIndexes) {
                 buffer.put(files[fileIndex]?.nameHash ?? 0, 'int');
@@ -256,12 +251,17 @@ export class IndexedArchive {
             // Write child indexes
             for(let i = 0; i < childCount; i++) {
                 if(file?.fileNames) {
-                    const child = file.fileNames[i];
-                    const idxStr = child.substr(0, child.indexOf('.'));
-                    const index = parseInt(idxStr, 10);
+                    try {
+                        const child = file.fileNames[i];
+                        const idxStr = child.substr(0, child.indexOf('.'));
+                        const index = parseInt(idxStr, 10);
 
-                    buffer.put(index - writtenFileIndex, 'short');
-                    writtenFileIndex = index;
+                        buffer.put(index - writtenFileIndex, 'short');
+                        writtenFileIndex = index;
+                    } catch(error) {
+                        logger.error(`Error writing child index #${i} for group ${fileIndex}`);
+                        logger.error(error);
+                    }
                 } else {
                     buffer.put(i - writtenFileIndex, 'short');
                     writtenFileIndex = i;
@@ -271,7 +271,9 @@ export class IndexedArchive {
 
         // Write child name hashes (if applicable)
         // @TODO Single child files need a name of blank string?
-        if(this.config.filesNamed) {
+        if(this.config.content?.saveFileNames) {
+            const fileExtension = this.config.content?.fileExtension;
+
             for(const fileIndex of fileIndexes) {
                 const file = files[fileIndex];
                 if(file?.fileNames?.length) {
@@ -280,8 +282,7 @@ export class IndexedArchive {
                         if(!childFile) {
                             buffer.put(0, 'int');
                         } else {
-                            const fileName = this.config.fileExtension ?
-                                childFile.replace(this.config.fileExtension, '') : childFile;
+                            const fileName = fileExtension ? childFile.replace(fileExtension, '') : childFile;
                             const nameHash: number = /[a-z]/ig.test(fileName) ?
                                 hashFileName(fileName) : parseInt(fileName, 10);
                             buffer.put(nameHash, 'int');
@@ -324,7 +325,7 @@ export class IndexedArchive {
         }
 
         const folderPath = path.join(this.filePath, fileEntry.name);
-        const filePath = path.join(this.filePath, fileEntry.name + this.config.fileExtension);
+        const filePath = path.join(this.filePath, fileEntry.name + (this.config.content?.fileExtension ?? ''));
         let finalPath: string = folderPath;
 
         if(!fs.existsSync(folderPath)) {

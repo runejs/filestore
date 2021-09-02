@@ -205,12 +205,12 @@ export class ClientArchive {
             group.fileIndices = fileIndices;
 
             if(fileIndices.length > 1) {
-                fileIndices.forEach(index => group.files.set(index, null));
-            } else if(!fileIndices.length || group.files.size <= 1) {
+                fileIndices.forEach(index => group.groups.set(index, null));
+            } else if(!fileIndices.length || group.groups.size <= 1) {
                 group.singleFile = true;
                 const file = new ClientFile(groupIndex, this, this.clientStoreChannel);
                 file.nameHash = group.nameHash;
-                group.files.set(0, file);
+                group.groups.set(0, file);
             }
         }
 
@@ -218,12 +218,12 @@ export class ClientArchive {
         if((this.saveFileNames & NAME_FLAG) !== 0) {
             for(const groupIndex of groupIndices) {
                 const fileGroup = this.groups.get(groupIndex);
-                if(!fileGroup.singleFile && fileGroup?.files?.size) {
+                if(!fileGroup.singleFile && fileGroup?.groups?.size) {
                     const fileIndices = groupFileIndices.get(groupIndex);
                     for(const childIndex of fileIndices) {
                         const nameHash = buffer.get('int');
-                        if(fileGroup.files.get(childIndex)) {
-                            fileGroup.files.get(childIndex).nameHash = nameHash;
+                        if(fileGroup.groups.get(childIndex)) {
+                            fileGroup.groups.get(childIndex).nameHash = nameHash;
                         }
                     }
                 }

@@ -11,7 +11,7 @@ export class ClientFileGroup extends ClientFile {
     /**
      * A list of files housed within this file group.
      */
-    public files: Map<number, ClientFile> = new Map<number, ClientFile>();
+    public groups: Map<number, ClientFile> = new Map<number, ClientFile>();
 
     public fileIndices: number[];
 
@@ -67,7 +67,7 @@ export class ClientFileGroup extends ClientFile {
      * @param childIndex The index of the file to find.
      */
     public getFile(childIndex: number): ClientFile | null {
-        return this.files.get(childIndex) || null;
+        return this.groups.get(childIndex) || null;
     }
 
     /**
@@ -82,8 +82,13 @@ export class ClientFileGroup extends ClientFile {
         archiveEntry.dataFile.readerIndex = 0;
         this.groupCompressedSize = archiveEntry.dataFile.length;
         const { compression, version, buffer } = decompressFile(archiveEntry.dataFile);
+
+        if(!buffer) {
+            return;
+        }
+
         buffer.readerIndex = 0;
-        const groupSize = this.files.size;
+        const groupSize = this.groups.size;
 
         this.fileData = buffer;
 
@@ -113,7 +118,7 @@ export class ClientFileGroup extends ClientFile {
         for(let childIndex = 0; childIndex < groupSize; childIndex++) {
             const fileData = new ClientFile(childIndex, this.archive, this.clientStoreChannel);
             fileData.fileData = new ByteBuffer(sizes[childIndex]);
-            this.files.set(childIndex, fileData);
+            this.groups.set(childIndex, fileData);
         }
 
         buffer.readerIndex = 0;
@@ -121,21 +126,21 @@ export class ClientFileGroup extends ClientFile {
         for(let chunk = 0; chunk < stripeCount; chunk++) {
             for(let id = 0; id < groupSize; id++) {
                 const chunkSize = stripeLengths[chunk][id];
-                this.files.get(id).fileData.putBytes(buffer.getSlice(buffer.readerIndex, chunkSize));
+                this.groups.get(id).fileData.putBytes(buffer.getSlice(buffer.readerIndex, chunkSize));
 
                 let sourceEnd: number = buffer.readerIndex + chunkSize;
                 if(buffer.readerIndex + chunkSize >= buffer.length) {
                     sourceEnd = buffer.length;
                 }
 
-                buffer.copy(this.files.get(id).fileData, 0, buffer.readerIndex, sourceEnd);
+                buffer.copy(this.groups.get(id).fileData, 0, buffer.readerIndex, sourceEnd);
                 buffer.readerIndex = sourceEnd;
             }
         }
 
-        for(const [ key, file ] of this.files) {
+        for(const [ key, file ] of this.groups) {
             if(!file) {
-                this.files.delete(key);
+                this.groups.delete(key);
             }
         }
 

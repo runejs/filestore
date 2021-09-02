@@ -74,7 +74,7 @@ export class ConfigStore extends Store {
     public constructor(clientFileStore: ClientFileStore);
     public constructor(flatFileStore: FileStore);
     public constructor(fileStore: ClientFileStore | FileStore) {
-        super(fileStore, 'configs');
+        super(fileStore, 'config');
         this.itemStore = new ItemStore(this);
         this.npcStore = new NpcStore(this);
         this.objectStore = new ObjectStore(this);

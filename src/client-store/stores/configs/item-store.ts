@@ -97,7 +97,7 @@ export class ItemStore {
             return null;
         }
 
-        const itemFile = itemArchive.files.get(itemId) || null;
+        const itemFile = itemArchive.groups.get(itemId) || null;
 
         if(!itemFile) {
             logger.error(`Item file not found.`);
@@ -425,7 +425,7 @@ export class ItemStore {
 
         const itemMap: Map<number, ItemConfig> = new Map<number, ItemConfig>();
 
-        for(const [ itemId, itemFile ] of this.itemGroup.files) {
+        for(const [ itemId, itemFile ] of this.itemGroup.groups) {
             if(!itemFile) {
                 logger.error(`Item file not found.`);
                 return null;

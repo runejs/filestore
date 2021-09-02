@@ -2,25 +2,49 @@ require('json5/lib/register');
 
 
 export type ArchiveName =
-    'animations' |
+    'anims' |
     'bases' |
-    'configs' |
-    'widgets' |
-    'sounds' |
+    'config' |
+    'interfaces' |
+    'synth_sounds' |
     'maps' |
-    'music' |
+    'midi_songs' |
     'models' |
     'sprites' |
     'textures' |
     'binary' |
-    'jingles' |
-    'scripts';
+    'midi_jingles' |
+    'clientscripts' |
+    // 435 archives ^^^
+    // post-435 archives vvv
+    'fontmetrics' |
+    'vorbis' |
+    'midi_instruments' |
+    'config_loc' |
+    'config_enum' |
+    'config_npc' |
+    'config_obj' |
+    'config_seq' |
+    'config_spot' |
+    'config_var_bit' |
+    'worldmapdata' |
+    'quickchat' |
+    'quickchat_global' |
+    'materials' |
+    'config_particle' |
+    'defaults';
 
 export type IndexName = 'main' | ArchiveName;
 
-
 export type FileCompression = 'uncompressed' | 'bzip' | 'gzip';
-export type ArchiveContentType = 'files' | 'encoded';
+export type ArchiveContentType = 'groups' | 'files';
+
+export type ArchiveConfigurations = { [key in IndexName]: ArchiveConfig };
+
+export type DefaultFileNameMap = { [key: string]: number };
+
+export const archiveConfig: ArchiveConfigurations = require('../../../config/archives.json5');
+
 
 export const compressionKey: { [key in FileCompression]: number } = {
     uncompressed: 0,
@@ -28,21 +52,22 @@ export const compressionKey: { [key in FileCompression]: number } = {
     gzip: 2
 };
 
+
+export interface ArchiveContentConfig {
+    type?: ArchiveContentType;
+    fileExtension?: string;
+    saveFileNames?: boolean;
+    defaultFileNames?: DefaultFileNameMap;
+}
+
+
 export interface ArchiveConfig {
     index: number;
     name?: IndexName;
-    fileExtension?: string;
-    compression: FileCompression;
     format?: number;
-    filesNamed?: boolean;
-    content?: ArchiveContentType;
-    flattenFileGroups?: boolean;
-    children?: { [key: string]: number };
+    compression: FileCompression;
+    content?: ArchiveContentConfig;
 }
-
-export type ArchiveConfigurations = { [key in IndexName]: ArchiveConfig };
-
-export const archiveConfig: ArchiveConfigurations = require('../../../config/archives.json5');
 
 
 export const getIndexName = (indexId: number): IndexName | undefined => {

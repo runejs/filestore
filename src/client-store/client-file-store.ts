@@ -15,7 +15,7 @@ import {
     SpriteStore,
     TextureStore,
     VarbitStore,
-    WidgetStore,
+    InterfaceStore,
     XteaDefinition
 } from './stores';
 import { archiveConfig, ArchiveName, IndexName } from '../file-store';
@@ -36,7 +36,7 @@ export class ClientFileStore {
     public readonly regionStore: RegionStore;
     public readonly soundStore: SoundStore;
     public readonly spriteStore: SpriteStore;
-    public readonly widgetStore: WidgetStore;
+    public readonly widgetStore: InterfaceStore;
     public readonly textureStore: TextureStore;
 
     public readonly channels: ClientStoreChannel;
@@ -66,7 +66,7 @@ export class ClientFileStore {
         this.regionStore = new RegionStore(this, options?.xteaKeys);
         this.soundStore = new SoundStore(this);
         this.spriteStore = new SpriteStore(this);
-        this.widgetStore = new WidgetStore(this);
+        this.widgetStore = new InterfaceStore(this);
         this.textureStore = new TextureStore(this);
 
         // this should be called as-needed

@@ -41,7 +41,7 @@ const spriteTest = (): void => {
 };
 
 const configTest = async (fileStore: FileStore): Promise<void> => {
-    const configArchive = fileStore.getArchive('configs');
+    const configArchive = fileStore.getArchive('config');
     await configArchive.unpack(true, false);
     const configStore = new ConfigStore(fileStore);
 

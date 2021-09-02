@@ -30,8 +30,11 @@ export abstract class IndexedFile extends FileInfo {
         super();
         this.fileIndex = fileIndex;
         this.fileData = fileData;
-        this.fileName = this.indexManifest?.groups[this.fileIndex]?.name
-            ?.replace(this.archive.config.fileExtension, '') ?? undefined;
+        this.fileName = this.indexManifest?.groups[this.fileIndex]?.name ?? '';
+
+        if(this.fileExtension && this.fileName) {
+            this.fileName = this.fileName.replace(this.fileExtension, '');
+        }
     }
 
     public abstract packFileData(): ByteBuffer | undefined | Promise<ByteBuffer | undefined>;
@@ -134,6 +137,10 @@ export abstract class IndexedFile extends FileInfo {
 
     public get fileDataCompressed(): boolean {
         return this._fileDataCompressed;
+    }
+
+    public get fileExtension(): string {
+        return this.archive.config.content?.fileExtension ?? '';
     }
 
 }

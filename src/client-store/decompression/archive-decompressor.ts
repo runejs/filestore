@@ -58,12 +58,12 @@ export class ArchiveDecompressor {
 
         const fileMetadataMap: FileGroupMetadataMap = {};
         const groupCount = this.archive.groups.size;
-        const fileExtension = archiveConfig.fileExtension;
-        const childNameMap = archiveConfig.children;
+        const fileExtension = archiveConfig.content?.fileExtension;
+        const defaultFileNames = archiveConfig.content?.defaultFileNames;
         let fileGroupNames: { [key: number]: string } = {};
 
-        if(childNameMap && Object.keys(childNameMap).length) {
-            Object.keys(childNameMap).forEach(childName => fileGroupNames[childNameMap[childName]] = childName);
+        if(defaultFileNames && Object.keys(defaultFileNames).length) {
+            Object.keys(defaultFileNames).forEach(childName => fileGroupNames[defaultFileNames[childName]] = childName);
         }
 
         logger.info(`${groupCount} groups found within this archive.`);
@@ -91,16 +91,12 @@ export class ArchiveDecompressor {
             const hash = createHash('sha256');
 
             try {
-                if(!fileGroup.singleFile) {
-                    fileGroup.decodeGroupFiles();
-                } else {
-                    fileGroup.decompress();
-                }
-
-                if(!fileGroup.singleFile && archiveConfig.content !== 'encoded' && !archiveConfig.flattenFileGroups) {
+                if(!archiveConfig.content?.type || archiveConfig.content?.type === 'groups') {
                     // Write a new directory for a group with more than 1 file
 
-                    const groupFiles = fileGroup.files;
+                    fileGroup.decodeGroupFiles();
+
+                    const groupFiles = fileGroup.groups;
                     const groupFileCount = groupFiles.size;
 
                     fileMetadataMap[groupIndex] = {
@@ -162,6 +158,8 @@ export class ArchiveDecompressor {
                     }
                 } else {
                     // Write single file for groups with one entry
+
+                    fileGroup.decompress();
 
                     if(!fileGroup?.fileData) {
                         this.reportFileError(fileMetadataMap, groupIndex, fileGroup.name, fileGroup.nameHash,

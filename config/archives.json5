@@ -1,100 +1,143 @@
 {
-    // The index of all indexes
+    // The main index of indexes
     main: {
         index: 255,
-        compression: 'uncompressed'
+        compression: 'uncompressed',
     },
+
     // Regular indexes
-    animations: {
+    anims: {
         index: 0,
-        fileExtension: '.dat',
         compression: 'bzip',
-        flattenFileGroups: true
+        content: {
+            type: 'files',
+            fileExtension: '.dat'
+        },
     },
     bases: {
         index: 1,
-        fileExtension: '.dat',
-        compression: 'gzip'
+        compression: 'gzip',
+        content: {
+            type: 'files',
+            fileExtension: '.dat',
+        },
     },
-    configs: {
+    config: {
         index: 2,
-        fileExtension: '.dat',
         compression: 'bzip',
-        children: {
-            underlays: 1,
-            // 2?
-            identity_kit: 3,
-            overlays: 4,
-            inv: 5,
-            objects: 6,
-            // 7?
-            enums: 8,
-            npcs: 9,
-            items: 10,
-            item_attributes: 11,
-            sequences: 12,
-            spot_anims: 13,
-            varbits: 14,
-            // 15?
-            player_vars: 16,
-            // 17?
-            // 18?
-            // ...?
-        }
+        content: {
+            type: 'groups',
+            fileExtension: '.dat',
+            defaultFileNames: {
+                underlays: 1,
+                // 2?
+                identity_kit: 3,
+                overlays: 4,
+                inv: 5,
+                objects: 6,
+                // 7?
+                enums: 8,
+                npcs: 9,
+                items: 10,
+                item_attributes: 11,
+                sequences: 12,
+                spot_anims: 13,
+                varbits: 14,
+                // 15?
+                player_vars: 16,
+                // 17?
+                // 18?
+                // ...?
+            }
+        },
     },
-    widgets: {
+    interfaces: {
         index: 3,
-        fileExtension: '.dat',
-        compression: 'bzip'
+        compression: 'bzip',
+        content: {
+            type: 'groups',
+            fileExtension: '.dat'
+        },
     },
-    sounds: {
+    synth_sounds: {
         index: 4,
-        fileExtension: '.wav',
-        compression: 'gzip'
+        compression: 'gzip',
+        content: {
+            type: 'files',
+            fileExtension: '.wav',
+        },
     },
     maps: {
         index: 5,
-        fileExtension: '.dat',
         compression: 'gzip',
-        filesNamed: true
+        content: {
+            type: 'files',
+            fileExtension: '.dat',
+            saveFileNames: true,
+        },
     },
-    music: {
+    midi_songs: {
         index: 6,
-        fileExtension: '.mid',
         compression: 'gzip',
-        filesNamed: true
+        content: {
+            type: 'files',
+            fileExtension: '.mid',
+            saveFileNames: true
+        },
     },
     models: {
         index: 7,
-        fileExtension: '.dat',
-        compression: 'gzip'
+        compression: 'gzip',
+        content: {
+            type: 'files',
+            fileExtension: '.dat',
+        },
     },
     sprites: {
         index: 8,
-        fileExtension: '.dat', // '.png',
         compression: 'gzip',
-        filesNamed: true,
-        // content: 'encoded'
+        content: {
+            type: 'files',
+            fileExtension: '.dat',
+            saveFileNames: true
+        },
     },
     textures: {
         index: 9,
-        fileExtension: '.dat',
-        compression: 'gzip'
+        compression: 'gzip',
+        content: {
+            type: 'groups',
+            fileExtension: '.dat',
+        },
     },
     binary: {
         index: 10,
         compression: 'uncompressed',
-        filesNamed: true
+        content: {
+            type: 'files',
+            saveFileNames: true
+        },
     },
-    jingles: {
+    midi_jingles: {
         index: 11,
-        fileExtension: '.ogg',
-        compression: 'gzip'
-    },
-    scripts: {
-        index: 12,
-        fileExtension: '.dat',
         compression: 'gzip',
-        filesNamed: true
-    }
+        content: {
+            type: 'files',
+            fileExtension: '.mid',
+        },
+    },
+    clientscripts: {
+        index: 12,
+        compression: 'gzip',
+        content: {
+            type: 'files',
+            fileExtension: '.cs2',
+            saveFileNames: true
+        },
+    },
+
+    // @TODO setup correct configs
+    /*fontmetrics: {
+        index: 13,
+    },*/
 }

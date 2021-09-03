@@ -1,4 +1,4 @@
-import { FileGroupMetadata } from '../index-manifest';
+import { FileGroupMetadata } from '../archive-index';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { IndexedFile } from './indexed-file';
 import { IndexedArchive } from '../archive';
@@ -10,9 +10,8 @@ import { FlatFile } from './flat-file';
 
 export class FileGroup extends IndexedFile {
 
-    public groups: Map<number, FlatFile> = new Map<number, FlatFile>();
+    public files: Map<string, FlatFile> = new Map<string, FlatFile>();
 
-    // private _fileData: Buffer[] = [];
     private fileNames: string[] = [];
     private fileEntry: FileGroupMetadata;
     private filesLoaded: boolean = false;
@@ -24,12 +23,16 @@ export class FileGroup extends IndexedFile {
         this.fileEntry = fileEntry;
     }
 
+    public getExistingFileNames(): string[] {
+        return this.archive.manifest.groups[`${this.fileIndex}`]?.fileNames ?? [];
+    }
+
     public async packFileData(): Promise<ByteBuffer | undefined> {
         if(!this.filesLoaded) {
             await this.loadFiles();
         }
 
-        const fileData: Buffer[] = Array.from(this.groups.values())
+        const fileData: Buffer[] = Array.from(this.files.values())
             .map(file => file?.fileData?.toNodeBuffer() ?? null); // .filter(file => !!file);
         const fileSizes = fileData.map(data => data?.length ?? 0);
         const fileCount = fileData.length;
@@ -63,6 +66,9 @@ export class FileGroup extends IndexedFile {
     }
 
     public async loadFiles(): Promise<void> {
+        // @TODO place/keep children in the proper order
+        const existingFileNames = this.getExistingFileNames();
+
         this.filesLoaded = false;
 
         for(const fileName of this.fileEntry.fileNames) {
@@ -75,15 +81,15 @@ export class FileGroup extends IndexedFile {
 
             const filePath = path.join(this.archive.filePath, this.fileEntry.name, fileName);
             if(!fs.existsSync(filePath)) {
-                this.groups.set(childIndex, null);
+                this.setFile(childIndex, new FlatFile(this.archive, childIndex, null));
                 logger.warn(`Grouped file ${filePath} not found.`);
             } else {
                 try {
                     const fileData = fs.readFileSync(filePath);
                     if(fileData) {
-                        this.groups.set(childIndex, new FlatFile(this.archive, childIndex, new ByteBuffer(fileData)));
+                        this.setFile(childIndex, new FlatFile(this.archive, childIndex, new ByteBuffer(fileData)));
                     } else {
-                        this.groups.set(childIndex, null);
+                        this.setFile(childIndex, null);
                         logger.warn(`Grouped file ${filePath} is empty.`);
                     }
                 } catch(error) {
@@ -107,6 +113,23 @@ export class FileGroup extends IndexedFile {
         }
 
         this.filesLoaded = true;
+    }
+
+    /**
+     * Adds a new or replaces an existing file within the group.
+     * @param fileIndex The index of the file to add or change.
+     * @param file The file to add or change.
+     */
+    public setFile(fileIndex: number | string, file: FlatFile): void {
+        this.files.set(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex, file);
+    }
+
+    /**
+     * Fetches a file from this group by index.
+     * @param fileIndex The index of the file to find.
+     */
+    public getFile(fileIndex: number | string): FlatFile | null {
+        return this.files.get(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex) ?? null;
     }
 
 }

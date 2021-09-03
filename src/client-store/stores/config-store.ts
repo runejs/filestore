@@ -2,43 +2,19 @@ import { ClientFileStore } from '../client-file-store';
 import { ClientFileGroup } from '../client-file-group';
 import { NpcStore, ObjectStore, ItemStore, VarbitStore } from './configs';
 import { Store } from './store';
-import { FileGroup, FileStore, IndexedFile } from '../../file-store';
+import { FileGroup, FileStore, getGroupNames } from '../../file-store';
 
 
 /**
- * String representations of config file/archive ids.
+ * Finds the corresponding string groupIndex key for the given numeric id.
+ * @param groupIndex The numeric groupIndex file/archive id to find the name of.
  */
-export type ConfigId =
-    'character' |
-    'objects' |
-    'npcs' |
-    'items' |
-    'animations' |
-    'graphics' |
-    'varbits';
-
-/**
- * A map of unique config keys to file/archive ids within the config store.
- */
-export const configIdMap: { [key: string]: number } = {
-    'character': 3,
-    'objects': 6,
-    'npcs': 9,
-    'items': 10,
-    'animations': 12,
-    'graphics': 13,
-    'varbits': 14
-};
-
-/**
- * Finds the corresponding string config key for the given numeric id.
- * @param config The numeric config file/archive id to find the name of.
- */
-export const getConfigId = (config: number): ConfigId => {
-    const ids: string[] = Object.keys(configIdMap);
-    for(const id of ids) {
-        if(configIdMap[id] === config) {
-            return id as ConfigId;
+export const getConfigGroupName = (groupIndex: number): string => {
+    const nameMap = getGroupNames('config');
+    const names: string[] = Object.keys(nameMap);
+    for(const name of names) {
+        if(nameMap[name] === groupIndex) {
+            return name;
         }
     }
 
@@ -81,16 +57,12 @@ export class ConfigStore extends Store {
         this.varbitStore = new VarbitStore(this);
     }
 
-    public getGroup(configId: ConfigId | number): ClientFileGroup | FileGroup {
-        if(typeof configId !== 'number') {
-            configId = configIdMap[configId];
-        }
-
+    public getGroup(groupIndex: string | number): ClientFileGroup | FileGroup {
         if(this.flatFileStore) {
-            return this.indexedArchive.files.get(configId) as FileGroup;
+            return this.indexedArchive.getGroup(groupIndex) as FileGroup;
         }
 
-        return this.clientArchive.groups.get(configId);
+        return this.clientArchive.getGroup(groupIndex);
     }
 
 }

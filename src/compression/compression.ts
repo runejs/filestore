@@ -105,7 +105,8 @@ export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile =
         // Compressed file
         const uncompressedLength = buffer.get('int');
         if(uncompressedLength < 0) {
-            throw new Error(`Invalid uncompressed length`);
+            logger.error(`Invalid file length - missing XTEA keys?`);
+            return { compression, buffer: null };
         }
 
         let encryptedFileData = new ByteBuffer(
@@ -121,7 +122,8 @@ export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile =
             buffer.readerIndex = buffer.readerIndex + compressedLength;
 
             if(decompressed.length !== uncompressedLength) {
-                throw new Error(`Compression length mismatch`);
+                logger.error(`Compression length mismatch`);
+                return { compression, buffer: null };
             }
 
             // Read the file footer
@@ -132,7 +134,7 @@ export const decompressFile = (buffer: ByteBuffer, keys?: number[]): StoreFile =
 
             return { compression, buffer: decompressed, version };
         } catch(error) {
-            // logger.error(error);
+            logger.error(error?.message ?? error);
             return { compression, buffer: null };
         }
     }

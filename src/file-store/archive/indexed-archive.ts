@@ -1,71 +1,87 @@
 import { FileStore } from '../file-store';
 import fs from 'fs';
 import path from 'path';
-import JSZip from 'jszip';
 import { logger } from '@runejs/core';
-import { FileGroupMetadata, IndexManifest } from '../index-manifest';
+import { FileGroupMetadata, ArchiveIndex, readIndexFile, writeIndexFile } from '../archive-index';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { compressFile } from '../../compression';
 import { IndexedFile, FlatFile, FileGroup } from '../file';
-import { ArchiveConfig, compressionKey, getArchiveConfig, IndexName } from './config';
+import { ArchiveConfig, ArchiveContentType, compressionKey, getArchiveConfig, IndexName } from './config';
 import { hashFileName } from '../../util';
 
 
 export class IndexedArchive {
 
-    public files: Map<number, IndexedFile> = new Map<number, IndexedFile>();
     public readonly fileStore: FileStore;
     public readonly config: ArchiveConfig;
-    public readonly indexId: number;
+    public readonly archiveIndex: number;
     public readonly indexName: IndexName;
 
+    public groups: Map<string, IndexedFile> = new Map<string, IndexedFile>();
+
     private loaded: boolean = false;
-    private _manifest: IndexManifest;
+    private _manifest: ArchiveIndex;
 
     public constructor(fileStore: FileStore, indexId: number, indexName?: string) {
         this.fileStore = fileStore;
-        this.indexId = indexId;
+        this.archiveIndex = indexId;
         if(indexName) {
             this.indexName = indexName as IndexName;
         }
-        this.config = getArchiveConfig(this.indexId);
+        this.config = getArchiveConfig(this.archiveIndex);
+    }
+
+    public getExistingFileIndex(fileName: string): number {
+        for(const [ groupIndex, group ] of this._manifest.groups) {
+            if(group?.name === fileName) {
+                return Number(groupIndex);
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Creates a brand new file index for this archive based off of the last file entry's index.
+     */
+    public getLastFileIndex(): number {
+        const fileIndices = Array.from(this.groups.keys()).map(n => Number(n));
+        if(!fileIndices?.length) {
+            return 0;
+        }
+
+        let min = fileIndices[0] ?? 0;
+        for(const [ index, ] of this._manifest.groups) {
+            const n = Number(index);
+            if(n < min) {
+                min = n;
+            }
+        }
+
+        return min;
     }
 
     /**
      * Re-indexes the entire archive, evaluating each file and file group for changes to append to the manifest file.
      */
     public async indexArchiveFiles(): Promise<void> {
-        // @TODO this is very broken for the config archive
+        logger.info(`Loading files for ${this.filePath}...`);
 
         await this.unpack(false);
 
-        logger.info(`Indexing ${this.filePath}...`);
-        logger.info(`Original file count: ${Object.keys(this.files).length}`);
+        logger.info(`Original file count: ${this.groups.size}`);
 
-        const newManifest: IndexManifest = {
-            index: this.indexId,
+        const newManifest: ArchiveIndex = {
+            index: this.archiveIndex,
             crc: 0,
             sha256: '',
             version: this._manifest.version ?? undefined,
-            groups: {}
-        };
-
-        // @TODO this is brooooooken beyond drunk me to fix
-        const originalFileIndex = (fileName: string, fileList: IndexedFile[]): number => {
-            const folderCheck = fileName.replace('/', '');
-            const originalFile = fileList.find(indexedFile =>
-                indexedFile.fileName === fileName || indexedFile.fileName === folderCheck);
-            const result = originalFile?.fileIndex ?? -1;
-            if(result === -1) {
-                console.log(fileList);
-            }
-            return result;
+            groups: new Map<string, FileGroupMetadata>()
         };
 
         const extension = this.config.content?.fileExtension;
         const storeDirectory = fs.readdirSync(this.filePath);
 
-        const fileNames = storeDirectory.filter(fileName => {
+        const currentFileNames = storeDirectory.filter(fileName => {
             if(!fileName || fileName === '.index') {
                 return false;
             }
@@ -81,63 +97,77 @@ export class IndexedArchive {
             }
 
             return fileName.endsWith(extension) || (fileName.indexOf('/') === -1);
+        }).map(fileName => {
+            const extensionIndex = fileName?.lastIndexOf('.') ?? -1;
+            if(extensionIndex !== -1) {
+                return fileName.substring(0, extensionIndex);
+            } else {
+                return fileName;
+            }
         });
 
-        const existingFileList: IndexedFile[] = Object.values(this.files);
+        logger.info(`Found ${currentFileNames.length} files or file groups.`);
 
-        logger.info(`Found ${fileNames.length} files or file groups.`);
+        for(const [ groupIndex, groupMetadata ] of this._manifest.groups) {
+            const fileName = groupMetadata.name;
 
-        if(this.indexId === 2) {
-            logger.info(...storeDirectory);
-        }
+            const existingIndex = currentFileNames.indexOf(fileName);
 
-        let newFileIndex = this.createNewFileIndex();
-
-        for(let fileName of fileNames) {
-            const indexedFilePath = path.join(this.filePath, fileName);
-            if(!fs.existsSync(indexedFilePath)) {
-                logger.error(`File ${fileName} not found.`);
+            if(existingIndex === -1) {
+                // file no longer exists - perhaps deleted
                 continue;
             }
 
+            // previously existing file that was re-discovered by the indexer
+
+            currentFileNames.splice(existingIndex, 1);
+
+            let indexedFilePath;
+            if(extension && this.contentType === 'files') {
+                // Only add extensions for flat files
+                indexedFilePath = path.join(this.filePath, fileName + extension);
+            } else {
+                indexedFilePath = path.join(this.filePath, fileName);
+            }
+
             const fileStats = fs.statSync(indexedFilePath);
-            const oldFileIndex: number = originalFileIndex(fileName, existingFileList);
-            const oldFile: FileGroupMetadata | null = oldFileIndex !== -1 ? this._manifest.groups[oldFileIndex] ?? null : null;
-            const fileIndex = oldFileIndex !== -1 ? oldFileIndex : newFileIndex++;
 
             let nameHash: number | undefined;
             const actualFileName = fileName.replace(extension, '').replace('/', '');
             if(this.config.content?.saveFileNames) {
-                nameHash = /[a-z]/ig.test(actualFileName) ? hashFileName(actualFileName) : parseInt(actualFileName, 10);
+                nameHash = /[a-z]/ig.test(actualFileName) ? hashFileName(actualFileName) : Number(actualFileName);
             }
 
-            const newFile: FileGroupMetadata = newManifest.groups[fileIndex] = {
+            const newFile: FileGroupMetadata = {
                 name: fileName,
                 nameHash: nameHash ?? undefined,
-                version: oldFile?.version ?? 0
+                version: groupMetadata?.version ?? 0
             };
 
+            newManifest.groups.set(groupIndex, newFile);
+
             let indexedFile: IndexedFile;
+            const numericIndex = Number(groupIndex);
 
             if(fileStats.isDirectory()) {
                 // Read the child file names
                 newFile.fileNames = fs.readdirSync(indexedFilePath);
-                indexedFile = new FileGroup(this, fileIndex, newFile);
+                indexedFile = new FileGroup(this, numericIndex, newFile);
                 await (indexedFile as FileGroup).loadFiles();
             } else {
-                indexedFile = new FlatFile(this, fileIndex, new ByteBuffer(fs.readFileSync(indexedFilePath)));
+                indexedFile = new FlatFile(this, numericIndex, new ByteBuffer(fs.readFileSync(indexedFilePath)));
             }
 
             newFile.sha256 = await indexedFile.generateShaHash();
             newFile.crc = await indexedFile.generateCrc32();
             newFile.size = await indexedFile.getCompressedFileLength();
 
-            if(!oldFile?.sha256) {
+            if(!groupMetadata?.sha256) {
                 // Use CRC32 if SHA256 is not available for this file
-                if(oldFile?.crc !== newFile.crc) {
+                if(groupMetadata?.crc !== newFile.crc) {
                     newFile.version++;
                 }
-            } else if(oldFile.sha256 !== newFile.sha256) {
+            } else if(groupMetadata.sha256 !== newFile.sha256) {
                 // Use the more modern SHA256 for comparison instead of CRC32
                 // Update the file's version number if it already existed and has changed
                 // newFile.version++;
@@ -149,6 +179,17 @@ export class IndexedArchive {
                 delete newFile.version;
             }
         }
+
+        if(currentFileNames.length > 0) {
+            // process newly discovered files
+
+            let newFileIndex = this.getLastFileIndex();
+
+            // @TODO run through existing files first, checking off any file names that we've encountered
+            // @TODO then run through any remaining files to append them
+            
+        }
+
 
         this._manifest = newManifest;
 
@@ -162,29 +203,24 @@ export class IndexedArchive {
 
         fs.mkdirSync(this.outputFilePath);
 
-        fs.writeFileSync(path.join(this.outputFilePath, '.index'), JSON.stringify(this._manifest, null, 4));
+        writeIndexFile(this.outputFilePath, this._manifest);
     }
 
     /**
      * Unpacks the archive, it's manifest, and it's files.
      * @param loadFileData Whether or not to load file contents into memory. Defaults to true.
      * @param compressFileData Compress the file data if loaded. Defaults to true.
-     * @param forceAsync Forces the files to be loaded in async fashion without using the recorded
-     * fileSize in the manifest. Defaults to false.
      */
     public async unpack(loadFileData: boolean = true,
-                        compressFileData: boolean = true,
-                        forceAsync: boolean = false): Promise<void> {
-        const fileIndices = Object.keys(this._manifest.groups).map(i => Number(i));
-
-        for(const index of fileIndices) {
+                        compressFileData: boolean = true): Promise<void> {
+        for(const [ index, ] of this._manifest.groups) {
             const indexedFile = await this.loadFile(index, loadFileData);
 
             if(loadFileData && compressFileData) {
                 await indexedFile?.compress();
             }
 
-            this.files.set(index, indexedFile);
+            this.setGroup(index, indexedFile);
         }
 
         this.loaded = true;
@@ -197,9 +233,7 @@ export class IndexedArchive {
         await this.loadManifestFile();
 
         const files = this._manifest.groups;
-        const fileIndexes = Object.keys(files).map(i => Number(i));
-            // .sort((a, b) => a - b);
-        const fileCount = fileIndexes.length;
+        const fileCount = files.size;
 
         const buffer = new ByteBuffer(1000 * 1000);
         let writtenFileIndex = 0;
@@ -210,40 +244,37 @@ export class IndexedArchive {
         buffer.put(fileCount, 'short');
 
         // Write file indexes
-        for(const fileIndex of fileIndexes) {
-            buffer.put(fileIndex - writtenFileIndex, 'short');
-            writtenFileIndex = fileIndex;
+        for(const [ fileIndex, ] of files) {
+            const val = Number(fileIndex);
+            buffer.put(val - writtenFileIndex, 'short');
+            writtenFileIndex = val;
         }
 
         // Write name hashes (if applicable)
         if(this.config.content?.saveFileNames) {
-            logger.info(`Writing file names to index ${this.indexId}.`);
-            for(const fileIndex of fileIndexes) {
-                buffer.put(files[fileIndex]?.nameHash ?? 0, 'int');
+            logger.info(`Writing file names to index ${this.archiveIndex}.`);
+            for(const [ , file ] of files) {
+                buffer.put(file?.nameHash ?? 0, 'int');
             }
         }
 
         // Write file crc values
-        for(const fileIndex of fileIndexes) {
-            const file = files[fileIndex];
+        for(const [ , file ] of files) {
             buffer.put(file?.crc ?? 0, 'int');
         }
 
         // Write file version numbers
-        for(const fileIndex of fileIndexes) {
-            const file = files[fileIndex];
+        for(const [ , file ] of files) {
             buffer.put(file?.version ?? 0, 'int');
         }
 
         // Write file group child counts
-        for(const fileIndex of fileIndexes) {
-            const file = files[fileIndex];
+        for(const [ , file ] of files) {
             buffer.put(file?.fileNames?.length || 1, 'short');
         }
 
         // Write file group children
-        for(const fileIndex of fileIndexes) {
-            const file = files[fileIndex];
+        for(const [ fileIndex, file ] of files) {
             const childCount = file?.fileNames?.length || 1;
 
             writtenFileIndex = 0;
@@ -252,9 +283,8 @@ export class IndexedArchive {
             for(let i = 0; i < childCount; i++) {
                 if(file?.fileNames) {
                     try {
-                        const child = file.fileNames[i];
-                        const idxStr = child.substr(0, child.indexOf('.'));
-                        const index = parseInt(idxStr, 10);
+                        const childName = file.fileNames[i];
+                        const index = Number(childName.substring(0, childName.lastIndexOf('.')));
 
                         buffer.put(index - writtenFileIndex, 'short');
                         writtenFileIndex = index;
@@ -274,8 +304,7 @@ export class IndexedArchive {
         if(this.config.content?.saveFileNames) {
             const fileExtension = this.config.content?.fileExtension;
 
-            for(const fileIndex of fileIndexes) {
-                const file = files[fileIndex];
+            for(const [ , file ] of files) {
                 if(file?.fileNames?.length) {
                     for(let i = 0; i < file.fileNames.length; i++) {
                         const childFile = file.fileNames[i];
@@ -304,21 +333,24 @@ export class IndexedArchive {
     }
 
     /**
-     * Loads the specified file from the zip archive on disc.
+     * Loads the specified file from the flat file store archive on disc.
      * @param fileIndex The index of the file to load.
      * @param loadFileData Whether or not to load the file's data into memory automatically. Defaults to true.
-     * @param zipArchive [optional] An active instance of the zip archive object from JSZip may be passed in to
-     * avoid the zip file being repeatedly loaded and unloaded for multi-file loading.
      */
-    public async loadFile(fileIndex: number, loadFileData: boolean = true,
-                          zipArchive?: JSZip): Promise<FlatFile | FileGroup | null> {
-        if(!this._manifest) {
-            logger.error(`Index manifest not found - archive not yet loaded. ` +
-                `Please use loadArchive() before attempting to access files.`);
-            return null;
+    public async loadFile(fileIndex: number | string, loadFileData: boolean = true): Promise<FlatFile | FileGroup | null> {
+        if(!this.manifest) {
+            this.loadManifestFile();
         }
 
-        const fileEntry: FileGroupMetadata = this._manifest.groups[`${fileIndex}`];
+        let numericIndex;
+        if(typeof fileIndex === 'number') {
+            numericIndex = fileIndex;
+            fileIndex = String(fileIndex);
+        } else {
+            numericIndex = Number(fileIndex);
+        }
+
+        const fileEntry: FileGroupMetadata = this.manifest.groups.get(fileIndex);
         if(!fileEntry) {
             logger.error(`File ${fileIndex} was not found within the archive manifest.`);
             return null;
@@ -340,79 +372,60 @@ export class IndexedArchive {
         const fileStats = fs.statSync(finalPath);
 
         if(fileStats.isDirectory()) {
-            const fileGroup = new FileGroup(this, fileIndex, fileEntry);
+            const fileGroup = new FileGroup(this, numericIndex, fileEntry);
             if(loadFileData) {
                 await fileGroup.loadFiles();
             }
             return fileGroup;
         } else {
             const fileData = loadFileData && fileStats ? new ByteBuffer(fs.readFileSync(finalPath)) : null;
-            return new FlatFile(this, fileIndex, fileData);
+            return new FlatFile(this, numericIndex, fileData);
         }
     }
 
     /**
-     * Loads the archive's manifest and error log files from the zip archive on disc.
+     * Loads the archive's manifest and error log files from the flat file store archive on disc.
      * @param force Force re-load the manifest if it is already loaded. Defaults to false.
      */
-    public loadManifestFile(force: boolean = false): IndexManifest | null {
-        if(this.loaded && !force) {
-            return this._manifest ?? null;
+    public loadManifestFile(force: boolean = false): ArchiveIndex | null {
+        if(this.loaded && !force && this._manifest) {
+            return this._manifest;
         }
 
-        if(!fs.existsSync(this.filePath)) {
-            throw new Error(`${this.filePath} does not exist!`);
-        }
-
-        const manifestFilePath = path.join(this.filePath, '.index');
-
-        if(!fs.existsSync(manifestFilePath)) {
-            throw new Error(`No manifest file found for index ${this.indexName}!`);
-        }
-
-        const manifestFileContent = fs.readFileSync(manifestFilePath, 'utf-8');
-
-        if(!manifestFileContent) {
-            throw new Error(`Error loading manifest for index ${this.indexName}.`);
-        }
-
-        this._manifest = JSON.parse(manifestFileContent);
-
-        this.loaded = true;
-
-        return this._manifest;
-    }
-
-    /**
-     * Loads the zip archive on disc as a JSZip object and returns it.
-     */
-    public async loadZip(): Promise<JSZip> {
         try {
-            return await new JSZip.external.Promise((resolve, reject) => {
-                fs.readFile(this.filePath, (err, data) => {
-                    if(err) {
-                        reject(err);
-                    } else {
-                        resolve(data);
-                    }
-                });
-            }).then((data: any) => JSZip.loadAsync(data));
+            this._manifest = readIndexFile(this.filePath);
+            this.loaded = true;
+            return this._manifest;
         } catch(error) {
-            logger.error(`Error loading indexed archive ${this.indexId} ${this.indexName}`);
             logger.error(error);
+            this._manifest = null;
+            this.loaded = false;
             return null;
         }
     }
 
     /**
-     * Creates a brand new file index for this archive based off of the last file entry's index.
+     * Adds a new or replaces an existing group within the archive.
+     * @param fileIndex The index of the group to add or change.
+     * @param group The group to add or change.
      */
-    public createNewFileIndex(): number {
-        const currentIndexes: number[] = Object.keys(this.files).map(indexStr => parseInt(indexStr, 10));
-        return Math.max(...currentIndexes) + 1;
+    public setGroup(fileIndex: number | string, group: IndexedFile): void {
+        this.groups.set(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex, group);
     }
 
-    public get manifest(): IndexManifest {
+    /**
+     * Fetches a group from this archive by index.
+     * @param fileIndex The index of the group to find.
+     */
+    public getGroup(fileIndex: number | string): IndexedFile {
+        return this.groups.get(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex);
+    }
+
+    public get contentType(): ArchiveContentType {
+        return this.config?.content?.type ?? 'files';
+    }
+
+    public get manifest(): ArchiveIndex {
         return this._manifest;
     }
 

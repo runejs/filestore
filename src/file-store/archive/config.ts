@@ -41,8 +41,6 @@ export type ArchiveContentType = 'groups' | 'files';
 
 export type ArchiveConfigurations = { [key in IndexName]: ArchiveConfig };
 
-export type DefaultFileNameMap = { [key: string]: number };
-
 export const archiveConfig: ArchiveConfigurations = require('../../../config/archives.json5');
 
 
@@ -57,7 +55,7 @@ export interface ArchiveContentConfig {
     type?: ArchiveContentType;
     fileExtension?: string;
     saveFileNames?: boolean;
-    defaultFileNames?: DefaultFileNameMap;
+    defaultFileNames?: { [key: string]: number };
 }
 
 
@@ -70,8 +68,21 @@ export interface ArchiveConfig {
 }
 
 
-export const getIndexName = (indexId: number): IndexName | undefined => {
-    return Object.keys(archiveConfig).find(key => key && archiveConfig[key]?.index === indexId) as IndexName | undefined;
+export const getGroupNames = (archive: ArchiveName): { [key: string]: number } => {
+    return archiveConfig[archive].content?.defaultFileNames ?? {};
+};
+
+
+export const getIndexName = (index: number): IndexName | undefined => {
+    return Object.keys(archiveConfig).find(key => key && archiveConfig[key]?.index === index) as IndexName | undefined;
+};
+
+export const getArchiveName = (archiveIndex: number): ArchiveName | undefined => {
+    return Object.keys(archiveConfig).find(key => key && archiveConfig[key]?.index === archiveIndex) as ArchiveName | undefined;
+};
+
+export const getArchiveIndex = (archiveName: ArchiveName): number => {
+    return archiveConfig[archiveName]?.index ?? -1;
 };
 
 export const getArchiveConfig = (indexId: number): ArchiveConfig | undefined => {

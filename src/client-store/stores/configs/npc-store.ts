@@ -35,7 +35,7 @@ export class NpcConfig {
     varbitId: number = -1;
     settingId: number = -1;
     parentId?: number;
-    childIds?: number[];
+    childIds?: string[];
 
     /**
      * 3d modelling information for this npc.
@@ -68,7 +68,7 @@ export class NpcConfig {
  */
 export class NpcStore {
 
-    public readonly children: Map<number, number[]> = new Map();
+    public readonly children: Map<string, string[]> = new Map<string, string[]>();
 
     /**
      * The NPC group, containing details about every game NPC.
@@ -90,7 +90,7 @@ export class NpcStore {
             return null;
         }
 
-        const npcFile = npcArchive.groups.get(npcId) || null;
+        const npcFile = npcArchive.getFile(npcId) || null;
 
         if(!npcFile) {
             logger.error(`Npc file not found.`);
@@ -192,10 +192,11 @@ export class NpcStore {
                 npcConfig.childIds = [];
                 const childCount = buffer.get('BYTE', 'UNSIGNED');
                 for(let i = 0; childCount >= i; i++) {
-                    npcConfig.childIds[i] = buffer.get('SHORT', 'UNSIGNED');
-                    if(npcConfig.childIds[i] === 0xFFFF) {
-                        npcConfig.childIds[i] = -1;
+                    let childId = buffer.get('SHORT', 'UNSIGNED');
+                    if(childId === 0xFFFF) {
+                        childId = -1;
                     }
+                    npcConfig.childIds[i] = String(childId);
                 }
             } else if(opcode === 107) {
                 npcConfig.clickable = false;
@@ -210,15 +211,15 @@ export class NpcStore {
      * Decodes every npc file within the npc archive and returns
      * the resulting NpcConfig array.
      */
-    public decodeNpcStore(): Map<number, NpcConfig> {
+    public decodeNpcStore(): Map<string, NpcConfig> {
         if(!this.npcGroup) {
             logger.error(`Npc archive not found.`);
             return null;
         }
 
-        const npcMap: Map<number, NpcConfig> = new Map<number, NpcConfig>();
+        const npcMap: Map<string, NpcConfig> = new Map<string, NpcConfig>();
 
-        for(const [ npcId, npcFile ] of this.npcGroup.groups) {
+        for(const [ npcId, npcFile ] of this.npcGroup.files) {
             if(!npcFile) {
                 logger.error(`Npc file not found.`);
                 return null;

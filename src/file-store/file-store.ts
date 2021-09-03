@@ -1,8 +1,13 @@
 import { logger } from '@runejs/core';
 import fs from 'fs';
-import { archiveConfig, getIndexName, IndexedArchive, IndexName } from './archive';
+import {
+    archiveConfig,
+    ArchiveName,
+    getArchiveIndex,
+    getArchiveName,
+    IndexedArchive
+} from './archive';
 import { ByteBuffer } from '@runejs/core/buffer';
-import JSZip from 'jszip';
 
 
 export class FileStore {
@@ -11,40 +16,40 @@ export class FileStore {
     public indexedArchives: Map<number, IndexedArchive> = new Map();
 
     public constructor(fileStorePath?: string) {
-        this.fileStorePath = fileStorePath ?? './stores';
+        this.fileStorePath = fileStorePath ?? '../stores';
     }
 
-    public getArchive(indexId: number | IndexName): IndexedArchive {
-        let indexName: IndexName;
-        if(typeof indexId !== 'number') {
-            indexName = indexId;
-            indexId = archiveConfig[indexName].index;
+    public async getAllArchives(): Promise<Map<number, IndexedArchive>> {
+        if(this.indexedArchives.size === 0) {
+            await this.loadAllArchives();
+        }
+        return this.indexedArchives;
+    }
+
+    public getArchive(archiveIndex: number): IndexedArchive;
+    public getArchive(archiveName: ArchiveName): IndexedArchive;
+    public getArchive(archiveKey: number | ArchiveName): IndexedArchive;
+    public getArchive(archiveKey: number | ArchiveName): IndexedArchive {
+        let indexName: ArchiveName;
+        if(typeof archiveKey !== 'number') {
+            indexName = archiveKey;
+            archiveKey = archiveConfig[indexName].index;
+        }
+
+        if(this.indexedArchives.has(archiveKey)) {
+            return this.indexedArchives.get(archiveKey);
         } else {
-            indexName = getIndexName(indexId);
-        }
-
-        if(this.indexedArchives.has(indexId)) {
-            return this.indexedArchives.get(indexId);
-        } else {
-            return this.loadStoreArchive(indexId, indexName);
+            return this.loadArchive(archiveKey);
         }
     }
 
-    public loadStoreArchive(indexId: number, indexName: IndexName): IndexedArchive {
-        const indexedArchive = new IndexedArchive(this, indexId, indexName);
-        this.indexedArchives.set(indexId, indexedArchive);
-        indexedArchive.loadManifestFile();
-        return indexedArchive;
-    }
-
-    public async getFile(indexId: number, fileId: number, compressed: boolean = true,
-                         zipArchive?: JSZip | any | undefined): Promise<ByteBuffer | null> {
-        if(!this.indexedArchives.has(indexId)) {
-            await this.loadStoreArchive(indexId, getIndexName(indexId));
+    public async getFile(archiveIndex: number, fileIndex: number, compressed: boolean = true): Promise<ByteBuffer | null> {
+        if(!this.indexedArchives.has(archiveIndex)) {
+            await this.loadArchive(archiveIndex);
         }
 
-        const archive = this.indexedArchives.get(indexId);
-        const loadedFile = archive.files[fileId];
+        const archive = this.indexedArchives.get(archiveIndex);
+        const loadedFile = archive.getGroup(fileIndex);
 
         if(loadedFile) {
             if(compressed && loadedFile.fileDataCompressed) {
@@ -56,7 +61,7 @@ export class FileStore {
             }
         }
 
-        const file = await archive.loadFile(fileId, true, zipArchive);
+        const file = await archive.loadFile(fileIndex, true);
 
         if(!file) {
             return null;
@@ -99,9 +104,9 @@ export class FileStore {
         return buffer;
     }
 
-    public async generateCrcTable(): Promise<ByteBuffer> {
+    public async generateMainIndexFile(): Promise<ByteBuffer> {
         if(!this.indexedArchives.size) {
-            await this.loadStoreArchives();
+            await this.loadAllArchives();
         }
 
         const indexCount = this.indexedArchives.size;
@@ -120,7 +125,27 @@ export class FileStore {
         return buffer;
     }
 
-    public async loadStoreArchives(): Promise<void> {
+    public loadArchive(archiveIndex: number): IndexedArchive;
+    public loadArchive(archiveName: ArchiveName): IndexedArchive;
+    public loadArchive(archiveKey: number | ArchiveName): IndexedArchive;
+    public loadArchive(archiveKey: number | ArchiveName): IndexedArchive {
+        let archiveIndex: number;
+        let archiveName: ArchiveName;
+        if(typeof archiveKey === 'number') {
+            archiveIndex = archiveKey;
+            archiveName = getArchiveName(archiveIndex);
+        } else {
+            archiveName = archiveKey;
+            archiveIndex = getArchiveIndex(archiveName);
+        }
+
+        const indexedArchive = new IndexedArchive(this, archiveIndex, archiveName);
+        this.indexedArchives.set(archiveIndex, indexedArchive);
+        indexedArchive.loadManifestFile();
+        return indexedArchive;
+    }
+
+    public async loadAllArchives(): Promise<void> {
         const promises = [];
         const archiveFiles = fs.readdirSync(this.fileStorePath);
         for(const archivePath of archiveFiles) {

@@ -47,8 +47,8 @@ export class BinaryStore extends Store {
      * Decodes all binary files within the binary store.
      * @returns The list of decoded files from the binary store.
      */
-    public decodeBinaryFileStore(): Map<number, ClientFile> {
-        const binaryFiles: Map<number, ClientFile> = new Map<number, ClientFile>();
+    public decodeBinaryFileStore(): Map<string, ClientFile> {
+        const binaryFiles: Map<string, ClientFile> = new Map<string, ClientFile>();
         const archive = this.archive as ClientArchive;
 
         for(const [ binaryFileId, binaryFile ] of archive.groups) {

@@ -26,13 +26,6 @@ class UnpackOptions {
 
 
 run(async args => {
-    if(args.size === 0) {
-        logger.info(`Unpacking client file store...`);
-    } else {
-        logger.info(`Unpacking client file store with arguments:`);
-        logger.info(Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', '));
-    }
-
     const options = UnpackOptions.create(args as any);
     const xteaKeys = await loadXteaRegionFiles(`config/xteas`);
 
@@ -46,10 +39,20 @@ run(async args => {
         debug: options.debug
     });
 
+    const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
+
     if(options.archive === 'main') {
+        logger.info(`Unpacking JS5 file store${args.size !== 0 ? ` with arguments:` : `...`}`);
+        if(args.size !== 0) {
+            logger.info(argDebugString);
+        }
         await clientFileStore.decompressArchives(decompressionOptions);
     } else {
         const archiveName: ArchiveName = options.archive as ArchiveName;
+        logger.info(`Unpacking JS5 archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
+        if(args.size !== 0) {
+            logger.info(argDebugString);
+        }
         await clientFileStore.getArchive(archiveName).decompressArchive(decompressionOptions);
     }
 

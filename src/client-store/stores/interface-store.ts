@@ -206,14 +206,14 @@ export class InterfaceStore extends Store {
      * @param id The numeric ID of the interface file to decode.
      */
     public decodeInterface(id: number): InterfaceBase {
-        const file = this.clientArchive.groups.get(id);
+        const file = this.clientArchive.getGroup(id);
         if(file.type === 'file') {
             return this.decodeInterfaceFile(id, file);
         } else if(file.type === 'group') {
             const parentInterface = new ParentInterface(id);
             const archive: ClientFileGroup = file as ClientFileGroup;
             archive.decodeGroupFiles();
-            const interfaceChildren: ClientFile[] = Array.from(archive.groups.values());
+            const interfaceChildren: ClientFile[] = Array.from(archive.files.values());
             parentInterface.children = new Array(interfaceChildren.length);
             for(let i = 0; i < interfaceChildren.length; i++) {
                 parentInterface.children[i] = this.decodeInterfaceFile(i, interfaceChildren[i]);

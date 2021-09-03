@@ -97,7 +97,7 @@ export class ItemStore {
             return null;
         }
 
-        const itemFile = itemArchive.groups.get(itemId) || null;
+        const itemFile = itemArchive.getFile(itemId) || null;
 
         if(!itemFile) {
             logger.error(`Item file not found.`);
@@ -417,15 +417,15 @@ export class ItemStore {
      * Decodes every item file within the item archive and returns
      * the resulting ItemConfig array.
      */
-    public decodeItemStore(): Map<number, ItemConfig> {
+    public decodeItemStore(): Map<string, ItemConfig> {
         if(!this.itemGroup) {
             logger.error(`Item archive not found.`);
             return null;
         }
 
-        const itemMap: Map<number, ItemConfig> = new Map<number, ItemConfig>();
+        const itemMap: Map<string, ItemConfig> = new Map<string, ItemConfig>();
 
-        for(const [ itemId, itemFile ] of this.itemGroup.groups) {
+        for(const [ itemId, itemFile ] of this.itemGroup.files) {
             if(!itemFile) {
                 logger.error(`Item file not found.`);
                 return null;

@@ -53,7 +53,7 @@ export class ClientArchive {
     /**
      * A map of all indexed file groups in this archive.
      */
-    public groups: Map<number, ClientFileGroup> = new Map<number, ClientFileGroup>();
+    public groups: Map<string, ClientFileGroup> = new Map<string, ClientFileGroup>();
 
     /**
      * Creates a new client store archive instance with the specified index.
@@ -93,7 +93,7 @@ export class ClientArchive {
         if(typeof fileIndexOrName === 'string') {
             fileData = this.findByName(fileIndexOrName) as ClientFile;
         } else {
-            fileData = this.groups.get(fileIndexOrName) as ClientFile;
+            fileData = this.getGroup(fileIndexOrName) as ClientFile;
         }
 
         if(!fileData) {
@@ -164,66 +164,58 @@ export class ClientArchive {
         for(let i = 0; i < fileCount; i++) {
             const delta = buffer.get('short', 'unsigned');
             groupIndices[i] = accumulator += delta;
-            this.groups.set(groupIndices[i], new ClientFileGroup(groupIndices[i], this, this.clientStoreChannel));
+            this.setGroup(groupIndices[i], new ClientFileGroup(groupIndices[i], this, this.clientStoreChannel));
         }
 
         if((this.saveFileNames & NAME_FLAG) !== 0) {
             for(const groupIndex of groupIndices) {
-                this.groups.get(groupIndex).nameHash = buffer.get('int');
+                this.getGroup(groupIndex).nameHash = buffer.get('int');
             }
         }
 
         /* read the crc values */
         for(const groupIndex of groupIndices) {
-            this.groups.get(groupIndex).crc = buffer.get('int');
+            this.getGroup(groupIndex).crc = buffer.get('int');
         }
 
         /* read the version numbers */
         for(const groupIndex of groupIndices) {
-            this.groups.get(groupIndex).version = buffer.get('int');
+            this.getGroup(groupIndex).version = buffer.get('int');
         }
 
         /* read the child count */
-        const groupFileIndices: Map<number, number[]> = new Map<number, number[]>();
+        const groupChildCounts: Map<number, number> = new Map<number, number>();
 
         for(const groupIndex of groupIndices) {
             // group file count
-            groupFileIndices.set(groupIndex, new Array(buffer.get('short', 'unsigned')));
+            groupChildCounts.set(groupIndex, buffer.get('short', 'unsigned'));
         }
 
         /* read the file groupIndices */
         for(const groupIndex of groupIndices) {
-            const group = this.groups.get(groupIndex);
-            const fileIndices = groupFileIndices.get(groupIndex);
+            const group = this.getGroup(groupIndex);
+            const fileCount = groupChildCounts.get(groupIndex);
 
             accumulator = 0;
-            for(let i = 0; i < fileIndices.length; i++) {
+            for(let i = 0; i < fileCount; i++) {
                 const delta = buffer.get('short', 'unsigned');
-                fileIndices[i] = accumulator += delta;
-            }
-
-            group.fileIndices = fileIndices;
-
-            if(fileIndices.length > 1) {
-                fileIndices.forEach(index => group.groups.set(index, null));
-            } else if(!fileIndices.length || group.groups.size <= 1) {
-                group.singleFile = true;
-                const file = new ClientFile(groupIndex, this, this.clientStoreChannel);
-                file.nameHash = group.nameHash;
-                group.groups.set(0, file);
+                const childFileIndex = accumulator += delta;
+                group.setFile(childFileIndex, new ClientFile(childFileIndex, this, this.clientStoreChannel));
             }
         }
 
         /* read the child name hashes */
         if((this.saveFileNames & NAME_FLAG) !== 0) {
             for(const groupIndex of groupIndices) {
-                const fileGroup = this.groups.get(groupIndex);
-                if(!fileGroup.singleFile && fileGroup?.groups?.size) {
-                    const fileIndices = groupFileIndices.get(groupIndex);
-                    for(const childIndex of fileIndices) {
+                const fileGroup = this.getGroup(groupIndex);
+
+                if((this.saveFileNames & NAME_FLAG) !== 0 && fileGroup.files.size <= 1) {
+                    fileGroup.getFile(0).nameHash = fileGroup.nameHash;
+                } else {
+                    for(const [ , childFile ] of fileGroup.files) {
                         const nameHash = buffer.get('int');
-                        if(fileGroup.groups.get(childIndex)) {
-                            fileGroup.groups.get(childIndex).nameHash = nameHash;
+                        if(childFile) {
+                            childFile.nameHash = nameHash;
                         }
                     }
                 }
@@ -234,6 +226,23 @@ export class ClientArchive {
     public async decompressArchive(options?: DecompressionOptions): Promise<void> {
         const decompressor = new ArchiveDecompressor(this);
         await decompressor.decompressArchive(options);
+    }
+
+    /**
+     * Adds a new or replaces an existing group within the archive.
+     * @param fileIndex The index of the group to add or change.
+     * @param group The group to add or change.
+     */
+    public setGroup(fileIndex: number | string, group: ClientFileGroup): void {
+        this.groups.set(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex, group);
+    }
+
+    /**
+     * Fetches a group from this archive by index.
+     * @param fileIndex The index of the group to find.
+     */
+    public getGroup(fileIndex: number | string): ClientFileGroup {
+        return this.groups.get(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex);
     }
 
     public get name(): string {

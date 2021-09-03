@@ -41,7 +41,7 @@ export class VarbitStore {
             return null;
         }
 
-        const varbitFile = varbitArchive.groups.get(varbitId) || null;
+        const varbitFile = varbitArchive.getFile(varbitId) || null;
 
         if(!varbitFile) {
             logger.error(`Varbit file not found.`);
@@ -84,15 +84,15 @@ export class VarbitStore {
      * Decodes every varbit file within the varbit archive and returns
      * the resulting VarbitConfig array.
      */
-    public decodeVarbitStore(): Map<number, VarbitConfig> {
+    public decodeVarbitStore(): Map<string, VarbitConfig> {
         if(!this.varbitGroup) {
             logger.error(`Varbit archive not found.`);
             return null;
         }
 
-        const varbitMap: Map<number, VarbitConfig> = new Map<number, VarbitConfig>();
+        const varbitMap: Map<string, VarbitConfig> = new Map<string, VarbitConfig>();
 
-        for(const [ varbitId, varbitFile ] of this.varbitGroup.groups) {
+        for(const [ varbitId, varbitFile ] of this.varbitGroup.files) {
             if(!varbitFile) {
                 logger.error(`Varbit file not found.`);
                 return null;

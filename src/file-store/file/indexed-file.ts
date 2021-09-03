@@ -2,7 +2,7 @@ import { logger } from '@runejs/core';
 import { ByteBuffer } from '@runejs/core/buffer';
 import * as CRC32 from 'crc-32';
 import { createHash } from 'crypto';
-import { IndexManifest } from '../index-manifest';
+import { ArchiveIndex } from '../archive-index';
 import { compressFile } from '../../compression';
 import { IndexedArchive, compressionKey } from '../archive';
 
@@ -119,7 +119,7 @@ export abstract class IndexedFile extends FileInfo {
         return hash.update(fileData).digest('hex');
     }
 
-    public get indexManifest(): IndexManifest {
+    public get indexManifest(): ArchiveIndex {
         return this.archive.manifest;
     }
 

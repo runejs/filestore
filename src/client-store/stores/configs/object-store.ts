@@ -102,7 +102,7 @@ export class ObjectStore {
      * Decodes every object file within the object archive and returns
      * the resulting ObjectConfig array.
      */
-    public decodeObjectStore(): Map<number, ObjectConfig> {
+    public decodeObjectStore(): Map<string, ObjectConfig> {
         const group = this.objectGroup;
 
         if(!group) {
@@ -110,9 +110,9 @@ export class ObjectStore {
             return null;
         }
 
-        const objectMap: Map<number, ObjectConfig> = new Map<number, ObjectConfig>();
+        const objectMap: Map<string, ObjectConfig> = new Map<string, ObjectConfig>();
 
-        for(const [ objectId, objectFile ] of group.groups) {
+        for(const [ objectId, objectFile ] of group.files) {
             if(!objectFile) {
                 logger.error(`Object file not found.`);
                 continue;
@@ -136,7 +136,7 @@ export class ObjectStore {
             return null;
         }
 
-        const objectFile: ClientFile | FlatFile | null = group.groups.get(objectId) || null;
+        const objectFile: ClientFile | FlatFile | null = group.getFile(objectId) || null;
 
         if(!objectFile) {
             logger.error(`Object file not found.`);

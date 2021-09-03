@@ -9,17 +9,16 @@ import { decompressFile } from '../compression';
 export class ClientFileGroup extends ClientFile {
 
     /**
-     * A list of files housed within this file group.
-     */
-    public groups: Map<number, ClientFile> = new Map<number, ClientFile>();
-
-    public fileIndices: number[];
-
-    /**
      * The type of file, either a `group` or a plain `file`.
      */
     public type: 'group' | 'file' = 'group';
 
+    /**
+     * A list of files housed within this file group.
+     */
+    public files: Map<string, ClientFile> = new Map<string, ClientFile>();
+
+    public fileIndices: number[];
     public groupCompressedSize: number = 0;
     public singleFile: boolean = false;
 
@@ -63,18 +62,10 @@ export class ClientFileGroup extends ClientFile {
     }
 
     /**
-     * Fetches a file from this group by index.
-     * @param childIndex The index of the file to find.
-     */
-    public getFile(childIndex: number): ClientFile | null {
-        return this.groups.get(childIndex) || null;
-    }
-
-    /**
      * Decodes the packed group files from the file store on disk.
      */
     public decodeGroupFiles(): void {
-        if(this.singleFile || this.decoded) {
+        if(this.decoded) {
             return;
         }
 
@@ -88,7 +79,7 @@ export class ClientFileGroup extends ClientFile {
         }
 
         buffer.readerIndex = 0;
-        const groupSize = this.groups.size;
+        const groupSize = this.files.size;
 
         this.fileData = buffer;
 
@@ -118,7 +109,7 @@ export class ClientFileGroup extends ClientFile {
         for(let childIndex = 0; childIndex < groupSize; childIndex++) {
             const fileData = new ClientFile(childIndex, this.archive, this.clientStoreChannel);
             fileData.fileData = new ByteBuffer(sizes[childIndex]);
-            this.groups.set(childIndex, fileData);
+            this.setFile(childIndex, fileData);
         }
 
         buffer.readerIndex = 0;
@@ -126,25 +117,42 @@ export class ClientFileGroup extends ClientFile {
         for(let chunk = 0; chunk < stripeCount; chunk++) {
             for(let id = 0; id < groupSize; id++) {
                 const chunkSize = stripeLengths[chunk][id];
-                this.groups.get(id).fileData.putBytes(buffer.getSlice(buffer.readerIndex, chunkSize));
+                this.getFile(id).fileData.putBytes(buffer.getSlice(buffer.readerIndex, chunkSize));
 
                 let sourceEnd: number = buffer.readerIndex + chunkSize;
                 if(buffer.readerIndex + chunkSize >= buffer.length) {
                     sourceEnd = buffer.length;
                 }
 
-                buffer.copy(this.groups.get(id).fileData, 0, buffer.readerIndex, sourceEnd);
+                buffer.copy(this.getFile(id).fileData, 0, buffer.readerIndex, sourceEnd);
                 buffer.readerIndex = sourceEnd;
             }
         }
 
-        for(const [ key, file ] of this.groups) {
+        for(const [ key, file ] of this.files) {
             if(!file) {
-                this.groups.delete(key);
+                this.files.delete(key);
             }
         }
 
         this.decoded = true;
+    }
+
+    /**
+     * Adds a new or replaces an existing file within the group.
+     * @param fileIndex The index of the file to add or change.
+     * @param file The file to add or change.
+     */
+    public setFile(fileIndex: number | string, file: ClientFile): void {
+        this.files.set(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex, file);
+    }
+
+    /**
+     * Fetches a file from this group by index.
+     * @param fileIndex The index of the file to find.
+     */
+    public getFile(fileIndex: number | string): ClientFile | null {
+        return this.files.get(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex) ?? null;
     }
 
 }

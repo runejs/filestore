@@ -73,7 +73,7 @@ export class SoundStore extends Store {
         }
 
         const soundArchiveIndex = this.clientArchive;
-        const fileData = soundArchiveIndex.groups.get(id);
+        const fileData = soundArchiveIndex.getFile(id);
         return fileData ? new SoundFile(fileData) : null;
     }
 

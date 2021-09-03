@@ -10,7 +10,8 @@
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
         "package": "rimraf lib && npm i && npm run build && npm publish --dry-run",
-        "unpack": "ts-node src/unpack.ts"
+        "unpack": "ts-node src/unpack.ts",
+        "indexer": "ts-node src/indexer.ts"
     },
     "repository": {
         "type": "git",

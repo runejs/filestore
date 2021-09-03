@@ -31,7 +31,7 @@ const spriteTest = (): void => {
     ] as [ number, string, SpriteStorageMethod ][]).forEach(file => {
         const [ fileIndex, fileName, storageType ] = file;
         logger.info(`Original: ${storageType}`);
-        const spriteFile: Buffer = fs.readFileSync(`./stores/sprites/${fileName}.png`);
+        const spriteFile: Buffer = fs.readFileSync(`../stores/sprites/${fileName}.png`);
         spriteCodec.encode({ fileIndex, fileName }, spriteFile, {
             debug: true,
             forceStorageMethod: storageType
@@ -67,12 +67,12 @@ const configTest = async (fileStore: FileStore): Promise<void> => {
 
 run(async args => {
     const fileStore = new FileStore();
-    await fileStore.loadStoreArchives();
+    await fileStore.loadAllArchives();
 
     // await indexArchives(fileStore);
     await unpackArchives(fileStore, true, true);
 
-    await fileStore.generateCrcTable();
+    await fileStore.generateMainIndexFile();
 
     // validateSpriteFormats(`D:/rsdev`);
     // spriteTest();

@@ -49,15 +49,76 @@ export class IndexedArchive {
             return 0;
         }
 
-        let min = fileIndices[0] ?? 0;
+        let max = fileIndices[0] ?? 0;
         for(const [ index, ] of this._manifest.groups) {
             const n = Number(index);
-            if(n < min) {
-                min = n;
+            if(n > max) {
+                max = n;
             }
         }
 
-        return min;
+        return max;
+    }
+
+    public async indexFileGroup(fileIndex: string, fileName: string, metadata: FileGroupMetadata, manifest: ArchiveIndex): Promise<void> {
+        const extension = this.config.content?.fileExtension;
+
+        let indexedFilePath;
+        if(extension && this.contentType === 'files') {
+            // Only add extensions for flat files
+            indexedFilePath = path.join(this.filePath, fileName + extension);
+        } else {
+            indexedFilePath = path.join(this.filePath, fileName);
+        }
+
+        const fileStats = fs.statSync(indexedFilePath);
+
+        let nameHash: number | undefined;
+        const actualFileName = fileName.replace(extension, '').replace('/', '');
+        if(this.config.content?.saveFileNames) {
+            nameHash = /[a-z]/ig.test(actualFileName) ? hashFileName(actualFileName) : Number(actualFileName);
+        }
+
+        const newFile: FileGroupMetadata = {
+            name: fileName,
+            nameHash: nameHash ?? undefined,
+            version: metadata?.version ?? 0
+        };
+
+        manifest.groups.set(fileIndex, newFile);
+
+        let indexedFile: IndexedFile;
+        const numericIndex = Number(fileIndex);
+
+        if(fileStats.isDirectory()) {
+            // Read the child file names
+            newFile.fileNames = fs.readdirSync(indexedFilePath);
+            indexedFile = new FileGroup(this, numericIndex, newFile);
+            await (indexedFile as FileGroup).loadFiles();
+        } else {
+            indexedFile = new FlatFile(this, numericIndex, new ByteBuffer(fs.readFileSync(indexedFilePath)));
+        }
+
+        newFile.sha256 = await indexedFile.generateShaHash();
+        newFile.crc = await indexedFile.generateCrc32();
+        newFile.size = await indexedFile.getCompressedFileLength();
+
+        if(!metadata?.sha256) {
+            // Use CRC32 if SHA256 is not available for this file
+            if(metadata?.crc !== newFile.crc) {
+                newFile.version++;
+            }
+        } else if(metadata.sha256 !== newFile.sha256) {
+            // Use the more modern SHA256 for comparison instead of CRC32
+            // Update the file's version number if it already existed and has changed
+            // newFile.version++;
+            // logger.info(`File ${fileIndex} version increased from ${newFile.version - 1} to ${newFile.version}`);
+        }
+
+        // Save space and don't include a version number for first-version files
+        if(newFile.version <= 0) {
+            delete newFile.version;
+        }
     }
 
     /**
@@ -81,7 +142,7 @@ export class IndexedArchive {
         const extension = this.config.content?.fileExtension;
         const storeDirectory = fs.readdirSync(this.filePath);
 
-        const currentFileNames = storeDirectory.filter(fileName => {
+        let currentFileNames = storeDirectory.filter(fileName => {
             if(!fileName || fileName === '.index') {
                 return false;
             }
@@ -97,16 +158,23 @@ export class IndexedArchive {
             }
 
             return fileName.endsWith(extension) || (fileName.indexOf('/') === -1);
-        }).map(fileName => {
-            const extensionIndex = fileName?.lastIndexOf('.') ?? -1;
-            if(extensionIndex !== -1) {
-                return fileName.substring(0, extensionIndex);
-            } else {
-                return fileName;
-            }
         });
 
+        if(extension) {
+            currentFileNames = currentFileNames.map(fileName => {
+                const extensionIndex = fileName?.lastIndexOf('.') ?? -1;
+                if(extensionIndex !== -1) {
+                    return fileName.substring(0, extensionIndex);
+                } else {
+                    return fileName;
+                }
+            });
+        }
+
         logger.info(`Found ${currentFileNames.length} files or file groups.`);
+
+        let existingCount: number = 0;
+        let newCount: number = 0;
 
         for(const [ groupIndex, groupMetadata ] of this._manifest.groups) {
             const fileName = groupMetadata.name;
@@ -122,74 +190,38 @@ export class IndexedArchive {
 
             currentFileNames.splice(existingIndex, 1);
 
-            let indexedFilePath;
-            if(extension && this.contentType === 'files') {
-                // Only add extensions for flat files
-                indexedFilePath = path.join(this.filePath, fileName + extension);
-            } else {
-                indexedFilePath = path.join(this.filePath, fileName);
-            }
+            await this.indexFileGroup(groupIndex, fileName, groupMetadata, newManifest);
 
-            const fileStats = fs.statSync(indexedFilePath);
-
-            let nameHash: number | undefined;
-            const actualFileName = fileName.replace(extension, '').replace('/', '');
-            if(this.config.content?.saveFileNames) {
-                nameHash = /[a-z]/ig.test(actualFileName) ? hashFileName(actualFileName) : Number(actualFileName);
-            }
-
-            const newFile: FileGroupMetadata = {
-                name: fileName,
-                nameHash: nameHash ?? undefined,
-                version: groupMetadata?.version ?? 0
-            };
-
-            newManifest.groups.set(groupIndex, newFile);
-
-            let indexedFile: IndexedFile;
-            const numericIndex = Number(groupIndex);
-
-            if(fileStats.isDirectory()) {
-                // Read the child file names
-                newFile.fileNames = fs.readdirSync(indexedFilePath);
-                indexedFile = new FileGroup(this, numericIndex, newFile);
-                await (indexedFile as FileGroup).loadFiles();
-            } else {
-                indexedFile = new FlatFile(this, numericIndex, new ByteBuffer(fs.readFileSync(indexedFilePath)));
-            }
-
-            newFile.sha256 = await indexedFile.generateShaHash();
-            newFile.crc = await indexedFile.generateCrc32();
-            newFile.size = await indexedFile.getCompressedFileLength();
-
-            if(!groupMetadata?.sha256) {
-                // Use CRC32 if SHA256 is not available for this file
-                if(groupMetadata?.crc !== newFile.crc) {
-                    newFile.version++;
-                }
-            } else if(groupMetadata.sha256 !== newFile.sha256) {
-                // Use the more modern SHA256 for comparison instead of CRC32
-                // Update the file's version number if it already existed and has changed
-                // newFile.version++;
-                // logger.info(`File ${fileIndex} version increased from ${newFile.version - 1} to ${newFile.version}`);
-            }
-
-            // Save space and don't include a version number for first-version files
-            if(newFile.version <= 0) {
-                delete newFile.version;
-            }
+            existingCount++;
         }
 
         if(currentFileNames.length > 0) {
             // process newly discovered files
 
-            let newFileIndex = this.getLastFileIndex();
+            let newFileIndex = this.getLastFileIndex() + 1;
 
-            // @TODO run through existing files first, checking off any file names that we've encountered
-            // @TODO then run through any remaining files to append them
-            
+            for(const fileName of currentFileNames) {
+                const groupMetadata: FileGroupMetadata = {
+                    name: fileName
+                };
+
+                await this.indexFileGroup(String(newFileIndex++), fileName, groupMetadata, newManifest);
+
+                newCount++;
+            }
         }
 
+        if(existingCount > 0) {
+            logger.info(`${existingCount} previously existing file(s) were re-indexed.`);
+        } else {
+            logger.info(`No previously existing files were found.`);
+        }
+
+        if(newCount > 0) {
+            logger.info(`${newCount} new file(s) were indexed.`);
+        } else {
+            logger.info(`No new files were found.`);
+        }
 
         this._manifest = newManifest;
 

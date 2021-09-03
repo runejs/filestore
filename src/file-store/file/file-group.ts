@@ -31,12 +31,17 @@ export class FileGroup extends IndexedFile {
         const fileData: Buffer[] = Array.from(this.files.values())
             .map(file => file?.fileData?.toNodeBuffer() ?? null); // .filter(file => !!file);
         const fileSizes = fileData.map(data => data?.length ?? 0);
-        const fileCount = fileData.length;
+        const fileCount = fileSizes.length;
 
         // Size of all individual files + 1 int (4 bytes) per file containing it's size + 1 byte at the end
         // denoting number of chunks
-        const groupSize = fileSizes.reduce((a, c) => a + c) + (fileCount * 4) + 1;
-        const groupBuffer = new ByteBuffer(groupSize);
+        const groupSize = fileCount ? fileSizes.reduce((a, c) => a + c) + (fileCount * 4) + 1 : 0;
+
+        if(groupSize < 1) {
+            return undefined;
+        }
+
+        const groupBuffer = new ByteBuffer(groupSize + 1);
 
         // Write individual file contents
         for(let i = 0; i < fileCount; i++) {

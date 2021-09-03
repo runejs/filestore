@@ -54,13 +54,13 @@ const configTest = async (fileStore: FileStore): Promise<void> => {
     const npcMap = configStore.npcStore.decodeNpcStore();
     logger.info(`${npcMap.size} npcs found.`);
 
-    const bankBooth = objectMap.get(2213);
+    const bankBooth = objectMap.get('2213');
     console.log(JSON.stringify(bankBooth, null, 4));
 
-    const partyhat = itemMap.get(1038);
+    const partyhat = itemMap.get('1038');
     console.log(JSON.stringify(partyhat, null, 4));
 
-    const hans = npcMap.get(0);
+    const hans = npcMap.get('0');
     console.log(JSON.stringify(hans, null, 4));
 };
 

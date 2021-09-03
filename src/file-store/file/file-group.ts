@@ -11,20 +11,16 @@ import { FlatFile } from './flat-file';
 export class FileGroup extends IndexedFile {
 
     public files: Map<string, FlatFile> = new Map<string, FlatFile>();
+    public fileNames: string[] = [];
 
-    private fileNames: string[] = [];
-    private fileEntry: FileGroupMetadata;
+    private groupMetadata: FileGroupMetadata;
     private filesLoaded: boolean = false;
 
     public constructor(archive: IndexedArchive,
                        fileIndex: number,
-                       fileEntry: FileGroupMetadata) {
+                       groupMetadata: FileGroupMetadata) {
         super(archive, fileIndex);
-        this.fileEntry = fileEntry;
-    }
-
-    public getExistingFileNames(): string[] {
-        return this.archive.manifest.groups[`${this.fileIndex}`]?.fileNames ?? [];
+        this.groupMetadata = groupMetadata;
     }
 
     public async packFileData(): Promise<ByteBuffer | undefined> {
@@ -65,51 +61,52 @@ export class FileGroup extends IndexedFile {
         return this.fileData;
     }
 
+    public async loadFile(fileName: string): Promise<void> {
+        const fileExtensionIndex = fileName.lastIndexOf('.');
+        const childIndex = Number(fileName.substring(0, fileExtensionIndex));
+
+        const filePath = path.join(this.archive.filePath, this.groupMetadata.name, fileName);
+        if(!fs.existsSync(filePath)) {
+            this.setFile(childIndex, new FlatFile(this.archive, childIndex, null));
+            logger.warn(`Grouped file ${filePath} not found.`);
+        } else {
+            try {
+                const fileData = fs.readFileSync(filePath);
+                if(fileData) {
+                    this.setFile(childIndex, new FlatFile(this.archive, childIndex, new ByteBuffer(fileData)));
+                } else {
+                    this.setFile(childIndex, null);
+                    logger.warn(`Grouped file ${filePath} is empty.`);
+                }
+            } catch(error) {
+                logger.error(error);
+            }
+        }
+    }
+
     public async loadFiles(): Promise<void> {
-        // @TODO place/keep children in the proper order
-        const existingFileNames = this.getExistingFileNames();
-
         this.filesLoaded = false;
+        let newFileNames = this.fileNames?.length ? [ ...this.fileNames ] : [];
+        this.fileNames = [];
+        const existingFileNames = this.archive.manifest.groups.get(String(this.fileIndex))?.fileNames ?? [];
+        newFileNames = newFileNames.filter(fileName => existingFileNames.indexOf(fileName) === -1);
 
-        for(const fileName of this.fileEntry.fileNames) {
+        for(const fileName of existingFileNames) {
             if(!fileName) {
                 continue;
             }
 
-            const fileExtensionIndex = fileName.lastIndexOf('.');
-            const childIndex = Number(fileName.substring(0, fileExtensionIndex));
+            await this.loadFile(fileName);
+            this.fileNames.push(fileName);
+        }
 
-            const filePath = path.join(this.archive.filePath, this.fileEntry.name, fileName);
-            if(!fs.existsSync(filePath)) {
-                this.setFile(childIndex, new FlatFile(this.archive, childIndex, null));
-                logger.warn(`Grouped file ${filePath} not found.`);
-            } else {
-                try {
-                    const fileData = fs.readFileSync(filePath);
-                    if(fileData) {
-                        this.setFile(childIndex, new FlatFile(this.archive, childIndex, new ByteBuffer(fileData)));
-                    } else {
-                        this.setFile(childIndex, null);
-                        logger.warn(`Grouped file ${filePath} is empty.`);
-                    }
-                } catch(error) {
-                    logger.error(error);
-                }
-                /*promises.push(new Promise(resolve =>
-                    fs.readFile(filePath, {}, (err, data) => {
-                        if(err) {
-                            logger.error(err);
-                        } else {
-                            if(data) {
-                                this.files.set(childIndex, new FlatFile(this.archive, childIndex, new ByteBuffer(data)));
-                            } else {
-                                this.files.set(childIndex, null);
-                                logger.warn(`Grouped file ${filePath} is empty.`);
-                            }
-                        }
-                        resolve();
-                    })));*/
+        for(const fileName of newFileNames) {
+            if(!fileName) {
+                continue;
             }
+
+            await this.loadFile(fileName);
+            this.fileNames.push(fileName);
         }
 
         this.filesLoaded = true;

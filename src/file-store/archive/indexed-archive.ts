@@ -79,36 +79,37 @@ export class IndexedArchive {
             nameHash = /[a-z]/ig.test(actualFileName) ? hashFileName(actualFileName) : Number(actualFileName);
         }
 
-        const newFile: FileGroupMetadata = {
+        const newMetadata: FileGroupMetadata = {
             name: fileName,
             nameHash: nameHash ?? undefined,
             version: metadata?.version ?? 0
         };
 
-        manifest.groups.set(fileIndex, newFile);
+        manifest.groups.set(fileIndex, newMetadata);
 
         let indexedFile: IndexedFile;
         const numericIndex = Number(fileIndex);
 
         if(fileStats.isDirectory()) {
             // Read the child file names
-            newFile.fileNames = fs.readdirSync(indexedFilePath);
-            indexedFile = new FileGroup(this, numericIndex, newFile);
-            await (indexedFile as FileGroup).loadFiles();
+            const fileGroup: FileGroup = indexedFile = new FileGroup(this, numericIndex, newMetadata);
+            fileGroup.fileNames = fs.readdirSync(indexedFilePath);
+            await fileGroup.loadFiles();
+            newMetadata.fileNames = fileGroup.fileNames;
         } else {
             indexedFile = new FlatFile(this, numericIndex, new ByteBuffer(fs.readFileSync(indexedFilePath)));
         }
 
-        newFile.sha256 = await indexedFile.generateShaHash();
-        newFile.crc = await indexedFile.generateCrc32();
-        newFile.size = await indexedFile.getCompressedFileLength();
+        newMetadata.sha256 = await indexedFile.generateShaHash();
+        newMetadata.crc = await indexedFile.generateCrc32();
+        newMetadata.size = await indexedFile.getCompressedFileLength();
 
         if(!metadata?.sha256) {
             // Use CRC32 if SHA256 is not available for this file
-            if(metadata?.crc !== newFile.crc) {
-                newFile.version++;
+            if(metadata?.crc !== newMetadata.crc) {
+                newMetadata.version++;
             }
-        } else if(metadata.sha256 !== newFile.sha256) {
+        } else if(metadata.sha256 !== newMetadata.sha256) {
             // Use the more modern SHA256 for comparison instead of CRC32
             // Update the file's version number if it already existed and has changed
             // newFile.version++;
@@ -116,8 +117,8 @@ export class IndexedArchive {
         }
 
         // Save space and don't include a version number for first-version files
-        if(newFile.version <= 0) {
-            delete newFile.version;
+        if(newMetadata.version <= 0) {
+            delete newMetadata.version;
         }
     }
 

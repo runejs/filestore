@@ -70,7 +70,7 @@ export class FileGroup extends IndexedFile {
         const fileExtensionIndex = fileName.lastIndexOf('.');
         const childIndex = Number(fileName.substring(0, fileExtensionIndex));
 
-        const filePath = path.join(this.archive.filePath, this.groupMetadata.name, fileName);
+        const filePath = path.join(this.archive.filePath, this.groupMetadata.fileName, fileName);
         if(!fs.existsSync(filePath)) {
             this.setFile(childIndex, new FlatFile(this.archive, childIndex, null));
             logger.warn(`Grouped file ${filePath} not found.`);

@@ -3,7 +3,6 @@ import { ByteBuffer } from '@runejs/core/buffer';
 import * as CRC32 from 'crc-32';
 import { createHash } from 'crypto';
 import { ArchiveIndex } from '../archive-index';
-import { compressFile } from '../../compression';
 import { IndexedArchive, compressionKey } from '../archive';
 
 
@@ -57,12 +56,13 @@ export abstract class IndexedFile extends FileInfo {
         }
 
         try {
-            this.fileData = compressFile({
+            // @TODO export functionality from js5 or core
+            /*this.fileData = compressFile({
                 buffer: uncompressedFile,
                 compression: this.fileCompression,
                 version: this.fileVersion
             });
-            this._fileDataCompressed = true;
+            this._fileDataCompressed = true;*/
             return this.fileData;
         } catch(error) {
             logger.error(`Error compressing file ${this.fileIndex} within index ${this.indexManifest.index}:`);

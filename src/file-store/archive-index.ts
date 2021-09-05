@@ -4,13 +4,13 @@ import path from 'path';
 
 export interface IndexMetadata {
     version?: number;
-    crc?: number;
+    crc32?: number;
     sha256?: string;
 }
 
 
 export interface FileGroupMetadata extends IndexMetadata {
-    name: string;
+    fileName: string;
     nameHash?: number;
     size?: number;
     fileNames?: string[];

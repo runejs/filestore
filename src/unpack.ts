@@ -1,10 +1,7 @@
-import { loadXteaRegionFiles } from './util';
-import { ClientFileStore } from './client-store';
 import { logger } from '@runejs/core';
 import { createObject } from './util/objects';
-import { ArchiveName, IndexName } from './file-store';
 import { run } from './util/cmd';
-import { DecompressionOptions } from './client-store/decompression/decompression-options';
+import { DecompressorOptions } from './js5/decompressor-options';
 import { Js5Store } from '@runejs/js5';
 import { Js5Decompressor } from './js5/js5-decompressor';
 
@@ -16,7 +13,7 @@ class UnpackOptions {
     public skipXtea: boolean = false;
     public matchMapFiles: boolean = false;
     public debug: boolean = false;
-    public archive: IndexName = 'main';
+    public archive: string = 'main';
 
     public static create(options?: Partial<UnpackOptions>): UnpackOptions {
         return createObject<UnpackOptions>(UnpackOptions, options, true);
@@ -27,7 +24,7 @@ class UnpackOptions {
 
 run(async args => {
     const { debug, matchMapFiles, archive, config, cache, skipXtea } = UnpackOptions.create(args as any);
-    const decompressionOptions = DecompressionOptions.create({ matchMapFiles, debug });
+    const decompressionOptions = DecompressorOptions.create({ matchMapFiles, debug });
     const store = new Js5Store(cache, config);
     const decompressor = new Js5Decompressor(store, decompressionOptions);
     const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';

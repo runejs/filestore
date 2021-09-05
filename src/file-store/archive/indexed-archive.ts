@@ -4,7 +4,6 @@ import path from 'path';
 import { logger } from '@runejs/core';
 import { FileGroupMetadata, ArchiveIndex, readIndexFile, writeIndexFile } from '../archive-index';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { compressFile } from '../../compression';
 import { IndexedFile, FlatFile, FileGroup } from '../file';
 import { ArchiveConfig, ArchiveContentType, compressionKey, getArchiveConfig, IndexName } from './config';
 import { hashFileName } from '../../util';
@@ -33,7 +32,7 @@ export class IndexedArchive {
 
     public getExistingFileIndex(fileName: string): number {
         for(const [ groupIndex, group ] of this._manifest.groups) {
-            if(group?.name === fileName) {
+            if(group?.fileName === fileName) {
                 return Number(groupIndex);
             }
         }
@@ -80,7 +79,7 @@ export class IndexedArchive {
         }
 
         const newMetadata: FileGroupMetadata = {
-            name: fileName,
+            fileName: fileName,
             nameHash: nameHash ?? undefined,
             version: metadata?.version ?? 0
         };
@@ -101,12 +100,12 @@ export class IndexedArchive {
         }
 
         newMetadata.sha256 = await indexedFile.generateShaHash();
-        newMetadata.crc = await indexedFile.generateCrc32();
+        newMetadata.crc32 = await indexedFile.generateCrc32();
         newMetadata.size = await indexedFile.getCompressedFileLength();
 
         if(!metadata?.sha256) {
             // Use CRC32 if SHA256 is not available for this file
-            if(metadata?.crc !== newMetadata.crc) {
+            if(metadata?.crc32 !== newMetadata.crc32) {
                 newMetadata.version++;
             }
         } else if(metadata.sha256 !== newMetadata.sha256) {
@@ -134,7 +133,7 @@ export class IndexedArchive {
 
         const newManifest: ArchiveIndex = {
             index: this.archiveIndex,
-            crc: 0,
+            crc32: 0,
             sha256: '',
             version: this._manifest.version ?? undefined,
             groups: new Map<string, FileGroupMetadata>()
@@ -178,7 +177,7 @@ export class IndexedArchive {
         let newCount: number = 0;
 
         for(const [ groupIndex, groupMetadata ] of this._manifest.groups) {
-            const fileName = groupMetadata.name;
+            const fileName = groupMetadata.fileName;
 
             const existingIndex = currentFileNames.indexOf(fileName);
 
@@ -203,7 +202,7 @@ export class IndexedArchive {
 
             for(const fileName of currentFileNames) {
                 const groupMetadata: FileGroupMetadata = {
-                    name: fileName
+                    fileName: fileName
                 };
 
                 await this.indexFileGroup(String(newFileIndex++), fileName, groupMetadata, newManifest);
@@ -227,7 +226,7 @@ export class IndexedArchive {
         this._manifest = newManifest;
 
         const indexData = await this.generateIndexFile();
-        this._manifest.crc = await IndexedFile.generateCrc32(indexData);
+        this._manifest.crc32 = await IndexedFile.generateCrc32(indexData);
         this._manifest.sha256 = await IndexedFile.generateShaHash(indexData);
 
         if(fs.existsSync(this.outputFilePath)) {
@@ -263,7 +262,9 @@ export class IndexedArchive {
      * Compresses the archive's index data into a flat file for update server and client usage.
      */
     public async generateIndexFile(): Promise<ByteBuffer> {
-        await this.loadManifestFile();
+        // @TODO export functionality from js5 or core
+        return null;
+        /*await this.loadManifestFile();
 
         const files = this._manifest.groups;
         const fileCount = files.size;
@@ -293,7 +294,7 @@ export class IndexedArchive {
 
         // Write file crc values
         for(const [ , file ] of files) {
-            buffer.put(file?.crc ?? 0, 'int');
+            buffer.put(file?.crc32 ?? 0, 'int');
         }
 
         // Write file version numbers
@@ -362,7 +363,7 @@ export class IndexedArchive {
         return compressFile({
             buffer: archiveData,
             compression
-        });
+        });*/
     }
 
     /**
@@ -389,8 +390,8 @@ export class IndexedArchive {
             return null;
         }
 
-        const folderPath = path.join(this.filePath, fileEntry.name);
-        const filePath = path.join(this.filePath, fileEntry.name + (this.config.content?.fileExtension ?? ''));
+        const folderPath = path.join(this.filePath, fileEntry.fileName);
+        const filePath = path.join(this.filePath, fileEntry.fileName + (this.config.content?.fileExtension ?? ''));
         let finalPath: string = folderPath;
 
         if(!fs.existsSync(folderPath)) {

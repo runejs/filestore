@@ -1,9 +1,10 @@
+import { createObject } from '../util/objects';
+
+
 /**
  * Various options for decompressing packed client file stores.
  */
-import { createObject } from '../../util/objects';
-
-export class DecompressionOptions {
+export class DecompressorOptions {
 
     /**
      * Defaults to false - Whether or not to ensure that map files have matching decrypted
@@ -22,11 +23,11 @@ export class DecompressionOptions {
     public debug: boolean = false;
 
     /**
-     * Creates a new full `DecompressionOptions` instance from the given partial options object.
-     * @param options The partial options object to convert into a full `DecompressionOptions` instance.
+     * Creates a new full `DecompressorOptions` instance from the given partial options object.
+     * @param options The partial options object to convert into a full `DecompressorOptions` instance.
      */
-    public static create(options?: Partial<DecompressionOptions>): DecompressionOptions {
-        return createObject<DecompressionOptions>(DecompressionOptions, options);
+    public static create(options?: Partial<DecompressorOptions>): DecompressorOptions {
+        return createObject<DecompressorOptions>(DecompressorOptions, options);
     }
 
 }

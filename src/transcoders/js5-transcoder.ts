@@ -1,6 +1,6 @@
 import { ByteBuffer } from '@runejs/core/buffer';
-import { ArchiveName } from '../file-store/archive';
-import { FileInfo } from '../file-store/file';
+import { ArchiveName } from '../file-store';
+import { FileInfo } from '../file-store';
 import { FileData, FileTranscoder, toBuffer, TranscoderOptions } from './file-transcoder';
 import { Buffer } from 'buffer';
 
@@ -12,7 +12,7 @@ import { logger } from '@runejs/core';
 /**
  * A map of special file transcoders used to encode and decode to and from JS5 files.
  */
-export const transcoders: { [key in ArchiveName]?: FileTranscoder<any> } = {
+export const transcoders: { [key: string]: FileTranscoder<any> } = {
     // maps: mapCodec,
     // sprites: spriteCodec
 };
@@ -31,7 +31,7 @@ export default class Js5Transcoder {
      * Defaults to false.
      * @param options [optional] Any additional options to pass through to the file transcoders (if applicable).
      */
-    public static decode(archiveName: ArchiveName,
+    public static decode(archiveName: string,
                          file: FileInfo,
                          fileData: ByteBuffer,
                          options?: TranscoderOptions,

@@ -5,7 +5,8 @@ import { createObject } from './util/objects';
 import { ArchiveName, IndexName } from './file-store';
 import { run } from './util/cmd';
 import { DecompressionOptions } from './client-store/decompression/decompression-options';
-import { ArchiveDecompressor } from './client-store/decompression/archive-decompressor';
+import { Js5Store } from '@runejs/js5';
+import { Js5Decompressor } from './js5/js5-decompressor';
 
 
 class UnpackOptions {
@@ -14,7 +15,6 @@ class UnpackOptions {
     public config: string = './config';
     public skipXtea: boolean = false;
     public matchMapFiles: boolean = false;
-    public writeFileNames: boolean = false;
     public debug: boolean = false;
     public archive: IndexName = 'main';
 
@@ -26,37 +26,25 @@ class UnpackOptions {
 
 
 run(async args => {
-    const options = UnpackOptions.create(args as any);
-    const xteaKeys = await loadXteaRegionFiles(`config/xteas`);
-
-    const clientFileStore = new ClientFileStore(options.cache, {
-        configDir: options.config,
-        xteaKeys: !options.skipXtea ? xteaKeys : {}
-    });
-
-    const decompressionOptions = DecompressionOptions.create({
-        matchMapFiles: options.matchMapFiles,
-        debug: options.debug
-    });
-
+    const { debug, matchMapFiles, archive, config, cache, skipXtea } = UnpackOptions.create(args as any);
+    const decompressionOptions = DecompressionOptions.create({ matchMapFiles, debug });
+    const store = new Js5Store(cache, config);
+    const decompressor = new Js5Decompressor(store, decompressionOptions);
     const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 
-    if(options.archive === 'main') {
+    if(archive === 'main') {
         logger.info(`Unpacking JS5 file store${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
             logger.info(argDebugString);
         }
-        await clientFileStore.decompressArchives(decompressionOptions);
+
+        decompressor.decompressStore();
     } else {
-        const archiveName: ArchiveName = options.archive as ArchiveName;
-        logger.info(`Unpacking JS5 archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
+        logger.info(`Unpacking JS5 archive ${archive}${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
             logger.info(argDebugString);
         }
-        await clientFileStore.getArchive(archiveName).decompressArchive(decompressionOptions);
-    }
 
-    if(options.writeFileNames) {
-        await ArchiveDecompressor.writeFileNames();
+        decompressor.decompressArchive(archive);
     }
 });

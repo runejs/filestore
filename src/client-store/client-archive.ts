@@ -5,7 +5,7 @@ import { ClientStoreChannel, extractIndexedFile } from './data';
 import { hashFileName } from '../util';
 import { ClientFileStore } from './client-file-store';
 import { decompressFile, StoreFile } from '../compression';
-import { getIndexName } from '../file-store';
+import { ArchiveName, getArchiveName, getIndexName } from '../file-store';
 import { ArchiveDecompressor } from './decompression/archive-decompressor';
 import { DecompressionOptions } from './decompression/decompression-options';
 
@@ -224,8 +224,8 @@ export class ClientArchive {
     }
 
     public async decompressArchive(options?: DecompressionOptions): Promise<void> {
-        const decompressor = new ArchiveDecompressor(this);
-        await decompressor.decompressArchive(options);
+        const decompressor = new ArchiveDecompressor(this, options);
+        await decompressor.decompressArchive();
     }
 
     /**
@@ -245,8 +245,8 @@ export class ClientArchive {
         return this.groups.get(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex);
     }
 
-    public get name(): string {
-        return getIndexName(this.archiveIndex) as string;
+    public get name(): ArchiveName {
+        return getArchiveName(this.archiveIndex);
     }
 
 }

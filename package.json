@@ -33,7 +33,7 @@
     "homepage": "https://github.com/runejs/filestore#readme",
     "dependencies": {
         "@runejs/core": "^1.6.0",
-        "@runejs/js5": "1.0.0-beta.4",
+        "@runejs/js5": "file:../js5",
         "canvas": "^2.6.1",
         "compressjs": "^1.0.3",
         "crc-32": "^1.2.0",

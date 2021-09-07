@@ -57,13 +57,13 @@ export class FlatFileStore {
         return this.archives;
     }
 
-    public readFlatFileStore(compress: boolean = false): void {
+    public readStore(compress: boolean = false): void {
         if(!this.loaded) {
             this.getAllArchives();
         }
 
         for(const [ , archive ] of this.archives) {
-            archive.readArchiveContents(compress);
+            archive.readFiles(compress);
         }
     }
 

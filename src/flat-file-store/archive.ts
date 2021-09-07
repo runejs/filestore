@@ -3,11 +3,11 @@ import { existsSync, readFileSync } from 'graceful-fs';
 import { ArchiveContentType, ArchiveDetails, StoreConfig, StoreFileBase } from '@runejs/js5';
 import { logger } from '@runejs/core';
 import { ByteBuffer } from '@runejs/core/buffer';
+import { Compression } from '@runejs/core/compression';
+import { File } from './file';
 import { Group } from './group';
 import { FlatFileStore } from './flat-file-store';
 import { ArchiveIndex, readIndexFile } from '../file-store';
-import { File } from './file';
-import { Compression } from '@runejs/core/compression';
 
 
 export class Archive extends StoreFileBase {
@@ -24,9 +24,104 @@ export class Archive extends StoreFileBase {
         this.groups = new Map<string, Group>();
         this.name = StoreConfig.getArchiveName(this.index);
         this.config = StoreConfig.getArchiveDetails(this.index);
+        this.compression = Compression[this.config.compression];
     }
 
-    public readArchiveContents(compress: boolean = false): void {
+    public generateIndexFile(): ByteBuffer {
+        if(!this.groups.size) {
+            this.readFiles();
+        }
+
+        // @TODO add sizes of all files, etc
+        const buffer = new ByteBuffer(1000 * 1000);
+
+        const groups = this.groups;
+        const groupCount = this.groups.size;
+
+        let writtenFileIndex = 0;
+
+        // Write index file header
+        buffer.put(this.config.format ?? 5); // '5' for 'JS5' by default
+        buffer.put(this.config.content?.saveFileNames ? 1 : 0);
+        buffer.put(groupCount ?? 1, 'short');
+
+        // Write file indexes
+        for(const [ , group ] of groups) {
+            const val = group.numericIndex;
+            buffer.put(val - writtenFileIndex, 'short');
+            writtenFileIndex = val;
+        }
+
+        // Write name hashes (if applicable)
+        if(this.config.content?.saveFileNames) {
+            for(const [ , file ] of groups) {
+                buffer.put(file.nameHash, 'int');
+            }
+        }
+
+        // Write file crc values
+        for(const [ , file ] of groups) {
+            buffer.put(file.crc32, 'int');
+        }
+
+        // Write file version numbers
+        for(const [ , file ] of groups) {
+            buffer.put(file.version ?? 0, 'int');
+        }
+
+        // Write file group child counts
+        for(const [ , group ] of groups) {
+            buffer.put(group.files.size ?? 1, 'short');
+        }
+
+        // Write group file indices
+        for(const [ , group ] of groups) {
+            if(group.files.size) {
+                writtenFileIndex = 0;
+
+                for(const [ , file ] of group.files) {
+                    const i = file.numericIndex;
+                    buffer.put(i - writtenFileIndex, 'short');
+                    writtenFileIndex = i;
+                }
+            } else {
+                buffer.put(0, 'short');
+            }
+        }
+
+        // Write group file name hashes (if applicable)
+        if(this.config.content?.saveFileNames) {
+            for(const [ , group ] of groups) {
+                if(group.files.size) {
+                    for(const [ , file ] of group.files) {
+                        buffer.put(file.nameHash ?? group.nameHash, 'int');
+                    }
+                } else {
+                    buffer.put(group.nameHash, 'int');
+                }
+            }
+        }
+
+        const indexData = buffer.flipWriter();
+        const indexDigest = this.sha256;
+
+        if(indexData.length) {
+            this.setData(indexData, false);
+
+            if(indexDigest !== this.generateSha256()) {
+                logger.warn(`Detected index changes for ${this.name}.`);
+            }
+
+            this.compress(false);
+            this.generateCrc32();
+
+            return this._data;
+        }
+
+        return null;
+    }
+
+    public readFiles(compress: boolean = false): void {
         this.indexData = readIndexFile(this.path);
         const extension = this.config.content?.fileExtension ?? '';
         const contentType: ArchiveContentType = this.config.content?.type ?? 'groups';
@@ -37,69 +132,78 @@ export class Archive extends StoreFileBase {
             }
 
             const group = new Group(groupIndex, this);
-            group.nameHash = groupDetails.nameHash;
+            const groupDigest = group.sha256 = groupDetails.sha256;
+            group.nameHash = groupDetails.nameHash ?? 0;
             group.version = groupDetails.version;
             group.crc32 = groupDetails.crc32;
-            group.compression = Compression[this.config.compression];
+            group.compression = this.compression;
 
             this.groups.set(groupIndex, group);
 
-            const groupName = groupDetails.fileName;
-            const expectedSize = groupDetails.size;
+            const groupName = groupDetails.name;
+
+            let fileNotFound = false;
 
             if(contentType === 'files') {
                 // read single file
                 const fullFileName = groupName + extension;
                 const filePath = join(this.path, fullFileName);
 
+                const childFile = new File('0', group);
+                childFile.nameHash = group.nameHash;
+                group.files.set('0', childFile);
+
                 if(!existsSync(filePath)) {
-                    // logger.error(`${fullFileName} was not found.`);
-                    continue;
+                    fileNotFound = true;
+                } else {
+                    const fileData = new ByteBuffer(readFileSync(filePath));
+                    group.setData(fileData, false);
                 }
-
-                const fileData = new ByteBuffer(readFileSync(filePath));
-
-                if(fileData?.length !== expectedSize) {
-                    logger.error(`${fullFileName} size mismatch - please re-index archive ${this.name}.`);
-                    continue;
-                }
-
-                group.setData(fileData, false);
             } else {
                 // read directory
                 const groupPath = join(this.path, groupName);
 
                 if(!existsSync(groupPath)) {
-                    logger.error(`${groupName} was not found.`);
-                    continue;
-                }
+                    fileNotFound = true;
+                } else {
+                    for(const [ fileIndex, fileDetails ] of groupDetails.files) {
+                        const file = new File(fileIndex, group);
+                        group.files.set(fileIndex, file);
 
-                const groupFileNames = groupDetails.fileNames ?? [];
+                        const fullFileName = fileDetails.name + extension;
+                        const groupFilePath = join(groupPath, fullFileName);
 
-                for(const groupFileName of groupFileNames) {
-                    const file = new File(groupFileName, group);
-                    group.files.set(groupFileName, file);
+                        if(!existsSync(groupFilePath)) {
+                            const groupDebugPath = join(groupName, fullFileName);
+                            logger.error(`${groupDebugPath} was not found.`);
+                            continue;
+                        }
 
-                    const fullFileName = groupFileName + extension;
-                    const groupFilePath = join(groupPath, fullFileName);
-
-                    if(!existsSync(groupFilePath)) {
-                        const groupDebugPath = join(groupFileName, fullFileName);
-                        logger.error(`${groupDebugPath} was not found.`);
-                        continue;
+                        const fileData = new ByteBuffer(readFileSync(groupFilePath));
+                        if(fileData?.length) {
+                            file.setData(fileData, false);
+                        }
                     }
 
-                    const fileData = new ByteBuffer(readFileSync(groupFilePath));
-                    if(fileData?.length) {
-                        file.setData(fileData, false);
-                    }
+                    group.encode();
                 }
             }
 
-            if(compress) {
-                group.compress();
+            if(fileNotFound) {
+                // logger.error(`${groupName} was not found.`);
+            } else {
+                if(group.generateSha256() !== groupDigest) {
+                    // @TODO re-index file or notify
+                    logger.warn(`Detected file changes for ${this.name}/${groupName}`);
+                }
+
+                if(compress) {
+                    group.compress();
+                }
             }
         }
+
+        this.generateIndexFile();
     }
 
     public indexArchiveContents(): void {

@@ -32,7 +32,7 @@ export class IndexedArchive {
 
     public getExistingFileIndex(fileName: string): number {
         for(const [ groupIndex, group ] of this._manifest.groups) {
-            if(group?.fileName === fileName) {
+            if(group?.name === fileName) {
                 return Number(groupIndex);
             }
         }
@@ -79,7 +79,7 @@ export class IndexedArchive {
         }
 
         const newMetadata: FileGroupMetadata = {
-            fileName: fileName,
+            name: fileName,
             nameHash: nameHash ?? undefined,
             version: metadata?.version ?? 0
         };
@@ -94,7 +94,7 @@ export class IndexedArchive {
             const fileGroup: FileGroup = indexedFile = new FileGroup(this, numericIndex, newMetadata);
             fileGroup.fileNames = fs.readdirSync(indexedFilePath);
             await fileGroup.loadFiles();
-            newMetadata.fileNames = fileGroup.fileNames;
+            // newMetadata.files = fileGroup.fileNames;
         } else {
             indexedFile = new FlatFile(this, numericIndex, new ByteBuffer(fs.readFileSync(indexedFilePath)));
         }
@@ -135,7 +135,6 @@ export class IndexedArchive {
             index: this.archiveIndex,
             crc32: 0,
             sha256: '',
-            version: this._manifest.version ?? undefined,
             groups: new Map<string, FileGroupMetadata>()
         };
 
@@ -177,7 +176,7 @@ export class IndexedArchive {
         let newCount: number = 0;
 
         for(const [ groupIndex, groupMetadata ] of this._manifest.groups) {
-            const fileName = groupMetadata.fileName;
+            const fileName = groupMetadata.name;
 
             const existingIndex = currentFileNames.indexOf(fileName);
 
@@ -202,7 +201,7 @@ export class IndexedArchive {
 
             for(const fileName of currentFileNames) {
                 const groupMetadata: FileGroupMetadata = {
-                    fileName: fileName
+                    name: fileName
                 };
 
                 await this.indexFileGroup(String(newFileIndex++), fileName, groupMetadata, newManifest);
@@ -390,8 +389,8 @@ export class IndexedArchive {
             return null;
         }
 
-        const folderPath = path.join(this.filePath, fileEntry.fileName);
-        const filePath = path.join(this.filePath, fileEntry.fileName + (this.config.content?.fileExtension ?? ''));
+        const folderPath = path.join(this.filePath, fileEntry.name);
+        const filePath = path.join(this.filePath, fileEntry.name + (this.config.content?.fileExtension ?? ''));
         let finalPath: string = folderPath;
 
         if(!fs.existsSync(folderPath)) {

@@ -70,7 +70,7 @@ export class FileGroup extends IndexedFile {
         const fileExtensionIndex = fileName.lastIndexOf('.');
         const childIndex = Number(fileName.substring(0, fileExtensionIndex));
 
-        const filePath = path.join(this.archive.filePath, this.groupMetadata.fileName, fileName);
+        const filePath = path.join(this.archive.filePath, this.groupMetadata.name, fileName);
         if(!fs.existsSync(filePath)) {
             this.setFile(childIndex, new FlatFile(this.archive, childIndex, null));
             logger.warn(`Grouped file ${filePath} not found.`);
@@ -93,7 +93,7 @@ export class FileGroup extends IndexedFile {
         this.filesLoaded = false;
         let newFileNames = this.fileNames?.length ? [ ...this.fileNames ] : [];
         this.fileNames = [];
-        const existingFileNames = this.archive.manifest.groups.get(String(this.fileIndex))?.fileNames ?? [];
+        /*const existingFileNames = this.archive.manifest.groups.get(String(this.fileIndex))?.files ?? [];
         newFileNames = newFileNames.filter(fileName => existingFileNames.indexOf(fileName) === -1);
 
         for(const fileName of existingFileNames) {
@@ -114,7 +114,7 @@ export class FileGroup extends IndexedFile {
             this.fileNames.push(fileName);
         }
 
-        this.filesLoaded = true;
+        this.filesLoaded = true;*/
     }
 
     /**

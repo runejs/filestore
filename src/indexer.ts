@@ -38,7 +38,7 @@ run(async args => {
             logger.info(argDebugString);
         }
 
-        flatFileStore.readFlatFileStore(options.compress);
+        flatFileStore.readStore(options.compress);
 
         /*const archives = await flatFileStore.getAllArchives();
         for(const [ , archive ] of archives) {
@@ -53,6 +53,6 @@ run(async args => {
         }
 
         const archive = await flatFileStore.getArchive(archiveName);
-        await archive.readArchiveContents(options.compress);
+        await archive.readFiles(options.compress);
     }
 });

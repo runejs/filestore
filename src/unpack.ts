@@ -27,7 +27,7 @@ class UnpackOptions {
 run(async args => {
     const { debug, matchMapFiles, archive, config, cache, skipXtea, output } = UnpackOptions.create(args as any);
     const decompressionOptions = DecompressorOptions.create({ matchMapFiles, debug, outputPath: output });
-    const store = new Js5Store({ configPath: config, storePath: cache });
+    const store = new Js5Store({ configPath: config, storePath: cache, xteaDisabled: skipXtea });
     const decompressor = new Js5Decompressor(store, decompressionOptions);
     const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 

@@ -6,11 +6,9 @@ import { logger } from '@runejs/core';
 import path from 'path';
 import {
     ArchiveIndex,
-    FileGroupMetadata,
-    FileGroupMetadataMap,
+    FileGroupMetadata, FileMetadata,
     writeIndexFile
 } from '../file-store';
-import * as CRC32 from 'crc-32';
  import Js5Transcoder from '../transcoders/js5-transcoder';
 import { Buffer } from 'buffer';
 
@@ -58,7 +56,7 @@ export class Js5Decompressor {
 
         logger.info(`Writing ${outputPath}...`);
 
-        const groupMetaData: FileGroupMetadataMap = new Map<string, FileGroupMetadata>();
+        const groupMetaData: Map<string, FileGroupMetadata> = new Map<string, FileGroupMetadata>();
         const defaultFileNameMap = fileConfig?.defaultFileNames ?? {};
         const defaultFileNames = Object.keys(defaultFileNameMap) ?? [];
         const fileGroupNames = new Map<string, string>();
@@ -112,9 +110,8 @@ export class Js5Decompressor {
 
         const manifest: ArchiveIndex = {
             index: archive.numericIndex,
-            crc32: CRC32.buf(archive.data),
+            crc32: archive.crc32,
             sha256: createHash('sha256').update(archive.data).digest('hex'),
-            version: archive.version || undefined, // @TODO increment if changed
             groups: groupMetaData
         };
 
@@ -125,7 +122,7 @@ export class Js5Decompressor {
         }
     }
 
-    public decompressGroup(groupMetadata: FileGroupMetadataMap, fileGroup: Js5FileGroup,
+    public decompressGroup(groupMetadata: Map<string, FileGroupMetadata>, fileGroup: Js5FileGroup,
                            outputPath: string, config?: ArchiveContentDetails): FileGroupMetadata {
         if(!fileGroup) {
             throw new Error(`Invalid file group.`);
@@ -138,15 +135,14 @@ export class Js5Decompressor {
         const fileExtension = config?.fileExtension ?? undefined;
         const { debug } = this.options;
         const groupFiles = fileGroup.files;
-        const groupFileCount = groupFiles.size;
 
         const { index: groupIndex, nameHash, version, crc32, size, data: groupData } = fileGroup;
         const fileName = fileGroup?.name ?? String(fileGroup?.nameHash ?? fileGroup.index);
 
-        const metadata = {
-            fileName, nameHash, size, crc32,
+        const metadata: FileGroupMetadata = {
+            name: fileName, nameHash, size, crc32,
             sha256: size > 0 ? createHash('sha256').update(groupData).digest('hex') : undefined,
-            version, fileNames: new Array(groupFileCount)
+            version, files: new Map<string, FileGroupMetadata>()
         };
 
         groupMetadata.set(fileGroup.index, metadata);
@@ -177,13 +173,13 @@ export class Js5Decompressor {
                 fs.writeFileSync(path.join(folderPath, groupedFileName + (fileExtension ?? '')), transcodedFile as Buffer | string);
             }
 
-            groupMetadata.get(groupIndex).fileNames[childArrayIndex++] = groupedFileName + (fileExtension ?? '');
+            metadata.files.set(fileIndex, { name: groupedFileName, nameHash: file?.nameHash ?? 0 });
         }
 
         return metadata;
     }
 
-    public decompressFile(groupMetadata: FileGroupMetadataMap, file: Js5File,
+    public decompressFile(groupMetadata: Map<string, FileGroupMetadata>, file: Js5File,
                           outputPath: string, config?: ArchiveContentDetails): FileGroupMetadata {
         if(!file) {
             throw new Error(`Invalid file group.`);
@@ -234,23 +230,26 @@ export class Js5Decompressor {
             }
         }
 
-        const metadata = {
-            fileName,
-            nameHash: file?.nameHash ?? undefined,
+        const metadata: FileGroupMetadata = {
+            name: fileName,
+            nameHash: file?.nameHash,
             size: file?.size ?? 0,
-            crc32: file?.crc32 ?? undefined,
+            crc32: file?.crc32,
             sha256: fileFound ? createHash('sha256').update(file.data).digest('hex') : undefined,
-            version: file?.version ?? undefined,
+            version: file?.version,
+            files: new Map<string, FileMetadata>()
         };
+
+        metadata.files.set('0', { name: fileName, nameHash: file?.nameHash });
 
         groupMetadata.set(file.index, metadata);
 
         return metadata;
     }
 
-    private reportError(groupMetadata: FileGroupMetadataMap, file: Js5File, message: string): void;
-    private reportError(groupMetadata: FileGroupMetadataMap, file: Js5File, messages: string[]): void;
-    private reportError(groupMetadata: FileGroupMetadataMap, file: Js5File, messages: string[] | string): void {
+    private reportError(groupMetadata: Map<string, FileGroupMetadata>, file: Js5File, message: string): void;
+    private reportError(groupMetadata: Map<string, FileGroupMetadata>, file: Js5File, messages: string[]): void;
+    private reportError(groupMetadata: Map<string, FileGroupMetadata>, file: Js5File, messages: string[] | string): void {
         if(!Array.isArray(messages)) {
             messages = [ messages ];
         }
@@ -265,7 +264,7 @@ export class Js5Decompressor {
             }
         } else {
             groupMetadata.set(file.index, {
-                fileName: file?.name ?? String(file?.nameHash ?? file.index),
+                name: file?.name ?? String(file?.nameHash ?? file.index),
                 nameHash: file?.nameHash ?? undefined,
                 crc32: file?.crc32 ?? undefined,
                 errors: [ ...messages ]

@@ -3,27 +3,28 @@ import path from 'path';
 
 
 export interface IndexMetadata {
-    version?: number;
     crc32?: number;
     sha256?: string;
 }
 
 
-export interface FileGroupMetadata extends IndexMetadata {
-    fileName: string;
+export interface FileMetadata extends IndexMetadata {
+    name: string;
     nameHash?: number;
     size?: number;
-    fileNames?: string[];
+}
+
+
+export interface FileGroupMetadata extends FileMetadata {
+    version?: number;
+    files?: Map<string, FileMetadata>;
     errors?: string[];
 }
 
 
-export type FileGroupMetadataMap = Map<string, FileGroupMetadata>;
-
-
 export interface ArchiveIndex extends IndexMetadata {
     index: number;
-    groups: FileGroupMetadataMap;
+    groups: Map<string, FileGroupMetadata>;
 }
 
 

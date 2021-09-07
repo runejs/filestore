@@ -123,6 +123,8 @@ export class Archive extends StoreFileBase {
 
     public readFiles(compress: boolean = false): void {
         this.indexData = readIndexFile(this.path);
+        this.crc32 = this.indexData.crc32;
+        this.sha256 = this.indexData.sha256;
         const extension = this.config.content?.fileExtension ?? '';
         const contentType: ArchiveContentType = this.config.content?.type ?? 'groups';
 

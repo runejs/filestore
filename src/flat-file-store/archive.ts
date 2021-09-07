@@ -15,6 +15,7 @@ export class Archive extends StoreFileBase {
     public readonly store: FlatFileStore;
     public readonly groups: Map<string, Group>;
     public readonly config: ArchiveDetails;
+    public readonly contentType: ArchiveContentType;
 
     public indexData: ArchiveIndex;
 
@@ -25,6 +26,7 @@ export class Archive extends StoreFileBase {
         this.name = StoreConfig.getArchiveName(this.index);
         this.config = StoreConfig.getArchiveDetails(this.index);
         this.compression = Compression[this.config.compression];
+        this.contentType = this.config.content?.type ?? 'groups';
     }
 
     public generateIndexFile(): ByteBuffer {
@@ -92,12 +94,12 @@ export class Archive extends StoreFileBase {
         // Write group file name hashes (if applicable)
         if(this.config.content?.saveFileNames) {
             for(const [ , group ] of groups) {
-                if(group.files.size) {
+                if(this.contentType === 'groups' && group.files.size) {
                     for(const [ , file ] of group.files) {
-                        buffer.put(file.nameHash ?? group.nameHash, 'int');
+                        buffer.put(file.nameHash ?? file.numericIndex, 'int');
                     }
                 } else {
-                    buffer.put(group.nameHash, 'int');
+                    buffer.put(0, 'int');
                 }
             }
         }

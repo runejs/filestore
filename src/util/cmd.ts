@@ -19,26 +19,29 @@ export const getCommandArguments = (): ArgumentMap => {
     const args = process.argv.slice(2);
     const argMap: ArgumentMap = new Map<string, unknown>();
 
-    for(const str of args) {
-        if(!str.startsWith('-')) {
-            continue;
-        }
-
-        const parts: [ string, unknown? ] = str.split('=') as [ string, unknown? ];
-        if(parts.length === 1) {
-            parts.push(true);
-        }
-
-        let value: unknown = parts[1];
-        if(!!value) {
-            if(value === 'true') {
-                value = true;
-            } else if(value === 'false') {
-                value = false;
+    for(let i = 0; i < args.length; i++) {
+        const str = args[i];
+        if(str?.startsWith('-')) {
+            const key: string = str.substring(1);
+            let next: string;
+            if(i < args.length - 1) {
+                next = args[i + 1];
+                console.log(next);
+                if(!next?.startsWith('-')) {
+                    let val: string | boolean = next;
+                    if(val === 'true') {
+                        val = true;
+                    } else if(val === 'false') {
+                        val = false;
+                    }
+                    argMap.set(key, val);
+                } else {
+                    argMap.set(key, true);
+                }
+            } else {
+                argMap.set(key, true);
             }
         }
-
-        argMap.set(parts[0].replace(/-/g, ''), value);
     }
 
     return argMap;

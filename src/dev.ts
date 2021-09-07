@@ -1,10 +1,9 @@
-import { FileGroup, FileStore } from './file-store';
+import { FileStore } from './file-store';
 import { logger } from '@runejs/core';
 import { run } from './util/cmd';
 import { SpriteStorageMethod } from './transcoders/sprites';
 import spriteCodec from './transcoders/sprites/sprite.transcoder';
 import fs from 'fs';
-import { ConfigStore } from './client-store';
 
 
 const indexArchives = async (fileStore: FileStore): Promise<void> => {
@@ -41,7 +40,7 @@ const spriteTest = (): void => {
 };
 
 const configTest = async (fileStore: FileStore): Promise<void> => {
-    const configArchive = fileStore.getArchive('config');
+    /*const configArchive = fileStore.getArchive('config');
     await configArchive.unpack(true, false);
     const configStore = new ConfigStore(fileStore);
 
@@ -61,7 +60,7 @@ const configTest = async (fileStore: FileStore): Promise<void> => {
     console.log(JSON.stringify(partyhat, null, 4));
 
     const hans = npcMap.get('0');
-    console.log(JSON.stringify(hans, null, 4));
+    console.log(JSON.stringify(hans, null, 4));*/
 };
 
 

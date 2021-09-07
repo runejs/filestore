@@ -1,6 +1,6 @@
-import { ArchiveContentConfig, Js5Archive, Js5File, Js5FileGroup, Js5Store } from '@runejs/js5';
+import { StoreConfig, ArchiveContentDetails, Js5Archive, Js5File, Js5FileGroup, Js5Store } from '@runejs/js5';
 import { DecompressorOptions } from './decompressor-options';
-import { createHash, Hash } from 'crypto';
+import { createHash } from 'crypto';
 import fs from 'fs';
 import { logger } from '@runejs/core';
 import path from 'path';
@@ -44,7 +44,7 @@ export class Js5Decompressor {
             archive.decode();
         }
 
-        const { name: archiveName, content: fileConfig } = this.store.config.getArchiveInfo(archiveId);
+        const { name: archiveName, content: fileConfig } = StoreConfig.getArchiveDetails(archiveId);
         const outputPath = path.join(this.outputPath, archiveName);
         const { debug } = this.options;
 
@@ -126,7 +126,7 @@ export class Js5Decompressor {
     }
 
     public decompressGroup(groupMetadata: FileGroupMetadataMap, fileGroup: Js5FileGroup,
-                           outputPath: string, config?: ArchiveContentConfig): FileGroupMetadata {
+                           outputPath: string, config?: ArchiveContentDetails): FileGroupMetadata {
         if(!fileGroup) {
             throw new Error(`Invalid file group.`);
         }
@@ -184,7 +184,7 @@ export class Js5Decompressor {
     }
 
     public decompressFile(groupMetadata: FileGroupMetadataMap, file: Js5File,
-                          outputPath: string, config?: ArchiveContentConfig): FileGroupMetadata {
+                          outputPath: string, config?: ArchiveContentDetails): FileGroupMetadata {
         if(!file) {
             throw new Error(`Invalid file group.`);
         }
@@ -274,7 +274,7 @@ export class Js5Decompressor {
     }
 
     public get outputPath(): string {
-        return path.join('.', 'output', 'stores');
+        return this.options.outputPath;
     }
 
 }

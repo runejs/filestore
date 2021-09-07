@@ -39,23 +39,7 @@ export const writeIndexFile = (archivePath: string, manifest: ArchiveIndex): voi
 
 
 export const readIndexFile = (archivePath: string): ArchiveIndex => {
-    if(!fs.existsSync(archivePath)) {
-        throw new Error(`${archivePath} does not exist!`);
-    }
-
-    const manifestFilePath = path.join(archivePath, '.index');
-
-    if(!fs.existsSync(manifestFilePath)) {
-        throw new Error(`No manifest file found for ${archivePath}`);
-    }
-
-    const manifestFileContent = fs.readFileSync(manifestFilePath, 'utf-8');
-
-    if(!manifestFileContent) {
-        throw new Error(`Error loading manifest for ${archivePath}`);
-    }
-
-    return JSON.parse(manifestFileContent, (key, value) => {
+    return JSON.parse(fs.readFileSync(path.join(archivePath, `.index`), 'utf-8'), (key, value) => {
         if(typeof value === 'object' && value?.dataType === 'Map') {
             return new Map(value.value);
         } else {

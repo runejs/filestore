@@ -1,3 +1,4 @@
+import { join } from 'path';
 import { createObject } from '../util/objects';
 
 
@@ -21,6 +22,11 @@ export class DecompressorOptions {
      * still write .index files to /output/stores.
      */
     public debug: boolean = false;
+
+    /**
+     * The directory that files should be written to.
+     */
+    public outputPath: string = join('.', 'output');
 
     /**
      * Creates a new full `DecompressorOptions` instance from the given partial options object.

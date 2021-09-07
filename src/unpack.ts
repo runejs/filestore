@@ -1,15 +1,17 @@
+import { join } from 'path';
 import { logger } from '@runejs/core';
+import { Js5Store } from '@runejs/js5';
 import { createObject } from './util/objects';
 import { run } from './util/cmd';
 import { DecompressorOptions } from './js5/decompressor-options';
-import { Js5Store } from '@runejs/js5';
 import { Js5Decompressor } from './js5/js5-decompressor';
 
 
 class UnpackOptions {
 
-    public cache: string = './packed';
-    public config: string = './config';
+    public cache: string = join('.', 'packed');
+    public config: string = join('.', 'config');
+    public output: string = join('.', 'output');
     public skipXtea: boolean = false;
     public matchMapFiles: boolean = false;
     public debug: boolean = false;
@@ -23,9 +25,9 @@ class UnpackOptions {
 
 
 run(async args => {
-    const { debug, matchMapFiles, archive, config, cache, skipXtea } = UnpackOptions.create(args as any);
-    const decompressionOptions = DecompressorOptions.create({ matchMapFiles, debug });
-    const store = new Js5Store(cache, config);
+    const { debug, matchMapFiles, archive, config, cache, skipXtea, output } = UnpackOptions.create(args as any);
+    const decompressionOptions = DecompressorOptions.create({ matchMapFiles, debug, outputPath: output });
+    const store = new Js5Store({ configPath: config, storePath: cache });
     const decompressor = new Js5Decompressor(store, decompressionOptions);
     const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 

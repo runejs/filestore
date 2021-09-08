@@ -1,7 +1,6 @@
 import { join } from 'path';
 import { logger } from '@runejs/core';
 import { createObject } from './util/objects';
-import { ArchiveName, IndexName } from './file-store';
 import { run } from './util/cmd';
 import { FlatFileStore } from './flat-file-store/flat-file-store';
 
@@ -13,7 +12,7 @@ class IndexerOptions {
     public output: string = join('.', 'output');
     public debug: boolean = false;
     public compress: boolean = false;
-    public archive: IndexName = 'main';
+    public archive: string = 'main';
 
     public static create(options?: Partial<IndexerOptions>): IndexerOptions {
         return createObject<IndexerOptions>(IndexerOptions, options, true);
@@ -46,13 +45,12 @@ run(async args => {
             await archive.indexArchiveFiles();
         }*/
     } else {
-        const archiveName: ArchiveName = options.archive as ArchiveName;
-        logger.info(`Indexing flat file store archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
+        logger.info(`Indexing flat file store archive ${options.archive}${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
             logger.info(argDebugString);
         }
 
-        const archive = await flatFileStore.getArchive(archiveName);
+        const archive = await flatFileStore.getArchive(options.archive);
         await archive.readFiles(options.compress);
     }
 });

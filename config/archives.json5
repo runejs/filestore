@@ -9,22 +9,15 @@
     anims: {
         index: 0,
         compression: 'bzip',
-        content: {
-            type: 'files',
-        },
     },
     bases: {
         index: 1,
         compression: 'gzip',
-        content: {
-            type: 'files',
-        },
     },
     config: {
         index: 2,
         compression: 'bzip',
         content: {
-            type: 'groups',
             defaultFileNames: {
                 underlays: 1,
                 // 2?
@@ -51,15 +44,11 @@
     interfaces: {
         index: 3,
         compression: 'bzip',
-        content: {
-            type: 'groups',
-        },
     },
     synth_sounds: {
         index: 4,
         compression: 'gzip',
         content: {
-            type: 'files',
             fileExtension: '.wav',
         },
     },
@@ -68,7 +57,6 @@
         compression: 'gzip',
         encryption: 'xtea',
         content: {
-            type: 'files',
             saveFileNames: true,
         },
     },
@@ -76,7 +64,6 @@
         index: 6,
         compression: 'gzip',
         content: {
-            type: 'files',
             fileExtension: '.mid',
             saveFileNames: true
         },
@@ -84,30 +71,22 @@
     models: {
         index: 7,
         compression: 'gzip',
-        content: {
-            type: 'files',
-        },
     },
     sprites: {
         index: 8,
         compression: 'gzip',
         content: {
-            type: 'files',
             saveFileNames: true
         },
     },
     textures: {
         index: 9,
         compression: 'gzip',
-        content: {
-            type: 'groups',
-        },
     },
     binary: {
         index: 10,
         compression: 'uncompressed',
         content: {
-            type: 'files',
             saveFileNames: true
         },
     },
@@ -115,7 +94,6 @@
         index: 11,
         compression: 'gzip',
         content: {
-            type: 'files',
             fileExtension: '.mid',
         },
     },
@@ -123,14 +101,8 @@
         index: 12,
         compression: 'gzip',
         content: {
-            type: 'files',
             fileExtension: '.cs2',
             saveFileNames: true
         },
     },
-
-    // @TODO setup correct configs
-    /*fontmetrics: {
-        index: 13,
-    },*/
 }

@@ -1,13 +1,13 @@
 import { join } from 'path';
 import { existsSync, readFileSync } from 'graceful-fs';
-import { ArchiveContentType, ArchiveDetails, StoreConfig, StoreFileBase } from '@runejs/js5';
+import { ArchiveDetails, StoreConfig, StoreFileBase } from '@runejs/js5';
 import { logger } from '@runejs/core';
 import { ByteBuffer } from '@runejs/core/buffer';
 import { Compression } from '@runejs/core/compression';
 import { File } from './file';
 import { Group } from './group';
 import { FlatFileStore } from './flat-file-store';
-import { ArchiveIndex, readIndexFile } from '../file-store';
+import { ArchiveIndex, readIndexFile } from './archive-index';
 
 
 export class Archive extends StoreFileBase {
@@ -15,7 +15,6 @@ export class Archive extends StoreFileBase {
     public readonly store: FlatFileStore;
     public readonly groups: Map<string, Group>;
     public readonly config: ArchiveDetails;
-    public readonly contentType: ArchiveContentType;
 
     public indexData: ArchiveIndex;
 
@@ -26,7 +25,6 @@ export class Archive extends StoreFileBase {
         this.name = StoreConfig.getArchiveName(this.index);
         this.config = StoreConfig.getArchiveDetails(this.index);
         this.compression = Compression[this.config.compression];
-        this.contentType = this.config.content?.type ?? 'groups';
     }
 
     public generateIndexFile(): ByteBuffer {
@@ -40,14 +38,13 @@ export class Archive extends StoreFileBase {
         const groups = this.groups;
         const groupCount = this.groups.size;
 
-        let writtenFileIndex = 0;
-
         // Write index file header
         buffer.put(this.config.format ?? 5); // '5' for 'JS5' by default
         buffer.put(this.config.content?.saveFileNames ? 1 : 0);
-        buffer.put(groupCount ?? 1, 'short');
+        buffer.put(groupCount, 'short');
 
         // Write file indexes
+        let writtenFileIndex = 0;
         for(const [ , group ] of groups) {
             const val = group.numericIndex;
             buffer.put(val - writtenFileIndex, 'short');
@@ -68,7 +65,7 @@ export class Archive extends StoreFileBase {
 
         // Write file version numbers
         for(const [ , file ] of groups) {
-            buffer.put(file.version ?? 0, 'int');
+            buffer.put(file.version ?? 1, 'int');
         }
 
         // Write file group child counts
@@ -94,9 +91,9 @@ export class Archive extends StoreFileBase {
         // Write group file name hashes (if applicable)
         if(this.config.content?.saveFileNames) {
             for(const [ , group ] of groups) {
-                if(this.contentType === 'groups' && group.files.size) {
+                if(group.files.size) {
                     for(const [ , file ] of group.files) {
-                        buffer.put(file.nameHash ?? file.numericIndex, 'int');
+                        buffer.put(file.nameHash ?? 0, 'int');
                     }
                 } else {
                     buffer.put(0, 'int');
@@ -128,7 +125,6 @@ export class Archive extends StoreFileBase {
         this.crc32 = this.indexData.crc32;
         this.sha256 = this.indexData.sha256;
         const extension = this.config.content?.fileExtension ?? '';
-        const contentType: ArchiveContentType = this.config.content?.type ?? 'groups';
 
         for(const [ groupIndex, groupDetails ] of this.indexData.groups) {
             if(!groupDetails) {
@@ -148,7 +144,7 @@ export class Archive extends StoreFileBase {
 
             let fileNotFound = false;
 
-            if(contentType === 'files') {
+            if(groupDetails.files.size === 1) {
                 // read single file
                 const fullFileName = groupName + extension;
                 const filePath = join(this.path, fullFileName);
@@ -198,10 +194,12 @@ export class Archive extends StoreFileBase {
             } else {
                 if(group.generateSha256() !== groupDigest) {
                     // @TODO re-index file or notify
-                    logger.warn(`Detected file changes for ${this.name}/${groupName}`);
+                    logger.warn(`Detected file changes for ${this.name}/${groupName}`,
+                        `Orig Digest: ${groupDigest}`, `Curr Digest: ${group.sha256}`);
                 }
 
                 if(compress) {
+                    logger.info(`Compressing...`);
                     group.compress();
                 }
             }

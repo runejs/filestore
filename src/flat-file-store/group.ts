@@ -68,8 +68,6 @@ export class Group extends StoreFileBase {
             groupBuffer.put(this.stripeCount, 'byte');
 
             this.setData(groupBuffer.flipWriter(), false);
-        } else {
-            this.setData(this.files.get('0').data, false);
         }
 
         this._encoded = true;

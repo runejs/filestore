@@ -54,7 +54,7 @@ export class Archive extends StoreFileBase {
         // Write name hashes (if applicable)
         if(this.config.content?.saveFileNames) {
             for(const [ , file ] of groups) {
-                buffer.put(file.nameHash ?? 0, 'int');
+                buffer.put(file.nameHash, 'int');
             }
         }
 
@@ -159,6 +159,7 @@ export class Archive extends StoreFileBase {
                 } else {
                     const fileData = new ByteBuffer(readFileSync(filePath));
                     group.setData(fileData, false);
+                    childFile.setData(fileData, false);
                 }
 
                 childFile.size = group.data?.length ?? 0;
@@ -195,7 +196,7 @@ export class Archive extends StoreFileBase {
             }
 
             if(fileNotFound) {
-                // logger.error(`${groupName} was not found.`);
+                logger.error(`${groupName} was not found.`);
             } else {
                 group.generateSha256();
                 if(!group.sha256) {

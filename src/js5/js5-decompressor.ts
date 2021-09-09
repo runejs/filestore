@@ -188,7 +188,7 @@ export class Js5Decompressor {
             }
         } else {
             const file = groupFiles.get('0');
-            const fileMetadata = this.decompressFlatFile(groupMetadata, file, groupName, outputPath, config);
+            const fileMetadata = this.decompressFlatFile(groupMetadata, fileGroup, groupName, outputPath, config);
             metadata.files.set('0', {
                 name: fileMetadata.name,
                 nameHash: fileMetadata.nameHash,
@@ -256,10 +256,17 @@ export class Js5Decompressor {
             crc32: file.crc32,
             sha256: file.sha256,
             version: file.version,
+            stripeCount: file.stripeCount,
             files: new Map<string, FileMetadata>()
         };
 
-        metadata.files.set('0', { name: groupName, nameHash: file?.nameHash });
+        metadata.files.set('0', {
+            name: groupName,
+            nameHash: file?.nameHash,
+            stripeSizes: file.stripeSizes,
+            crc32: file.crc32,
+            sha256: file.sha256
+        });
 
         return metadata;
     }

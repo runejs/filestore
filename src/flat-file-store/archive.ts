@@ -54,28 +54,28 @@ export class Archive extends StoreFileBase {
         // Write name hashes (if applicable)
         if(this.config.content?.saveFileNames) {
             for(const [ , file ] of groups) {
-                buffer.put(file.nameHash, 'int');
+                buffer.put(file.nameHash ?? 0, 'int');
             }
         }
 
         // Write file crc values
         for(const [ , file ] of groups) {
-            buffer.put(file.crc32, 'int');
+            buffer.put(file.crc32 ?? 0, 'int');
         }
 
         // Write file version numbers
         for(const [ , file ] of groups) {
-            buffer.put(file.version ?? 1, 'int');
+            buffer.put(file.version ?? 0, 'int');
         }
 
         // Write file group child counts
         for(const [ , group ] of groups) {
-            buffer.put(group.files.size ?? 1, 'short');
+            buffer.put(group.files.size ?? 0, 'short');
         }
 
         // Write group file indices
         for(const [ , group ] of groups) {
-            if(group.files.size) {
+            if(group.files.size > 1) {
                 writtenFileIndex = 0;
 
                 for(const [ , file ] of group.files) {
@@ -91,7 +91,7 @@ export class Archive extends StoreFileBase {
         // Write group file name hashes (if applicable)
         if(this.config.content?.saveFileNames) {
             for(const [ , group ] of groups) {
-                if(group.files.size) {
+                if(group.files.size > 1) {
                     for(const [ , file ] of group.files) {
                         buffer.put(file.nameHash ?? 0, 'int');
                     }
@@ -137,6 +137,7 @@ export class Archive extends StoreFileBase {
             group.version = groupDetails.version;
             group.crc32 = groupDetails.crc32;
             group.compression = this.compression;
+            group.stripeCount = groupDetails.stripeCount;
 
             this.groups.set(groupIndex, group);
 
@@ -159,6 +160,9 @@ export class Archive extends StoreFileBase {
                     const fileData = new ByteBuffer(readFileSync(filePath));
                     group.setData(fileData, false);
                 }
+
+                childFile.size = group.data?.length ?? 0;
+                childFile.stripeSizes = [ childFile.size ];
             } else {
                 // read directory
                 const groupPath = join(this.path, groupName);
@@ -168,6 +172,7 @@ export class Archive extends StoreFileBase {
                 } else {
                     for(const [ fileIndex, fileDetails ] of groupDetails.files) {
                         const file = new File(fileIndex, group);
+                        file.stripeSizes = fileDetails.stripeSizes;
                         group.files.set(fileIndex, file);
 
                         const fullFileName = fileDetails.name + extension;
@@ -192,14 +197,16 @@ export class Archive extends StoreFileBase {
             if(fileNotFound) {
                 // logger.error(`${groupName} was not found.`);
             } else {
-                if(group.generateSha256() !== groupDigest) {
+                group.generateSha256();
+                if(!group.sha256) {
+                    logger.error(`File ${this.name}/${groupName} is empty or missing.`);
+                } else if(group.generateSha256() !== groupDigest) {
                     // @TODO re-index file or notify
                     logger.warn(`Detected file changes for ${this.name}/${groupName}`,
                         `Orig Digest: ${groupDigest}`, `Curr Digest: ${group.sha256}`);
                 }
 
                 if(compress) {
-                    logger.info(`Compressing...`);
                     group.compress();
                 }
             }

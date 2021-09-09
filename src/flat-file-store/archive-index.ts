@@ -12,6 +12,8 @@ export interface FileMetadata extends IndexMetadata {
     name: string;
     nameHash?: number;
     size?: number;
+    stripeCount?: number;
+    stripeSizes?: number[];
 }
 
 

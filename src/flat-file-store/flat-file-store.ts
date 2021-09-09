@@ -37,9 +37,8 @@ export class FlatFileStore {
 
     public getArchive(archiveId: string): Archive {
         const archiveIndex = StoreConfig.getArchiveIndex(archiveId) ?? archiveId;
-
         if(!this.archives.has(archiveIndex)) {
-            this.createArchive(archiveId);
+            this.createArchive(archiveIndex);
         }
 
         return this.archives.get(archiveIndex);

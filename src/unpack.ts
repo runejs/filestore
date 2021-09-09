@@ -3,8 +3,7 @@ import { logger } from '@runejs/core';
 import { Js5Store } from '@runejs/js5';
 import { createObject } from './util/objects';
 import { run } from './util/cmd';
-import { DecompressorOptions } from './js5/decompressor-options';
-import { Js5Decompressor } from './js5/js5-decompressor';
+import { DecompressorOptions, Js5Decompressor } from './js5';
 
 
 class UnpackOptions {

@@ -11,61 +11,77 @@ export class Group extends StoreFileBase {
     public readonly archive: Archive;
     public readonly files: Map<string, File>;
 
+    private _encoded: boolean;
+
     public constructor(index: string | number, archive: Archive) {
         super(index);
         this.archive = archive;
         this.store = archive.store;
         this.files = new Map<string, File>();
+        this._encoded = false;
     }
 
     public encode(): ByteBuffer {
+        if(this._encoded) {
+            return this._data;
+        }
+
         if(this.files.size > 1) {
-            const fileData: Buffer[] = Array.from(this.files.values())
-                .map(file => file?.data?.toNodeBuffer() ?? null);
-            const fileSizes = fileData.map(data => data?.length ?? 0);
+            const fileData: ByteBuffer[] = Array.from(this.files.values()).map(file => file?.data ?? new ByteBuffer(0));
+            const fileSizes = fileData.map(data => data.length);
             const fileCount = fileSizes.length;
+            const stripeCount = this.stripeCount ?? 1;
 
-            // Size of all individual files + 1 int per file containing it's size + 1 at the end for the number of stripes
-            const groupSize = fileCount ? fileSizes.reduce((a, c) => a + c) + (fileCount * 4) + 1 : 0;
-
-            if(groupSize < 1) {
-                return undefined;
+            if(!stripeCount) {
+                return null;
             }
 
-            const groupBuffer = new ByteBuffer(groupSize + 1);
+            // Size of all individual files + 1 int per file containing it's size
+            // + 1 at the end for the total group stripe count
+            const groupSize = fileSizes.reduce((a, c) => a + c) + (stripeCount * fileCount * 4) + 1;
+            const groupBuffer = new ByteBuffer(groupSize);
 
-            // Write individual file contents
-            for(let i = 0; i < fileCount; i++) {
-                if(fileData[i]) {
-                    // Stripes
-                    groupBuffer.putBytes(fileData[i]);
+            fileData.forEach(data => data.readerIndex = 0);
+
+            // Write file content stripes
+            for(let stripe = 0; stripe < stripeCount; stripe++) {
+                for(const [ , file ] of this.files) {
+                    const stripeSize = file.stripeSizes[stripe];
+
+                    if(stripeSize) {
+                        const stripeData = file.data.getSlice(file.data.readerIndex, stripeSize);
+                        file.data.readerIndex = file.data.readerIndex + stripeSize;
+                        groupBuffer.putBytes(stripeData);
+                    }
                 }
             }
 
-            // Write individual file sizes
-            let prevLen: number = 0;
-            for(const fileSize of fileSizes) {
-                // Stripe length
-                // Stripe length is the full length of the file for the server-side
-                groupBuffer.put(fileSize - prevLen, 'int');
-                prevLen = fileSize;
+            for(let stripe = 0; stripe < stripeCount; stripe++) {
+                let prevSize = 0;
+                for(const [ , file ] of this.files) {
+                    const stripeSize = file.stripeSizes[stripe] ?? 0;
+                    groupBuffer.put(stripeSize - prevSize, 'int');
+                    prevSize = stripeSize;
+                }
             }
 
-            // Write stripe count
-            // Stripe count should always be 1 for the server-side
-            groupBuffer.put(1);
+            groupBuffer.put(this.stripeCount, 'byte');
 
             this.setData(groupBuffer.flipWriter(), false);
         } else {
             this.setData(this.files.get('0').data, false);
         }
 
+        this._encoded = true;
         return this._data;
     }
 
     public compress(): ByteBuffer {
         this.encode();
-        return super.compress();
+        return this.data?.length ? super.compress() : null;
     }
 
+    public get encoded(): boolean {
+        return this._encoded;
+    }
 }

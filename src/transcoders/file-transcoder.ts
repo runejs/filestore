@@ -1,7 +1,6 @@
 import { ByteBuffer } from '@runejs/core/buffer';
-import { ArchiveName } from '../file-store/archive';
-import { FileInfo } from '../file-store/file';
 import { Buffer } from 'buffer';
+import { FileInfo } from './js5-transcoder';
 
 
 export type FileFormat = 'js5' | 'rjs';
@@ -38,12 +37,12 @@ export interface TranscoderOptions {
 
 export abstract class TranscodedFile {
 
-    public readonly archive: ArchiveName;
+    public readonly archive: string;
     public readonly info: FileInfo;
     public format: FileFormat | undefined;
     public data: FileData | undefined;
 
-    protected constructor(archive: ArchiveName, fileInfo: FileInfo, format?: FileFormat, data?: FileData) {
+    protected constructor(archive: string, fileInfo: FileInfo, format?: FileFormat, data?: FileData) {
         this.archive = archive;
         this.info = fileInfo;
         this.setData(format, data);
@@ -65,7 +64,7 @@ export interface TranscodingResponse<T extends TranscodedFile = TranscodedFile> 
 
 export interface FileTranscoder<T extends TranscodedFile = TranscodedFile, O = TranscoderOptions> {
 
-    archive: ArchiveName;
+    archive: string;
     revision: number | string;
     decode: (file: FileInfo, fileData: Buffer | ByteBuffer, options?: O) => T;
     encode: (file: FileInfo, fileData: FileData, options?: O) => T;

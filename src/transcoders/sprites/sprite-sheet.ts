@@ -1,9 +1,9 @@
 import { PNG } from 'pngjs';
 import { logger } from '@runejs/core';
 import { ByteBuffer } from '@runejs/core/buffer';
-import { RGBA } from '../../util/colors';
+import { RGBA } from '../../util';
 import { TranscodedFile } from '../file-transcoder';
-import { FileInfo } from '../../file-store/file';
+import { FileInfo } from '../js5-transcoder';
 
 
 /**

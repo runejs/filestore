@@ -2,7 +2,7 @@ import { join } from 'path';
 import { logger } from '@runejs/core';
 import { createObject } from './util/objects';
 import { run } from './util/cmd';
-import { FlatFileStore } from './flat-file-store/flat-file-store';
+import { FlatFileStore } from './flat-file-store';
 
 
 class IndexerOptions {

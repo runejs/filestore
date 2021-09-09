@@ -1,12 +1,11 @@
 import { ByteBuffer } from '@runejs/core/buffer';
-import { ArchiveName } from '../file-store';
-import { FileInfo } from '../file-store';
 import { FileData, FileTranscoder, toBuffer, TranscoderOptions } from './file-transcoder';
 import { Buffer } from 'buffer';
 
-import spriteCodec from './sprites/sprite.transcoder';
-import { PNG } from 'pngjs';
-import { logger } from '@runejs/core';
+export interface FileInfo {
+    fileName: string;
+    fileIndex: number;
+}
 
 
 /**
@@ -61,7 +60,7 @@ export default class Js5Transcoder {
      * stringified `JSON` data for the file.
      * @param options [optional] Any additional options to pass through to the file transcoders (if applicable).
      */
-    public static encode(archiveName: ArchiveName,
+    public static encode(archiveName: string,
                          file: FileInfo,
                          fileData: FileData,
                          options?: TranscoderOptions): Buffer | Buffer[] | null {

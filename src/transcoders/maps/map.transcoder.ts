@@ -1,6 +1,6 @@
 import { ByteBuffer } from '@runejs/core/buffer';
 import { FileTranscoder, TranscodedFile } from '../file-transcoder';
-import { FileInfo } from '../../file-store/file';
+import { FileInfo } from '../js5-transcoder';
 
 
 export class MapData extends TranscodedFile {

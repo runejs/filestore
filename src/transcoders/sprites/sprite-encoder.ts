@@ -6,7 +6,7 @@ import { SpriteCodecOptions } from './sprite.transcoder';
 import { printSpritePaletteIndices } from './sprite-debug';
 import { PixelHistogram, PngSpriteReader } from './png-sprite-reader';
 import { TranscodingResponse } from '../file-transcoder';
-import { FileInfo } from '../../file-store/file';
+import { FileInfo } from '../js5-transcoder';
 
 
 export const encodeSpriteSheet = (

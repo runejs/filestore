@@ -8,7 +8,7 @@ import {
     ArchiveIndex,
     FileGroupMetadata, FileMetadata,
     writeIndexFile
-} from '../flat-file-store/archive-index';
+} from '../flat-file-store';
  import Js5Transcoder from '../transcoders/js5-transcoder';
 import { Buffer } from 'buffer';
 
@@ -136,11 +136,18 @@ export class Js5Decompressor {
         const { debug } = this.options;
         const groupFiles = fileGroup.files;
 
-        const { nameHash, version, crc32, sha256, size } = fileGroup;
+        const { nameHash, version, crc32, sha256, size, stripeCount } = fileGroup;
         const groupName = fileGroup.name ?? String(fileGroup.nameHash ?? fileGroup.index);
 
         const metadata: FileGroupMetadata = {
-            name: groupName, nameHash, size, crc32, sha256, version, files: new Map<string, FileGroupMetadata>()
+            name: groupName,
+            nameHash,
+            size,
+            crc32,
+            sha256,
+            version,
+            stripeCount,
+            files: new Map<string, FileGroupMetadata>()
         };
 
         groupMetadata.set(fileGroup.index, metadata);
@@ -173,6 +180,7 @@ export class Js5Decompressor {
                 const fileMetadata = {
                     name: groupedFileName,
                     nameHash: file.nameHash,
+                    stripeSizes: file.stripeSizes,
                     crc32: file.crc32,
                     sha256: file.sha256
                 };
@@ -181,7 +189,13 @@ export class Js5Decompressor {
         } else {
             const file = groupFiles.get('0');
             const fileMetadata = this.decompressFlatFile(groupMetadata, file, groupName, outputPath, config);
-            metadata.files.set('0', { name: fileMetadata.name, nameHash: fileMetadata.nameHash });
+            metadata.files.set('0', {
+                name: fileMetadata.name,
+                nameHash: fileMetadata.nameHash,
+                stripeSizes: file.stripeSizes,
+                crc32: file.crc32,
+                sha256: file.sha256
+            });
         }
 
         return metadata;

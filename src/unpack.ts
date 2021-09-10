@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 import { Js5Store } from '@runejs/js5';
 import { createObject } from './util/objects';
 import { run } from './util/cmd';

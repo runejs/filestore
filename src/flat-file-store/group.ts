@@ -1,5 +1,5 @@
 import { StoreFileBase } from '@runejs/js5';
-import { ByteBuffer } from '@runejs/core/buffer';
+import { ByteBuffer } from '@runejs/common/buffer';
 import { FlatFileStore } from './flat-file-store';
 import { Archive } from './archive';
 import { File } from './file';

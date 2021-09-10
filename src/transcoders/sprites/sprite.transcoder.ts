@@ -1,7 +1,7 @@
-import { ByteBuffer } from '@runejs/core/buffer';
+import { ByteBuffer } from '@runejs/common/buffer';
 import { FileTranscoder, toBuffer, TranscoderOptions } from '../file-transcoder';
 import { PNG } from 'pngjs';
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 import { dumpSpriteSheetData } from './sprite-debug';
 import { Sprite, SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
 import { encodeSpriteSheet } from './sprite-encoder';

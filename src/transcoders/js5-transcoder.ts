@@ -1,4 +1,4 @@
-import { ByteBuffer } from '@runejs/core/buffer';
+import { ByteBuffer } from '@runejs/common/buffer';
 import { FileData, FileTranscoder, toBuffer, TranscoderOptions } from './file-transcoder';
 import { Buffer } from 'buffer';
 

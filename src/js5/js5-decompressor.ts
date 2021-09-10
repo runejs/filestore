@@ -1,8 +1,8 @@
-import { StoreConfig, ArchiveContentDetails, Js5Archive, Js5File, Js5FileGroup, Js5Store } from '@runejs/js5';
+import { StoreConfig, Js5Archive, Js5File, Js5FileGroup, Js5Store } from '@runejs/js5';
 import { DecompressorOptions } from './decompressor-options';
 import { createHash } from 'crypto';
 import fs from 'fs';
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 import path from 'path';
 import {
     ArchiveIndex,
@@ -42,7 +42,7 @@ export class Js5Decompressor {
             archive.decode();
         }
 
-        const { name: archiveName, content: fileConfig } = StoreConfig.getArchiveDetails(archiveId);
+        const { name: archiveName, defaultFileNames: archiveFileNames, fileExtension } = StoreConfig.getArchiveDetails(archiveId);
         const outputPath = path.join(this.outputPath, archiveName);
         const { debug } = this.options;
 
@@ -57,7 +57,7 @@ export class Js5Decompressor {
         logger.info(`Writing ${outputPath}...`);
 
         const groupMetaData: Map<string, FileGroupMetadata> = new Map<string, FileGroupMetadata>();
-        const defaultFileNameMap = fileConfig?.defaultFileNames ?? {};
+        const defaultFileNameMap = archiveFileNames ?? {};
         const defaultFileNames = Object.keys(defaultFileNameMap) ?? [];
         const fileGroupNames = new Map<string, string>();
 
@@ -80,7 +80,7 @@ export class Js5Decompressor {
             }
 
             try {
-                this.decompressGroup(groupMetaData, fileGroup, outputPath, fileConfig);
+                this.decompressGroup(groupMetaData, fileGroup, outputPath, fileExtension);
                 // if(fileConfig?.type === 'files') {
                 //     this.decompressFile(groupMetaData, fileGroup, outputPath, fileConfig);
                 // } else {
@@ -123,7 +123,7 @@ export class Js5Decompressor {
     }
 
     public decompressGroup(groupMetadata: Map<string, FileGroupMetadata>, fileGroup: Js5FileGroup,
-                           outputPath: string, config?: ArchiveContentDetails): FileGroupMetadata {
+                           outputPath: string, fileExtension?: string | undefined): FileGroupMetadata {
         if(!fileGroup) {
             throw new Error(`Invalid file group.`);
         }
@@ -132,7 +132,6 @@ export class Js5Decompressor {
             fileGroup.decompress();
         }
 
-        const fileExtension = config?.fileExtension ?? undefined;
         const { debug } = this.options;
         const groupFiles = fileGroup.files;
 
@@ -188,7 +187,7 @@ export class Js5Decompressor {
             }
         } else {
             const file = groupFiles.get('0');
-            const fileMetadata = this.decompressFlatFile(groupMetadata, fileGroup, groupName, outputPath, config);
+            const fileMetadata = this.decompressFlatFile(groupMetadata, fileGroup, groupName, outputPath, fileExtension);
             metadata.files.set('0', {
                 name: fileMetadata.name,
                 nameHash: fileMetadata.nameHash,
@@ -202,7 +201,7 @@ export class Js5Decompressor {
     }
 
     public decompressFlatFile(groupMetadata: Map<string, FileGroupMetadata>, file: Js5File, groupName: string,
-                              outputPath: string, config?: ArchiveContentDetails): FileGroupMetadata {
+                              outputPath: string, fileExtension?: string | undefined): FileGroupMetadata {
         if(!file) {
             throw new Error(`Invalid file.`);
         }
@@ -211,7 +210,6 @@ export class Js5Decompressor {
             file.decompress();
         }
 
-        const fileExtension = config?.fileExtension ?? undefined;
         const { debug } = this.options;
 
         let decodedContent = !file.empty ? Js5Transcoder.decode(file.archive.name, {

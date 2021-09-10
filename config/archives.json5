@@ -3,106 +3,104 @@
     main: {
         index: 255,
         compression: 'uncompressed',
+        versioned: false
     },
 
     // Regular indexes
     anims: {
         index: 0,
         compression: 'bzip',
+        versioned: true
     },
     bases: {
         index: 1,
         compression: 'gzip',
+        versioned: true
     },
     config: {
         index: 2,
         compression: 'bzip',
-        content: {
-            defaultFileNames: {
-                underlays: 1,
-                // 2?
-                identity_kit: 3,
-                overlays: 4,
-                inv: 5,
-                objects: 6,
-                // 7?
-                enums: 8,
-                npcs: 9,
-                items: 10,
-                item_attributes: 11,
-                sequences: 12,
-                spot_anims: 13,
-                varbits: 14,
-                // 15?
-                player_vars: 16,
-                // 17?
-                // 18?
-                // ...?
-            }
-        },
+        versioned: true,
+        defaultFileNames: {
+            flu: 1,         // Floor Underlays
+            // 2?           // ???
+            idk: 3,         // Identity Kit
+            flo: 4,         // Floor Overlays
+            inv: 5,         // Inventory
+            loc: 6,         // Objects
+            // 7?           // ???
+            enum: 8,        // Enums
+            npc: 9,         // Npcs
+            obj: 10,        // Items
+            param: 11,      // ???
+            seq: 12,        // Animation Sequences
+            spotanim: 13,   // Graphical "Spot" Animations
+            varbit: 14,     // Player Bit Variables
+            // 15?          // ???
+            varp: 16,       // Player Variables
+            // 17?          // ???
+            // 18?          // ???
+            // ...?         // ???
+        }
     },
     interfaces: {
         index: 3,
         compression: 'bzip',
+        versioned: true
     },
     synth_sounds: {
         index: 4,
         compression: 'gzip',
-        content: {
-            fileExtension: '.wav',
-        },
+        versioned: true,
+        fileExtension: '.wav'
     },
     maps: {
         index: 5,
         compression: 'gzip',
         encryption: 'xtea',
-        content: {
-            saveFileNames: true,
-        },
+        versioned: true,
+        saveFileNames: true
     },
     midi_songs: {
         index: 6,
         compression: 'gzip',
-        content: {
-            fileExtension: '.mid',
-            saveFileNames: true
-        },
+        versioned: false,
+        fileExtension: '.mid',
+        saveFileNames: true
     },
     models: {
         index: 7,
         compression: 'gzip',
+        versioned: true
     },
     sprites: {
         index: 8,
         compression: 'gzip',
-        content: {
-            saveFileNames: true
-        },
+        versioned: true,
+        saveFileNames: true
     },
     textures: {
         index: 9,
         compression: 'gzip',
+        versioned: true
     },
     binary: {
         index: 10,
         compression: 'uncompressed',
-        content: {
-            saveFileNames: true
-        },
+        versioned: true,
+        saveFileNames: true
     },
     midi_jingles: {
         index: 11,
         compression: 'gzip',
-        content: {
-            fileExtension: '.mid',
-        },
+        versioned: true,
+        fileExtension: '.mid'
     },
     clientscripts: {
         index: 12,
         compression: 'gzip',
-        content: {
-            fileExtension: '.cs2',
-            saveFileNames: true
-        },
+        versioned: true,
+        fileExtension: '.cs2',
+        saveFileNames: true
     },
 }

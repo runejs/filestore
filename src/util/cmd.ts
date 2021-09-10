@@ -1,4 +1,4 @@
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 
 
 export type ArgumentMap = Map<string, unknown>;

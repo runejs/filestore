@@ -1,5 +1,5 @@
-import { ByteBuffer, DataType, Signedness } from '@runejs/core/buffer';
-import { logger } from '@runejs/core';
+import { ByteBuffer, DataType, Signedness } from '@runejs/common/buffer';
+import { logger } from '@runejs/common';
 
 require('json5/lib/register');
 

@@ -1,4 +1,4 @@
-import { ByteBuffer } from '@runejs/core/buffer';
+import { ByteBuffer } from '@runejs/common/buffer';
 import { Buffer } from 'buffer';
 import { FileInfo } from './js5-transcoder';
 

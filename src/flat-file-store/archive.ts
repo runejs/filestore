@@ -1,9 +1,9 @@
 import { join } from 'path';
 import { existsSync, readFileSync } from 'graceful-fs';
 import { ArchiveDetails, StoreConfig, StoreFileBase } from '@runejs/js5';
-import { logger } from '@runejs/core';
-import { ByteBuffer } from '@runejs/core/buffer';
-import { Compression } from '@runejs/core/compression';
+import { logger } from '@runejs/common';
+import { ByteBuffer } from '@runejs/common/buffer';
+import { FileCompression } from '@runejs/common/compression';
 import { File } from './file';
 import { Group } from './group';
 import { FlatFileStore } from './flat-file-store';
@@ -24,7 +24,7 @@ export class Archive extends StoreFileBase {
         this.groups = new Map<string, Group>();
         this.name = StoreConfig.getArchiveName(this.index);
         this.config = StoreConfig.getArchiveDetails(this.index);
-        this.compression = Compression[this.config.compression];
+        this.compression = FileCompression[this.config.compression];
     }
 
     public generateIndexFile(): ByteBuffer {
@@ -40,7 +40,7 @@ export class Archive extends StoreFileBase {
 
         // Write index file header
         buffer.put(this.config.format ?? 5); // '5' for 'JS5' by default
-        buffer.put(this.config.content?.saveFileNames ? 1 : 0);
+        buffer.put(this.config.saveFileNames ? 1 : 0);
         buffer.put(groupCount, 'short');
 
         // Write file indexes
@@ -52,7 +52,7 @@ export class Archive extends StoreFileBase {
         }
 
         // Write name hashes (if applicable)
-        if(this.config.content?.saveFileNames) {
+        if(this.config.saveFileNames) {
             for(const [ , file ] of groups) {
                 buffer.put(file.nameHash, 'int');
             }
@@ -89,7 +89,7 @@ export class Archive extends StoreFileBase {
         }
 
         // Write group file name hashes (if applicable)
-        if(this.config.content?.saveFileNames) {
+        if(this.config.saveFileNames) {
             for(const [ , group ] of groups) {
                 if(group.files.size > 1) {
                     for(const [ , file ] of group.files) {
@@ -124,7 +124,7 @@ export class Archive extends StoreFileBase {
         this.indexData = readIndexFile(this.path);
         this.crc32 = this.indexData.crc32;
         this.sha256 = this.indexData.sha256;
-        const extension = this.config.content?.fileExtension ?? '';
+        const extension = this.config.fileExtension ?? '';
 
         for(const [ groupIndex, groupDetails ] of this.indexData.groups) {
             if(!groupDetails) {

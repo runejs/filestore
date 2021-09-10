@@ -1,6 +1,6 @@
 import { PNG } from 'pngjs';
-import { logger } from '@runejs/core';
-import { ByteBuffer } from '@runejs/core/buffer';
+import { logger } from '@runejs/common';
+import { ByteBuffer } from '@runejs/common/buffer';
 import { RGBA } from '../../util';
 import { TranscodedFile } from '../file-transcoder';
 import { FileInfo } from '../js5-transcoder';

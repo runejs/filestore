@@ -1,4 +1,4 @@
-import { HSL, RGBA } from '../../util/colors';
+import { RGBA } from '../../util';
 import { SpriteSheet } from './sprite-sheet';
 import { sortPalette } from './sorter';
 

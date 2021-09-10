@@ -1,10 +1,10 @@
 import { SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
 import path, { join } from 'path';
 import fs, { existsSync, mkdirSync, rmSync, writeFileSync } from 'fs';
-import { ByteBuffer } from '@runejs/core/buffer';
+import { ByteBuffer } from '@runejs/common/buffer';
 import { ColorType, HCL, HSB, HSL, IColor, LAB, RGBA, padNumber } from '../../util';
 import { PNG } from 'pngjs';
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 import { ColorNode, ColorQuantizer, MAX_DEPTH } from './color-quantizer';
 import spriteCodec from './sprite.transcoder';
 

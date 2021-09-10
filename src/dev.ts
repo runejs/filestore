@@ -1,4 +1,4 @@
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 import { run } from './util/cmd';
 import { SpriteStorageMethod } from './transcoders/sprites';
 import spriteCodec from './transcoders/sprites/sprite.transcoder';

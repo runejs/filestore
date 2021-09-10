@@ -1,9 +1,7 @@
 import { RGBA } from '../../util';
 import { SpriteSheet, SpriteStorageMethod } from './sprite-sheet';
 import { PNG } from 'pngjs';
-import { ColorQuantizer } from './color-quantizer';
-import { ByteBuffer } from '@runejs/core/buffer';
-import { logger } from '@runejs/core';
+import { ByteBuffer } from '@runejs/common/buffer';
 
 
 export interface PngSpriteData {

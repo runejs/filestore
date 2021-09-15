@@ -411,7 +411,7 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
     }
 
     public get path(): string {
-        return join(this.store.storePath, this.name);
+        return join(this.store.storePath, 'archives', this.name);
     }
 
     public get outputPath(): string {

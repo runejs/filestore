@@ -26,7 +26,6 @@ export const getCommandArguments = (): ArgumentMap => {
             let next: string;
             if(i < args.length - 1) {
                 next = args[i + 1];
-                console.log(next);
                 if(!next?.startsWith('-')) {
                     let val: string | boolean = next;
                     if(val === 'true') {

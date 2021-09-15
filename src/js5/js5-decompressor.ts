@@ -1,8 +1,9 @@
+import { createHash } from 'crypto';
+import { Buffer } from 'buffer';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'graceful-fs';
+import { logger } from '@runejs/common';
 import { StoreConfig, Js5Archive, Js5File, Js5FileGroup, Js5Store } from '@runejs/js5';
 import { DecompressorOptions } from './decompressor-options';
-import { createHash } from 'crypto';
-import fs from 'fs';
-import { logger } from '@runejs/common';
 import path from 'path';
 import {
     ArchiveIndex,
@@ -10,7 +11,6 @@ import {
     writeArchiveIndexFile
 } from '../flat-file-store';
  import Js5Transcoder from '../transcoders/js5-transcoder';
-import { Buffer } from 'buffer';
 
 
 export class Js5Decompressor {
@@ -47,14 +47,12 @@ export class Js5Decompressor {
         const { debug } = this.options;
 
         if(!debug) {
-            if(fs.existsSync(outputPath)) {
-                fs.rmSync(outputPath, { force: true, recursive: true });
+            if(existsSync(outputPath)) {
+                rmSync(outputPath, { force: true, recursive: true });
             }
 
-            fs.mkdirSync(outputPath, { recursive: true });
+            mkdirSync(outputPath, { recursive: true });
         }
-
-        logger.info(`Writing ${outputPath}...`);
 
         const groupMetaData: Map<string, GroupIndex> = new Map<string, GroupIndex>();
         const defaultFileNameMap = archiveFileNames ?? {};
@@ -63,10 +61,7 @@ export class Js5Decompressor {
 
         defaultFileNames.forEach(childName => fileGroupNames.set(String(defaultFileNameMap[childName]), childName));
 
-        let failures = 0;
-        let successes = 0;
-
-        for(const [ groupStringIndex, fileGroup ] of archive.groups) {
+        for(const [ , fileGroup ] of archive.groups) {
             const groupIndex = fileGroup.numericIndex;
 
             if(isNaN(groupIndex)) {
@@ -81,26 +76,9 @@ export class Js5Decompressor {
 
             try {
                 this.decompressGroup(groupMetaData, fileGroup, outputPath, fileExtension);
-
-                if(groupMetaData.get(groupStringIndex).size > 0) {
-                    successes++;
-                } else {
-                    failures++;
-                }
             } catch(error) {
                 logger.error(error);
-                failures++;
             }
-        }
-
-        if(successes) {
-            logger.info(`${successes} file(s) were decompressed successfully.`);
-        } else {
-            logger.error(`No files were able to be decompressed from this archive.`);
-        }
-
-        if(failures) {
-            logger.error(`${failures} file(s) failed to decompress.`);
         }
 
         const manifest: ArchiveIndex = {
@@ -112,6 +90,7 @@ export class Js5Decompressor {
 
         try {
             writeArchiveIndexFile(outputPath, manifest);
+            logger.info(`Archive ${archiveName} written to ${outputPath}`);
         } catch(error) {
             logger.error(error);
         }
@@ -148,8 +127,8 @@ export class Js5Decompressor {
 
         if(groupFiles.size > 1) {
             const folderPath = path.join(outputPath, groupName);
-            if(!debug && !fs.existsSync(folderPath)) {
-                fs.mkdirSync(folderPath);
+            if(!debug && !existsSync(folderPath)) {
+                mkdirSync(folderPath);
             }
 
             for(const [ fileIndex, file ] of groupFiles) {
@@ -168,7 +147,7 @@ export class Js5Decompressor {
                 }
 
                 if(!debug) {
-                    fs.writeFileSync(path.join(folderPath, groupedFileName + (fileExtension ?? '')), transcodedFile as Buffer | string);
+                    writeFileSync(path.join(folderPath, groupedFileName + (fileExtension ?? '')), transcodedFile as Buffer | string);
                 }
 
                 const fileMetadata = {
@@ -222,19 +201,19 @@ export class Js5Decompressor {
         if(!debug) {
             if(multipleDecompressedFiles) {
                 const groupDir = path.join(outputPath, groupName);
-                fs.mkdirSync(groupDir);
+                mkdirSync(groupDir);
 
                 for(let i = 0; i < decodedContent.length; i++) {
                     const groupedFile = decodedContent[i] as Buffer | null;
                     if(groupedFile?.length) {
-                        fs.writeFileSync(path.join(groupDir, i + (fileExtension ?? '')), groupedFile);
+                        writeFileSync(path.join(groupDir, i + (fileExtension ?? '')), groupedFile);
                     }
                 }
             } else {
                 try {
                     const content = decodedContent[0] instanceof Buffer ? decodedContent[0] : decodedContent as any[];
                     if(content?.length) {
-                        fs.writeFileSync(path.join(outputPath, groupName + (fileExtension ?? '')), Buffer.from(content));
+                        writeFileSync(path.join(outputPath, groupName + (fileExtension ?? '')), Buffer.from(content));
                     }
                 } catch(error) {
                     logger.error(`Error writing file:`, error);

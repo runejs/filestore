@@ -10,7 +10,9 @@
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
         "package": "rimraf lib && npm i && npm run build && npm publish --dry-run",
-        "unpack": "ts-node src/unpack.ts",
+        "unpack": "ts-node src/unpacker.ts",
+        "unpacker": "ts-node src/unpacker.ts",
+        "index": "ts-node src/indexer.ts",
         "indexer": "ts-node src/indexer.ts"
     },
     "repository": {
@@ -33,7 +35,7 @@
     "homepage": "https://github.com/runejs/filestore#readme",
     "dependencies": {
         "@runejs/common": "2.0.0-rc.1",
-        "@runejs/js5": "1.0.0-rc.5",
+        "@runejs/js5": "1.0.0-rc.6",
         "canvas": "^2.6.1",
         "compressjs": "^1.0.3",
         "crc-32": "^1.2.0",

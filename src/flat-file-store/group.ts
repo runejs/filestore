@@ -163,7 +163,7 @@ export class Group extends IndexedFileEntry<GroupIndex> {
                 logger.warn(`File ${this.name}/${groupName} CRC mismatch.`);
             }
 
-            this.appendVersionNumber();
+            // this.appendVersionNumber();
         }
 
         this._loaded = true;

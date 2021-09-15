@@ -81,15 +81,10 @@ export class Js5Decompressor {
 
             try {
                 this.decompressGroup(groupMetaData, fileGroup, outputPath, fileExtension);
-                // if(fileConfig?.type === 'files') {
-                //     this.decompressFile(groupMetaData, fileGroup, outputPath, fileConfig);
-                // } else {
-                // }
 
                 if(groupMetaData.get(groupStringIndex).size > 0) {
                     successes++;
                 } else {
-                    // @TODO generate empty child file if none is found to keep proper index ordering
                     failures++;
                 }
             } catch(error) {
@@ -181,7 +176,6 @@ export class Js5Decompressor {
                     nameHash: file.nameHash,
                     stripeSizes: file.stripeSizes,
                     size: file.size,
-                    crc32: file.crc32,
                     sha256: file.sha256
                 };
                 metadata.files.set(fileIndex, fileMetadata);
@@ -194,7 +188,6 @@ export class Js5Decompressor {
                 nameHash: fileMetadata.nameHash,
                 stripeSizes: file.stripeSizes,
                 size: file.size,
-                crc32: file.crc32,
                 sha256: file.sha256
             });
         }
@@ -264,7 +257,6 @@ export class Js5Decompressor {
             name: groupName,
             nameHash: file?.nameHash,
             stripeSizes: file.stripeSizes,
-            crc32: file.crc32,
             sha256: file.sha256
         });
 

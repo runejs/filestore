@@ -1,11 +1,10 @@
 import { Archive } from './archive';
 import { StoreConfig } from '@runejs/js5';
+import { join } from 'path';
 
 
 export interface FlatFileStoreOptions {
     storePath: string;
-    configPath: string;
-    outputPath?: string;
     gameVersion?: number;
 }
 
@@ -13,8 +12,6 @@ export interface FlatFileStoreOptions {
 export class FlatFileStore {
 
     public readonly storePath: string;
-    public readonly configPath: string;
-    public readonly outputPath: string | undefined;
     public readonly gameVersion: number | undefined;
     public readonly archives: Map<string, Archive>;
 
@@ -22,16 +19,11 @@ export class FlatFileStore {
         if(!options?.storePath) {
             throw new Error(`Flat file store path not found. Please include 'storePath' in your flat file store options.`);
         }
-        if(!options?.configPath) {
-            throw new Error(`Flat file store config path not found. Please include 'configPath' in your flat file store options.`);
-        }
 
         this.storePath = options.storePath;
-        this.configPath = options.configPath;
         this.gameVersion = options.gameVersion;
-        this.outputPath = options.outputPath;
         this.archives = new Map<string, Archive>();
-        StoreConfig.register(options.configPath, options.gameVersion);
+        StoreConfig.register(options.storePath, options.gameVersion);
         StoreConfig.loadArchiveConfig();
     }
 
@@ -72,6 +64,10 @@ export class FlatFileStore {
 
     public get loaded(): boolean {
         return this.archives.size === StoreConfig.archives.size - 1;
+    }
+
+    public get outputPath(): string {
+        return join(this.storePath, 'output');
     }
 
 }

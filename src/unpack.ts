@@ -8,9 +8,7 @@ import { DecompressorOptions, Js5Decompressor } from './js5';
 
 class UnpackOptions {
 
-    public cache: string = join('.', 'packed');
-    public config: string = join('.', 'config');
-    public output: string = join('.', 'output');
+    public store: string = join('..', 'store');
     public skipXtea: boolean = false;
     public matchMapFiles: boolean = false;
     public debug: boolean = false;
@@ -24,9 +22,12 @@ class UnpackOptions {
 
 
 run(async args => {
-    const { debug, matchMapFiles, archive, config, cache, skipXtea, output } = UnpackOptions.create(args as any);
-    const decompressionOptions = DecompressorOptions.create({ matchMapFiles, debug, outputPath: output });
-    const store = new Js5Store({ configPath: config, storePath: cache, xteaDisabled: skipXtea });
+    const { debug, matchMapFiles, archive, store: storePath, skipXtea } = UnpackOptions.create(args as any);
+
+    const outputPath = join(storePath, 'output');
+
+    const decompressionOptions = DecompressorOptions.create({ matchMapFiles, debug, outputPath });
+    const store = new Js5Store({ storePath, xteaDisabled: skipXtea });
     const decompressor = new Js5Decompressor(store, decompressionOptions);
     const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 

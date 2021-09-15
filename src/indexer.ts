@@ -7,9 +7,7 @@ import { FlatFileStore } from './flat-file-store';
 
 class IndexerOptions {
 
-    public stores: string = join('..', 'stores');
-    public config: string = join('.', 'config');
-    public output: string = join('.', 'output');
+    public store: string = join('..', 'store');
     public debug: boolean = false;
     public compress: boolean = false;
     public archive: string = 'main';
@@ -26,9 +24,7 @@ run(async args => {
     const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 
     const flatFileStore = new FlatFileStore({
-        storePath: options.stores,
-        configPath: options.config,
-        outputPath: options.output,
+        storePath: options.store
     });
 
     if(options.archive === 'main') {

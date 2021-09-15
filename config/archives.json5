@@ -22,25 +22,25 @@
         compression: 'bzip',
         versioned: true,
         defaultFileNames: {
-            flu: 1,         // Floor Underlays
-            // 2?           // ???
-            idk: 3,         // Identity Kit
-            flo: 4,         // Floor Overlays
-            inv: 5,         // Inventory
-            loc: 6,         // Objects
-            // 7?           // ???
-            enum: 8,        // Enums
-            npc: 9,         // Npcs
-            obj: 10,        // Items
-            param: 11,      // ???
-            seq: 12,        // Animation Sequences
-            spotanim: 13,   // Graphical "Spot" Animations
-            varbit: 14,     // Player Bit Variables
-            // 15?          // ???
-            varp: 16,       // Player Variables
-            // 17?          // ???
-            // 18?          // ???
-            // ...?         // ???
+            flu: 1,     // Floor Underlays
+            // 2?       // ???
+            idk: 3,     // Identity Kit
+            flo: 4,     // Floor Overlays
+            inv: 5,     // Inventory
+            loc: 6,     // Objects
+            // 7?       // ???
+            enum: 8,    // Enums
+            npc: 9,     // Npcs
+            obj: 10,    // Items
+            param: 11,  // ???
+            seq: 12,    // Animation Sequences
+            spot: 13,   // Graphical "Spot" Animations
+            varbit: 14, // Player Bit Variables
+            // 15?      // ???
+            varp: 16,   // Player Variables
+            // 17?      // ???
+            // 18?      // ???
+            // ...?     // ???
         }
     },
     interfaces: {

@@ -6,8 +6,8 @@ import { logger } from '@runejs/common';
 import path from 'path';
 import {
     ArchiveIndex,
-    FileGroupMetadata, FileMetadata,
-    writeIndexFile
+    GroupIndex, FileIndex,
+    writeArchiveIndexFile
 } from '../flat-file-store';
  import Js5Transcoder from '../transcoders/js5-transcoder';
 import { Buffer } from 'buffer';
@@ -56,7 +56,7 @@ export class Js5Decompressor {
 
         logger.info(`Writing ${outputPath}...`);
 
-        const groupMetaData: Map<string, FileGroupMetadata> = new Map<string, FileGroupMetadata>();
+        const groupMetaData: Map<string, GroupIndex> = new Map<string, GroupIndex>();
         const defaultFileNameMap = archiveFileNames ?? {};
         const defaultFileNames = Object.keys(defaultFileNameMap) ?? [];
         const fileGroupNames = new Map<string, string>();
@@ -116,14 +116,14 @@ export class Js5Decompressor {
         };
 
         try {
-            writeIndexFile(outputPath, manifest);
+            writeArchiveIndexFile(outputPath, manifest);
         } catch(error) {
             logger.error(error);
         }
     }
 
-    public decompressGroup(groupMetadata: Map<string, FileGroupMetadata>, fileGroup: Js5FileGroup,
-                           outputPath: string, fileExtension?: string | undefined): FileGroupMetadata {
+    public decompressGroup(groupMetadata: Map<string, GroupIndex>, fileGroup: Js5FileGroup,
+                           outputPath: string, fileExtension?: string | undefined): GroupIndex {
         if(!fileGroup) {
             throw new Error(`Invalid file group.`);
         }
@@ -138,7 +138,7 @@ export class Js5Decompressor {
         const { nameHash, version, crc32, sha256, size, stripeCount } = fileGroup;
         const groupName = fileGroup.name ?? String(fileGroup.nameHash ?? fileGroup.index);
 
-        const metadata: FileGroupMetadata = {
+        const metadata: GroupIndex = {
             name: groupName,
             nameHash,
             size,
@@ -146,7 +146,7 @@ export class Js5Decompressor {
             sha256,
             version,
             stripeCount,
-            files: new Map<string, FileGroupMetadata>()
+            files: new Map<string, GroupIndex>()
         };
 
         groupMetadata.set(fileGroup.index, metadata);
@@ -180,6 +180,7 @@ export class Js5Decompressor {
                     name: groupedFileName,
                     nameHash: file.nameHash,
                     stripeSizes: file.stripeSizes,
+                    size: file.size,
                     crc32: file.crc32,
                     sha256: file.sha256
                 };
@@ -192,6 +193,7 @@ export class Js5Decompressor {
                 name: fileMetadata.name,
                 nameHash: fileMetadata.nameHash,
                 stripeSizes: file.stripeSizes,
+                size: file.size,
                 crc32: file.crc32,
                 sha256: file.sha256
             });
@@ -200,8 +202,8 @@ export class Js5Decompressor {
         return metadata;
     }
 
-    public decompressFlatFile(groupMetadata: Map<string, FileGroupMetadata>, file: Js5File, groupName: string,
-                              outputPath: string, fileExtension?: string | undefined): FileGroupMetadata {
+    public decompressFlatFile(groupMetadata: Map<string, GroupIndex>, file: Js5File, groupName: string,
+                              outputPath: string, fileExtension?: string | undefined): GroupIndex {
         if(!file) {
             throw new Error(`Invalid file.`);
         }
@@ -247,7 +249,7 @@ export class Js5Decompressor {
             }
         }
 
-        const metadata: FileGroupMetadata = {
+        const metadata: GroupIndex = {
             name: groupName,
             nameHash: file.nameHash,
             size: file.size ?? 0,
@@ -255,7 +257,7 @@ export class Js5Decompressor {
             sha256: file.sha256,
             version: file.version,
             stripeCount: file.stripeCount,
-            files: new Map<string, FileMetadata>()
+            files: new Map<string, FileIndex>()
         };
 
         metadata.files.set('0', {
@@ -269,9 +271,9 @@ export class Js5Decompressor {
         return metadata;
     }
 
-    private reportError(groupMetadata: Map<string, FileGroupMetadata>, file: Js5File, message: string): void;
-    private reportError(groupMetadata: Map<string, FileGroupMetadata>, file: Js5File, messages: string[]): void;
-    private reportError(groupMetadata: Map<string, FileGroupMetadata>, file: Js5File, messages: string[] | string): void {
+    private reportError(groupMetadata: Map<string, GroupIndex>, file: Js5File, message: string): void;
+    private reportError(groupMetadata: Map<string, GroupIndex>, file: Js5File, messages: string[]): void;
+    private reportError(groupMetadata: Map<string, GroupIndex>, file: Js5File, messages: string[] | string): void {
         if(!Array.isArray(messages)) {
             messages = [ messages ];
         }

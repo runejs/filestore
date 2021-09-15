@@ -2,13 +2,13 @@ import fs from 'fs';
 import path from 'path';
 
 
-export interface IndexMetadata {
+export interface IndexBase {
     crc32?: number;
     sha256?: string;
 }
 
 
-export interface FileMetadata extends IndexMetadata {
+export interface FileIndex extends IndexBase {
     name: string;
     nameHash?: number;
     size?: number;
@@ -17,20 +17,20 @@ export interface FileMetadata extends IndexMetadata {
 }
 
 
-export interface FileGroupMetadata extends FileMetadata {
+export interface GroupIndex extends FileIndex {
     version?: number;
-    files?: Map<string, FileMetadata>;
+    files?: Map<string, FileIndex>;
     errors?: string[];
 }
 
 
-export interface ArchiveIndex extends IndexMetadata {
+export interface ArchiveIndex extends IndexBase {
     index: number;
-    groups: Map<string, FileGroupMetadata>;
+    groups: Map<string, GroupIndex>;
 }
 
 
-export const writeIndexFile = (archivePath: string, manifest: ArchiveIndex): void => {
+export const writeArchiveIndexFile = (archivePath: string, manifest: ArchiveIndex): void => {
     fs.writeFileSync(path.join(archivePath, `.index`), JSON.stringify(manifest, (key, value) => {
         if(value instanceof Map) {
             return { dataType: 'Map', value: Array.from(value.entries()) };
@@ -41,7 +41,7 @@ export const writeIndexFile = (archivePath: string, manifest: ArchiveIndex): voi
 };
 
 
-export const readIndexFile = (archivePath: string): ArchiveIndex => {
+export const readArchiveIndexFile = (archivePath: string): ArchiveIndex => {
     return JSON.parse(fs.readFileSync(path.join(archivePath, `.index`), 'utf-8'), (key, value) => {
         if(typeof value === 'object' && value?.dataType === 'Map') {
             return new Map(value.value);

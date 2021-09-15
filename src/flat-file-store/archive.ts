@@ -1,33 +1,94 @@
 import { join } from 'path';
-import { existsSync, readFileSync } from 'graceful-fs';
-import { ArchiveDetails, StoreConfig, StoreFileBase } from '@runejs/js5';
+import { existsSync, readFileSync, readdirSync, statSync } from 'graceful-fs';
+import { ArchiveDetails, StoreConfig } from '@runejs/js5';
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { FileCompression } from '@runejs/common/compression';
+import { ArchiveIndex, GroupIndex, readArchiveIndexFile, writeArchiveIndexFile } from './archive-index';
 import { File } from './file';
 import { Group } from './group';
 import { FlatFileStore } from './flat-file-store';
-import { ArchiveIndex, readIndexFile } from './archive-index';
+import { nameSorter } from '../util/names';
+import { IndexedFileEntry } from './indexed-file-entry';
 
 
-export class Archive extends StoreFileBase {
+export class Archive extends IndexedFileEntry<ArchiveIndex> {
 
-    public readonly store: FlatFileStore;
     public readonly groups: Map<string, Group>;
     public readonly config: ArchiveDetails;
 
-    public indexData: ArchiveIndex;
-
     public constructor(index: string | number, store: FlatFileStore) {
-        super(index);
-        this.store = store;
+        super(index, store);
         this.groups = new Map<string, Group>();
         this.name = StoreConfig.getArchiveName(this.index);
         this.config = StoreConfig.getArchiveDetails(this.index);
         this.compression = FileCompression[this.config.compression];
     }
 
-    public generateIndexFile(): ByteBuffer {
+    public readFiles(compress: boolean = false): void {
+        this._indexData = readArchiveIndexFile(this.path);
+        this.crc32 = this.indexData.crc32;
+        this.sha256 = this.indexData.sha256;
+
+        for(const [ groupIndex, groupDetails ] of this.indexData.groups) {
+            const group = new Group(groupIndex, this, groupDetails);
+            group.readFiles(compress);
+            this.groups.set(groupIndex, group);
+        }
+
+        this.generateJs5Index(compress);
+
+        this._loaded = true;
+    }
+
+    public indexFiles(): void {
+        if(!this.loaded || this.compressed) {
+            this.readFiles(false);
+        }
+
+        const directoryFileNames = readdirSync(this.path).filter(fileName => fileName && fileName !== '.index');
+        const fileExtension = this.config.fileExtension ?? '';
+        let indexChanges = false;
+
+        for(let fileName of directoryFileNames) {
+            const extensionIndex = fileExtension ? fileName.indexOf(fileExtension) : -1;
+            if(extensionIndex !== -1) {
+                fileName = fileName.substring(0, extensionIndex);
+            }
+
+            const fileIndex = this.findGroupIndex(fileName);
+            if(!fileIndex) {
+                // New file added
+                this.indexNewGroup(fileName);
+                indexChanges = true;
+            } else {
+                if(this.indexExistingGroup(fileIndex, fileName)) {
+                    // Existing file changed or removed
+                    indexChanges = true;
+                }
+            }
+        }
+
+        this.generateJs5Index(true);
+
+        if(this.crc32 !== this.indexData.crc32) {
+            this.indexData.crc32 = this.crc32;
+            indexChanges = true;
+        }
+
+        if(this.sha256 !== this.indexData.sha256) {
+            this.indexData.sha256 = this.sha256;
+            indexChanges = true;
+        }
+
+        if(indexChanges) {
+            logger.info(`Archive ${this.name} has been re-indexed successfully.`);
+        } else {
+            logger.info(`Archive ${this.name} has no file changes.`);
+        }
+    }
+
+    public generateJs5Index(compress: boolean = false): ByteBuffer {
         if(!this.groups.size) {
             this.readFiles();
         }
@@ -111,8 +172,14 @@ export class Archive extends StoreFileBase {
                 logger.warn(`Detected index changes for ${this.name}.`);
             }
 
-            this.compress(false);
-            this.generateCrc32();
+            if(compress) {
+                const originalCrc = this.crc32;
+                this.compress(false);
+
+                if(this.generateCrc32() !== originalCrc) {
+                    logger.warn(`Index ${this.name} CRC mismatch, ${originalCrc} vs ${this.crc32}.`);
+                }
+            }
 
             return this._data;
         }
@@ -120,134 +187,234 @@ export class Archive extends StoreFileBase {
         return null;
     }
 
-    public readFiles(compress: boolean = false): void {
-        this.indexData = readIndexFile(this.path);
-        this.crc32 = this.indexData.crc32;
-        this.sha256 = this.indexData.sha256;
-        const extension = this.config.fileExtension ?? '';
+    public indexExistingGroup(groupIndex: string, groupName: string): boolean {
+        const group = this.groups.get(groupIndex);
 
-        for(const [ groupIndex, groupDetails ] of this.indexData.groups) {
-            if(!groupDetails) {
-                continue;
-            }
+        if(!group.modified) {
+            // No changes detected
+            return false;
+        }
 
-            const group = new Group(groupIndex, this);
-            const groupDigest = group.sha256 = groupDetails.sha256;
-            group.nameHash = groupDetails.nameHash ?? 0;
-            group.version = groupDetails.version;
-            group.crc32 = groupDetails.crc32;
-            group.compression = this.compression;
-            group.stripeCount = groupDetails.stripeCount;
+        logger.info(`Re-indexing existing file group ${groupName} in archive ${this.name}.`);
 
-            this.groups.set(groupIndex, group);
-
-            const groupName = groupDetails.name;
-
-            let fileNotFound = false;
-
-            if(groupDetails.files.size === 1) {
-                // read single file
-                const fullFileName = groupName + extension;
-                const filePath = join(this.path, fullFileName);
-
-                const childFile = new File('0', group);
-                childFile.nameHash = group.nameHash;
-                group.files.set('0', childFile);
-
-                if(!existsSync(filePath)) {
-                    fileNotFound = true;
-                } else {
-                    const fileData = new ByteBuffer(readFileSync(filePath));
-                    group.setData(fileData, false);
-                    childFile.setData(fileData, false);
-                }
-
-                childFile.size = group.data?.length ?? 0;
-                childFile.stripeSizes = [ childFile.size ];
-            } else {
-                // read directory
-                const groupPath = join(this.path, groupName);
-
-                if(!existsSync(groupPath)) {
-                    fileNotFound = true;
-                } else {
-                    for(const [ fileIndex, fileDetails ] of groupDetails.files) {
-                        const file = new File(fileIndex, group);
-                        file.stripeSizes = fileDetails.stripeSizes;
-                        group.files.set(fileIndex, file);
-
-                        const fullFileName = fileDetails.name + extension;
-                        const groupFilePath = join(groupPath, fullFileName);
-
-                        if(!existsSync(groupFilePath)) {
-                            const groupDebugPath = join(groupName, fullFileName);
-                            logger.error(`${groupDebugPath} was not found.`);
-                            continue;
-                        }
-
-                        const fileData = new ByteBuffer(readFileSync(groupFilePath));
-                        if(fileData?.length) {
-                            file.setData(fileData, false);
-                        }
-                    }
-
-                    group.encode();
-                }
-            }
-
-            if(fileNotFound) {
-                logger.error(`${groupName} was not found.`);
-            } else {
-                group.generateSha256();
-                if(!group.sha256) {
-                    logger.error(`File ${this.name}/${groupName} is empty or missing.`);
-                } else if(group.generateSha256() !== groupDigest) {
-                    // @TODO re-index file or notify
-                    logger.warn(`Detected file changes for ${this.name}/${groupName}`,
-                        `Orig Digest: ${groupDigest}`, `Curr Digest: ${group.sha256}`);
-                }
-
-                if(compress) {
-                    group.compress();
-                }
+        if(group.name !== groupName) {
+            group.name = groupName;
+            if(!this.config.saveFileNames) {
+                group.nameHash = 0;
             }
         }
 
-        this.generateIndexFile();
+        let groupPath = join(this.path, groupName);
+        const fileStats = statSync(groupPath);
+        const fileExtension = this.config.fileExtension ?? undefined;
+
+        if(fileStats.isDirectory()) {
+            const groupFileNames = Array.from(group.files.values()).map(file => file.nameOrIndex);
+            const discoveredFileNames = readdirSync(groupPath).map(name => {
+                if(fileExtension) {
+                    const extensionIndex = name.indexOf(fileExtension);
+                    if(extensionIndex !== -1) {
+                        return name.substring(0, extensionIndex);
+                    }
+                }
+
+                return name;
+            }).sort((name1, name2) =>
+                nameSorter(name1, name2));
+
+            const newGroupFileNames: string[] = discoveredFileNames.filter(name => groupFileNames.indexOf(name) === -1);
+
+            for(const [ , file ] of group.files) {
+                if(discoveredFileNames.indexOf(file.name) === -1) {
+                    // group file deleted
+                    file.setData(new ByteBuffer([]), false);
+                    file.size = 0;
+                    file.crc32 = undefined;
+                    file.sha256 = undefined;
+                } else {
+                    file.generateCrc32();
+                }
+            }
+
+            if(newGroupFileNames.length) {
+                for(const fileName of newGroupFileNames) {
+                    const filePath = join(groupPath, (fileName + fileExtension));
+                    const fileData = new ByteBuffer(readFileSync(filePath) ?? []);
+                    const file = new File(group.createNewFileIndex(), group);
+                    file.setData(fileData, false);
+                    file.size = fileData.length;
+                    file.generateCrc32();
+
+                    if(group.stripeCount === 1) {
+                        file.stripeSizes = [ file.size ];
+                    } else if(group.stripeCount > 1) {
+                        // @TODO
+                    }
+                }
+            }
+
+            // @TODO stopped here
+        } else {
+            groupPath += fileExtension;
+
+            // @TODO stopped here
+        }
+
+        group.encode();
+        group.generateCrc32();
+
+        this.groups.set(groupIndex, group);
+        this.indexData.groups.set(groupIndex, group.generateIndexData());
+        return true;
     }
 
-    public indexArchiveContents(): void {
-        // @TODO this will be used for re-indexing the archive later on :)
-        /*const stats = statSync(this.path);
+    public indexNewGroup(groupName: string): void {
+        const fileExtension = this.config.fileExtension ?? '';
+        const fileIndex = this.newGroupIndex();
 
-        if(!stats.isDirectory()) {
-            logger.error(`Error loading ${this.name} archive, ${this.path} is not a valid directory.`);
+        if(!fileIndex) {
             return;
         }
 
-        const directoryFileNames = readdirSync(this.path);
+        let groupPath = join(this.path, groupName);
+        const fileStats = statSync(groupPath);
 
-        if(!directoryFileNames?.length) {
-            logger.error(`Error loading ${this.name} archive, ${this.path} is empty.`);
-            return;
+        const group = new Group(fileIndex, this);
+
+        group.stripeCount = 1;
+        group.size = 0;
+
+        if(this.config.saveFileNames) {
+            group.name = groupName;
+        } else {
+            group.name = fileIndex;
+            group.nameHash = 0;
         }
 
-        const indexFilePointer = directoryFileNames.indexOf('.index');
+        logger.info(`Indexing new file group ${groupName} in archive ${this.name}.`);
 
-        if(indexFilePointer === -1) {
-            logger.error(`Error loading ${this.name} archive, ${this.path} has no index file.`);
-            return;
+        if(fileStats.isDirectory()) {
+            // index new group
+            const groupFileNames = readdirSync(groupPath).sort((name1, name2) =>
+                nameSorter(name1, name2));
+
+            // Brand new group, so we'll sort the files by child ids as they should be in order for brand new groups
+
+            let lastIndex = 0;
+
+            for(const fileName of groupFileNames) {
+                let fileIndex = fileName;
+                if(!(/^\d*$/.test(fileName))) {
+                    fileIndex = String(++lastIndex);
+                }
+
+                lastIndex = Number(fileIndex);
+
+                const file = new File(fileIndex, group);
+                group.files.set(fileIndex, file);
+
+                if(this.config.saveFileNames) {
+                    file.name = fileName;
+                } else {
+                    file.name = fileIndex;
+                    file.nameHash = 0;
+                }
+
+                const filePath = join(groupPath, (fileName + fileExtension));
+
+                if(existsSync(filePath)) {
+                    const fileData = new ByteBuffer(readFileSync(filePath) ?? []);
+                    file.setData(fileData, false);
+                    file.generateCrc32();
+                    file.size = fileData.length;
+                    group.size += file.size;
+                }
+
+                file.stripeSizes = file.size ? [ file.size ] : undefined;
+            }
+        } else {
+            // Index brand new flat file
+
+            const file = new File('0', group);
+            group.files.set('0', file);
+
+            groupPath += fileExtension;
+
+            if(existsSync(groupPath)) {
+                const fileData = new ByteBuffer(readFileSync(groupPath) ?? []);
+                group.setData(fileData, false);
+                file.setData(fileData, false);
+                file.generateCrc32();
+                file.size = group.size = fileData.length;
+            }
+
+            file.stripeSizes = file.size ? [ file.size ] : undefined;
         }
 
-        directoryFileNames.splice(indexFilePointer, 1);
+        group.encode();
+        group.generateCrc32();
 
-        for(const fileName of directoryFileNames) {
+        this.groups.set(fileIndex, group);
+        this.indexData.groups.set(fileIndex, group.generateIndexData());
+    }
 
-        }*/
+    public findGroupIndex(groupIndexOrName: string): string {
+        const nameSearch = this.config.saveFileNames && !(/^\d*$/.test(groupIndexOrName));
+
+        for(const [ groupIndex, group ] of this.indexData.groups) {
+            if(nameSearch) {
+                if(group.name === groupIndexOrName) {
+                    return groupIndex;
+                }
+            } else {
+                if(groupIndex === groupIndexOrName) {
+                    return groupIndex;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public newGroupIndex(): string {
+        if(this.groups.size === 0) {
+            return '0';
+        }
+
+        const fileIndices = Array.from(this.groups.keys()).map(key => Number(key));
+        return String(Math.max(...fileIndices) + 1);
+    }
+
+    public generateIndexData(): ArchiveIndex {
+        const groupMetaData = new Map<string, GroupIndex>();
+
+        for(const [ groupIndex, group ] of this.groups) {
+            groupMetaData.set(groupIndex, group.generateIndexData());
+        }
+
+        this._indexData = {
+            index: this.numericIndex,
+            crc32: this.crc32,
+            sha256: this.sha256,
+            groups: groupMetaData
+        };
+
+        return this._indexData;
+    }
+
+    public writeArchiveIndexFile(): void {
+        try {
+            writeArchiveIndexFile(this.outputPath, this.generateIndexData());
+        } catch(error) {
+            logger.error(error);
+        }
     }
 
     public get path(): string {
         return join(this.store.storePath, this.name);
     }
 
+    public get outputPath(): string {
+        return join(this.store.outputPath, this.name);
+    }
 }

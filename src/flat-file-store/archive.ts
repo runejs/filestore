@@ -8,7 +8,7 @@ import { ArchiveIndex, GroupIndex, readArchiveIndexFile, writeArchiveIndexFile }
 import { File } from './file';
 import { Group } from './group';
 import { FlatFileStore } from './flat-file-store';
-import { nameSorter } from '../util/names';
+import { nameSorter } from '../util';
 import { IndexedFileEntry } from './indexed-file-entry';
 
 
@@ -25,20 +25,185 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
         this.compression = FileCompression[this.config.compression];
     }
 
-    public readFiles(compress: boolean = false): void {
-        this._indexData = readArchiveIndexFile(this.path);
+    public async readFiles(compress: boolean = false): Promise<void> {
+        logger.info(`Reading archive ${this.name}...`);
+
+        this._indexData = await readArchiveIndexFile(this.path);
         this.crc32 = this.indexData.crc32;
         this.sha256 = this.indexData.sha256;
 
+        const promises = new Array(this.indexData.groups.size).fill(null);
+        let i = 0;
+
         for(const [ groupIndex, groupDetails ] of this.indexData.groups) {
-            const group = new Group(groupIndex, this, groupDetails);
-            group.readFiles(compress);
-            this.groups.set(groupIndex, group);
+            promises[i++] = new Promise<boolean>(resolve => {
+                const group = new Group(groupIndex, this, groupDetails);
+                this.groups.set(groupIndex, group);
+                group.readFiles(compress).then(r => resolve(r));
+            });
         }
 
-        this.generateJs5Index(compress);
+        const results = await Promise.all(promises.filter(p => !!p));
 
+        await this.generateJs5Index(compress);
+
+        logger.info(`${results.filter(r => r).length} file(s) were loaded from the ${this.name} archive.`);
         this._loaded = true;
+    }
+
+    public async generateJs5Index(compress: boolean = false): Promise<ByteBuffer> {
+        if(!this.groups.size) {
+            await this.readFiles();
+        }
+
+        // @TODO add sizes of all files, etc
+        const buffer = new ByteBuffer(1000 * 1000);
+
+        const groups = this.groups;
+        const groupCount = this.groups.size;
+
+        // Write index file header
+        buffer.put(this.config.format ?? 5); // '5' for 'JS5' by default
+        buffer.put(this.config.saveFileNames ? 1 : 0);
+        buffer.put(groupCount, 'short');
+
+        // Write file indexes
+        let writtenFileIndex = 0;
+        for(const [ , group ] of groups) {
+            const val = group.numericIndex;
+            buffer.put(val - writtenFileIndex, 'short');
+            writtenFileIndex = val;
+        }
+
+        // Write name hashes (if applicable)
+        if(this.config.saveFileNames) {
+            for(const [ , file ] of groups) {
+                buffer.put(file.nameHash ?? 0, 'int');
+            }
+        }
+
+        // Write file crc values
+        for(const [ , file ] of groups) {
+            buffer.put(file.crc32 ?? 0, 'int');
+        }
+
+        // Write file version numbers
+        for(const [ , file ] of groups) {
+            buffer.put(file.version ?? 0, 'int');
+        }
+
+        // Write file group child counts
+        for(const [ , group ] of groups) {
+            buffer.put(group.files.size ?? 1, 'short');
+        }
+
+        // Write group file indices
+        for(const [ , group ] of groups) {
+            if(group.files.size > 1) {
+                writtenFileIndex = 0;
+
+                for(const [ , file ] of group.files) {
+                    const i = file.numericIndex;
+                    buffer.put(i - writtenFileIndex, 'short');
+                    writtenFileIndex = i;
+                }
+            } else {
+                buffer.put(0, 'short');
+            }
+        }
+
+        // Write group file name hashes (if applicable)
+        if(this.config.saveFileNames) {
+            for(const [ , group ] of groups) {
+                if(group.files.size > 1) {
+                    for(const [ , file ] of group.files) {
+                        buffer.put(file.nameHash ?? 0, 'int');
+                    }
+                } else {
+                    buffer.put(0, 'int');
+                }
+            }
+        }
+
+        const indexData = buffer.flipWriter();
+        const indexDigest = this.sha256;
+
+        if(indexData.length) {
+            this.setData(indexData, false);
+            this.generateSha256();
+
+            if(indexDigest !== this.sha256) {
+                // logger.warn(`Archive ${this.name} digest has changed:`, `Orig: ${indexDigest}`, `New:  ${this.sha256}`);
+                this.indexData.sha256 = this.sha256;
+            }
+
+            if(compress) {
+                const originalCrc = this.crc32;
+                this.compress();
+                this.generateCrc32();
+
+                if(originalCrc !== this.crc32) {
+                    // logger.warn(`Archive ${this.name} checksum has changed from ${originalCrc} to ${this.crc32}.`);
+                    this.indexData.crc32 = this.crc32;
+                }
+            }
+
+            return this._data;
+        }
+
+        return null;
+    }
+
+    public findGroupIndex(groupIndexOrName: string): string {
+        const nameSearch = this.config.saveFileNames && !(/^\d*$/.test(groupIndexOrName));
+
+        for(const [ groupIndex, group ] of this.indexData.groups) {
+            if(nameSearch) {
+                if(group.name === groupIndexOrName) {
+                    return groupIndex;
+                }
+            } else {
+                if(groupIndex === groupIndexOrName) {
+                    return groupIndex;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public newGroupIndex(): string {
+        if(this.groups.size === 0) {
+            return '0';
+        }
+
+        const fileIndices = Array.from(this.groups.keys()).map(key => Number(key));
+        return String(Math.max(...fileIndices) + 1);
+    }
+
+    public generateIndexData(): ArchiveIndex {
+        const groupMetaData = new Map<string, GroupIndex>();
+
+        for(const [ groupIndex, group ] of this.groups) {
+            groupMetaData.set(groupIndex, group.generateIndexData());
+        }
+
+        this._indexData = {
+            index: this.numericIndex,
+            crc32: this.crc32,
+            sha256: this.sha256,
+            groups: groupMetaData
+        };
+
+        return this._indexData;
+    }
+
+    public writeArchiveIndexFile(): void {
+        try {
+            writeArchiveIndexFile(this.outputPath, this.generateIndexData());
+        } catch(error) {
+            logger.error(error);
+        }
     }
 
     public indexFiles(): void {
@@ -86,105 +251,6 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
         } else {
             logger.info(`Archive ${this.name} has no file changes.`);
         }
-    }
-
-    public generateJs5Index(compress: boolean = false): ByteBuffer {
-        if(!this.groups.size) {
-            this.readFiles();
-        }
-
-        // @TODO add sizes of all files, etc
-        const buffer = new ByteBuffer(1000 * 1000);
-
-        const groups = this.groups;
-        const groupCount = this.groups.size;
-
-        // Write index file header
-        buffer.put(this.config.format ?? 5); // '5' for 'JS5' by default
-        buffer.put(this.config.saveFileNames ? 1 : 0);
-        buffer.put(groupCount, 'short');
-
-        // Write file indexes
-        let writtenFileIndex = 0;
-        for(const [ , group ] of groups) {
-            const val = group.numericIndex;
-            buffer.put(val - writtenFileIndex, 'short');
-            writtenFileIndex = val;
-        }
-
-        // Write name hashes (if applicable)
-        if(this.config.saveFileNames) {
-            for(const [ , file ] of groups) {
-                buffer.put(file.nameHash, 'int');
-            }
-        }
-
-        // Write file crc values
-        for(const [ , file ] of groups) {
-            buffer.put(file.crc32 ?? 0, 'int');
-        }
-
-        // Write file version numbers
-        for(const [ , file ] of groups) {
-            buffer.put(file.version ?? 0, 'int');
-        }
-
-        // Write file group child counts
-        for(const [ , group ] of groups) {
-            buffer.put(group.files.size ?? 0, 'short');
-        }
-
-        // Write group file indices
-        for(const [ , group ] of groups) {
-            if(group.files.size > 1) {
-                writtenFileIndex = 0;
-
-                for(const [ , file ] of group.files) {
-                    const i = file.numericIndex;
-                    buffer.put(i - writtenFileIndex, 'short');
-                    writtenFileIndex = i;
-                }
-            } else {
-                buffer.put(0, 'short');
-            }
-        }
-
-        // Write group file name hashes (if applicable)
-        if(this.config.saveFileNames) {
-            for(const [ , group ] of groups) {
-                if(group.files.size > 1) {
-                    for(const [ , file ] of group.files) {
-                        buffer.put(file.nameHash ?? 0, 'int');
-                    }
-                } else {
-                    buffer.put(0, 'int');
-                }
-            }
-        }
-
-        const indexData = buffer.flipWriter();
-        const indexDigest = this.sha256;
-
-        if(indexData.length) {
-            this.setData(indexData, false);
-
-            if(indexDigest !== this.generateSha256()) {
-                logger.warn(`Detected index changes for ${this.name}.`);
-            }
-
-            if(compress) {
-                const originalCrc = this.crc32;
-                this.compress(false);
-
-                if(this.generateCrc32() !== originalCrc) {
-                    logger.warn(`Index ${this.name} CRC mismatch, ${originalCrc} vs ${this.crc32}.`);
-                }
-            }
-
-            return this._data;
-        }
-
-        return null;
     }
 
     public indexExistingGroup(groupIndex: string, groupName: string): boolean {
@@ -356,58 +422,6 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
 
         this.groups.set(fileIndex, group);
         this.indexData.groups.set(fileIndex, group.generateIndexData());
-    }
-
-    public findGroupIndex(groupIndexOrName: string): string {
-        const nameSearch = this.config.saveFileNames && !(/^\d*$/.test(groupIndexOrName));
-
-        for(const [ groupIndex, group ] of this.indexData.groups) {
-            if(nameSearch) {
-                if(group.name === groupIndexOrName) {
-                    return groupIndex;
-                }
-            } else {
-                if(groupIndex === groupIndexOrName) {
-                    return groupIndex;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    public newGroupIndex(): string {
-        if(this.groups.size === 0) {
-            return '0';
-        }
-
-        const fileIndices = Array.from(this.groups.keys()).map(key => Number(key));
-        return String(Math.max(...fileIndices) + 1);
-    }
-
-    public generateIndexData(): ArchiveIndex {
-        const groupMetaData = new Map<string, GroupIndex>();
-
-        for(const [ groupIndex, group ] of this.groups) {
-            groupMetaData.set(groupIndex, group.generateIndexData());
-        }
-
-        this._indexData = {
-            index: this.numericIndex,
-            crc32: this.crc32,
-            sha256: this.sha256,
-            groups: groupMetaData
-        };
-
-        return this._indexData;
-    }
-
-    public writeArchiveIndexFile(): void {
-        try {
-            writeArchiveIndexFile(this.outputPath, this.generateIndexData());
-        } catch(error) {
-            logger.error(error);
-        }
     }
 
     public get path(): string {

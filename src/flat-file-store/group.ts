@@ -69,18 +69,20 @@ export class Group extends IndexedFileEntry<GroupIndex> {
             groupBuffer.put(this.stripeCount, 'byte');
 
             this.setData(groupBuffer.flipWriter(), false);
+        } else {
+            this.setData(this.files.get('0')?.data ?? new ByteBuffer([]), false);
         }
 
         this._encoded = true;
         return this._data;
     }
 
-    public compress(versioned: boolean): ByteBuffer {
+    public compress(): ByteBuffer {
         this.encode();
-        return this.data?.length ? super.compress(versioned) : null;
+        return this.data?.length ? super.compress() : null;
     }
 
-    public readFiles(compress: boolean = false): void {
+    public async readFiles(compress: boolean = false): Promise<boolean> {
         if(!this.indexData) {
             this.generateIndexData();
         }
@@ -88,7 +90,8 @@ export class Group extends IndexedFileEntry<GroupIndex> {
         const indexData = this._indexData;
 
         if(!indexData) {
-            throw new Error(`Error reading group ${this.name} files: Group is not indexed, please re-index the ${this.archive.name} archive.`);
+            throw new Error(`Error reading group ${this.name} files: Group is not indexed, please re-index the ` +
+                `${this.archive.name} archive.`);
         }
 
         if(!this.indexData.files.size) {
@@ -96,8 +99,8 @@ export class Group extends IndexedFileEntry<GroupIndex> {
         }
 
         let fileNotFound = false;
-        let childFileCount = 1;
         let isDirectory = false;
+        let childFileCount = 1;
 
         const groupName = indexData.name;
         const groupPath = this.path;
@@ -135,47 +138,102 @@ export class Group extends IndexedFileEntry<GroupIndex> {
         } else {
             for(const [ fileIndex, fileDetails ] of indexData.files) {
                 const file = new File(fileIndex, this, fileDetails);
-
-                if(!file.readGroupedFile()) {
-                    fileNotFound = true;
-                }
-
                 this.files.set(fileIndex, file);
+                file.readGroupedFile();
             }
         }
 
         this.encode();
 
         if(fileNotFound) {
-            logger.error(`${groupName} was not found.`);
-            return;
+            return false;
         }
 
-        if(this.sha256 !== this.generateSha256()) {
-            logger.warn(`Detected file changes for ${this.archive.name}/${groupName}`);
+        const originalDigest = this.sha256;
+        this.generateSha256();
+
+        if(!this.sha256) {
+            logger.warn(`File ${this.archive.name}/${groupName} was not found.`);
+            return false;
+        } else if(originalDigest !== this.sha256) {
+            logger.warn(`File ${this.archive.name}/${groupName} digest has changed:`,
+                `Orig: ${originalDigest}`, `New:  ${this.sha256}`);
+            this.indexData.sha256 = this.sha256;
             this._modified = true;
         }
 
         if(compress) {
-            this.compress(false);
+            this.compress();
 
-            if(this.crc32 !== this.generateCrc32()) {
-                logger.warn(`File ${this.name}/${groupName} CRC mismatch.`);
+            const originalCrc = this.crc32;
+
+            if(originalCrc !== this.generateCrc32()) {
+                // logger.warn(`File ${this.archive.name}/${groupName} checksum has changed from ${originalCrc} ` +
+                //     `to ${this.crc32}.`);
+                this.indexData.crc32 = this.crc32;
+                this._modified = true;
             }
 
-            // this.appendVersionNumber();
+            if(this.archive.config.versioned) {
+                // this.appendVersionNumber();
+            }
         }
 
         this._loaded = true;
+        return true;
     }
 
     public appendVersionNumber(): void {
-        if(this.archive.config.versioned) {
-            const versionedData = new ByteBuffer((this._data.length + 2));
-            this._data.copy(versionedData, 0, 0);
-            versionedData.put(this.version ?? 1, 'short');
-            this.setData(versionedData, true);
+        const versionedData = new ByteBuffer((this._data.length + 2));
+        this._data.copy(versionedData, 0, 0);
+        versionedData.put(this.version ?? 1, 'short');
+        this.setData(versionedData, true);
+    }
+
+    /**
+     * Builds a transportation packet from the group file data, used by the update server to send files to the game client
+     * while including the file's archive index and file index.
+     */
+    public wrap(): Buffer {
+        if(!this.compressed) {
+            this.compress();
         }
+
+        let data = this.data;
+
+        if(this.archive.config.versioned) {
+            data = new ByteBuffer((this._data.length + 2));
+            this._data.copy(data, 0, 0);
+            data.put(this.version ?? 1, 'short');
+        }
+
+        const compression: number = data.get('byte', 'unsigned');
+        const length: number = data.get('int', 'unsigned') + (compression === 0 ? 5 : 9);
+
+        let buffer: ByteBuffer;
+
+        try {
+            buffer = new ByteBuffer((length - 2) + ((length - 2) / 511) + 8);
+        } catch(error) {
+            logger.error(`Invalid file length of ${length} detected.`);
+            return null;
+        }
+
+        buffer.put(this.archive.numericIndex);
+        buffer.put(this.numericIndex, 'short');
+
+        let s = 3;
+        for(let i = 0; i < length; i++) {
+            if(s === 512) {
+                buffer.put(255);
+                s = 1;
+            }
+
+            buffer.put(data.at(i));
+            s++;
+        }
+
+        return buffer.flipWriter().toNodeBuffer();
     }
 
     public indexFiles(): void {

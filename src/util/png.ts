@@ -7,7 +7,7 @@ export const pngToBase64 = async (png: PNG): Promise<string> => {
     png.pack();
     png.on('data', chunk => chunks.push(chunk));
 
-    return await new Promise(resolve => {
+    return await new Promise<string>(resolve => {
         png.on('end', () =>
             resolve(Buffer.concat(chunks).toString('base64')));
     });

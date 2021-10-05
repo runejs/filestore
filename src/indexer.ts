@@ -33,7 +33,7 @@ run(async args => {
             logger.info(argDebugString);
         }
 
-        flatFileStore.readStore(options.compress);
+        await flatFileStore.readStore(options.compress);
 
         /*const archives = await flatFileStore.getAllArchives();
         for(const [ , archive ] of archives) {

@@ -2,6 +2,12 @@ import { padNumber } from './strings';
 import { toDegrees } from './math';
 
 
+
+
+// @TODO deprecated - color functionality moved to runejs/common
+// @TODO refactor to use runejs/common
+
+
 const DEFAULT_BLACK_HUE = 0;
 const DEFAULT_WHITE_HUE = 0;
 const DEFAULT_BLACK_SATURATION = 0;

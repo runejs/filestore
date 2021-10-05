@@ -1,6 +1,6 @@
 {
     "name": "@runejs/filestore",
-    "version": "1.0.0-beta.0",
+    "version": "1.0.0-beta.3",
     "description": "Tools for managing the RuneJS filestore.",
     "main": "lib/index.js",
     "types": "lib/index.d.ts",
@@ -33,19 +33,20 @@
         "url": "https://github.com/runejs/filestore/issues"
     },
     "homepage": "https://github.com/runejs/filestore#readme",
+    "peerDependencies": {
+        "@runejs/common": ">=2.0.0-rc.2",
+        "@runejs/js5": ">=1.0.0-next.2",
+        "tslib": ">=2.1.0"
+    },
     "dependencies": {
-        "@runejs/common": "2.0.0-rc.1",
-        "@runejs/js5": "1.0.0-rc.6",
-        "canvas": "^2.6.1",
-        "compressjs": "^1.0.3",
-        "crc-32": "^1.2.0",
+        "@runejs/common": "2.0.0-rc.2",
+        "@runejs/js5": "^1.0.0-next.2",
         "graceful-fs": "^4.2.8",
         "json5": "^2.2.0",
-        "node-properties-parser": "0.0.2",
         "pngjs": "^6.0.0",
         "reflect-metadata": "^0.1.13",
-        "seek-bzip": "^1.0.5",
-        "tslib": "^2.1.0"
+        "source-map-support": "^0.5.20",
+        "tslib": ">=2.1.0"
     },
     "devDependencies": {
         "@runejs/eslint-config": "^1.0.0",

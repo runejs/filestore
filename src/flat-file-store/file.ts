@@ -1,11 +1,12 @@
 import { ByteBuffer } from '@runejs/common/buffer';
-import { logger } from '@runejs/common';
-import { existsSync, readFileSync } from 'graceful-fs';
+import { existsSync, readFile } from 'graceful-fs';
 import { join } from 'path';
 import { Group } from './group';
 import { Archive } from './archive';
 import { FileIndex } from './archive-index';
 import { IndexedFileEntry } from './indexed-file-entry';
+import { logger } from '@runejs/common';
+import { readFileSync } from 'fs';
 
 
 export class File extends IndexedFileEntry<FileIndex> {
@@ -27,17 +28,21 @@ export class File extends IndexedFileEntry<FileIndex> {
         this._name = group.name;
         this._nameHash = group.nameHash;
 
+        let fileData: ByteBuffer = new ByteBuffer([]);
+
         if(!existsSync(flatFilePath)) {
             fileFound = false;
         } else {
-            const fileData = new ByteBuffer(readFileSync(flatFilePath) ?? []);
-            if(fileData?.length) {
-                group.setData(fileData, false);
-                this.setData(fileData, false);
-            } else {
-                fileFound = false;
-            }
+            fileData = this.readFileData(flatFilePath);
         }
+
+        if(!fileData?.length) {
+            // logger.warn(`${flatFilePath} was not found.`);
+            fileFound = false;
+        }
+
+        group.setData(fileData, false);
+        this.setData(fileData, false);
 
         this.stripeSizes = this.indexData.stripeSizes;
         this.crc32 = this.indexData.crc32 ?? 0;
@@ -58,18 +63,20 @@ export class File extends IndexedFileEntry<FileIndex> {
 
         const filePath = this.path + extension;
 
+        let fileData: ByteBuffer = new ByteBuffer([]);
+
         if(!existsSync(filePath)) {
-            logger.warn(`${filePath} was not found.`);
             fileFound = false;
         } else {
-            const fileData = new ByteBuffer(readFileSync(filePath) ?? []);
-            if(fileData?.length) {
-                this.setData(fileData, false);
-            } else {
-                logger.warn(`${filePath} is empty.`);
-                fileFound = false;
-            }
+            fileData = this.readFileData(filePath);
         }
+
+        if(!fileData?.length) {
+            // logger.warn(`${filePath} was not found.`);
+            fileFound = false;
+        }
+
+        this.setData(fileData, false);
 
         this.stripeSizes = this.indexData.stripeSizes;
         this.crc32 = this.indexData.crc32 ?? 0;
@@ -82,6 +89,10 @@ export class File extends IndexedFileEntry<FileIndex> {
         this._loaded = true;
 
         return fileFound;
+    }
+
+    public readFileData(filePath: string): ByteBuffer {
+        return new ByteBuffer(readFileSync(filePath) ?? []);
     }
 
     public generateIndexData(): FileIndex {

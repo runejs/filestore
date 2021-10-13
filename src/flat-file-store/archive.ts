@@ -25,35 +25,28 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
         this.compression = FileCompression[this.config.compression];
     }
 
-    public async readFiles(compress: boolean = false): Promise<void> {
+    public readFiles(compress: boolean = false): void {
         logger.info(`Reading archive ${this.name}...`);
 
-        this._indexData = await readArchiveIndexFile(this.path);
+        this._indexData = readArchiveIndexFile(this.path);
         this.crc32 = this.indexData.crc32;
         this.sha256 = this.indexData.sha256;
 
-        const promises = new Array(this.indexData.groups.size).fill(null);
-        let i = 0;
-
         for(const [ groupIndex, groupDetails ] of this.indexData.groups) {
-            promises[i++] = new Promise<boolean>(resolve => {
-                const group = new Group(groupIndex, this, groupDetails);
-                this.groups.set(groupIndex, group);
-                group.readFiles(compress).then(r => resolve(r));
-            });
+            const group = new Group(groupIndex, this, groupDetails);
+            this.groups.set(groupIndex, group);
+            group.readFiles(compress);
         }
 
-        const results = await Promise.all(promises.filter(p => !!p));
+        this.generateJs5Index(compress);
 
-        await this.generateJs5Index(compress);
-
-        logger.info(`${results.filter(r => r).length} file(s) were loaded from the ${this.name} archive.`);
+        logger.info(`${this.groups.size} file(s) were loaded from the ${this.name} archive.`);
         this._loaded = true;
     }
 
-    public async generateJs5Index(compress: boolean = false): Promise<ByteBuffer> {
+    public generateJs5Index(compress: boolean = false): ByteBuffer {
         if(!this.groups.size) {
-            await this.readFiles();
+            this.readFiles();
         }
 
         // @TODO add sizes of all files, etc
@@ -181,7 +174,7 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
         return String(Math.max(...fileIndices) + 1);
     }
 
-    public generateIndexData(): ArchiveIndex {
+    public override generateIndexData(): ArchiveIndex {
         const groupMetaData = new Map<string, GroupIndex>();
 
         for(const [ groupIndex, group ] of this.groups) {
@@ -424,11 +417,11 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
         this.indexData.groups.set(fileIndex, group.generateIndexData());
     }
 
-    public get path(): string {
+    public override get path(): string {
         return join(this.store.storePath, 'archives', this.name);
     }
 
-    public get outputPath(): string {
+    public override get outputPath(): string {
         return join(this.store.outputPath, this.name);
     }
 }

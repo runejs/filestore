@@ -1,6 +1,5 @@
-import { writeFile, readFile } from 'graceful-fs';
+import { writeFileSync, readFileSync } from 'graceful-fs';
 import path from 'path';
-import { logger } from '@runejs/common';
 
 
 export interface IndexBase {
@@ -31,9 +30,8 @@ export interface ArchiveIndex extends IndexBase {
 }
 
 
-export const writeArchiveIndexFile = async (archivePath: string, manifest: ArchiveIndex): Promise<void> => {
+export const writeArchiveIndexFile = (archivePath: string, manifest: ArchiveIndex): void => {
     const filePath = path.join(archivePath, `.index`);
-
     const fileData: string = JSON.stringify(manifest, (key, value) => {
         if(value instanceof Map) {
             return { dataType: 'Map', value: Array.from(value.entries()) };
@@ -42,21 +40,13 @@ export const writeArchiveIndexFile = async (archivePath: string, manifest: Archi
         }
     }, 4);
 
-    await new Promise<void>(resolve => writeFile(filePath, fileData, () => resolve()));
+    writeFileSync(filePath, fileData);
 };
 
 
-export const readArchiveIndexFile = async (archivePath: string): Promise<ArchiveIndex> => {
-    const fileData: string = await new Promise<string>((resolve =>
-        readFile(path.join(archivePath, `.index`), 'utf-8', (err, data) => {
-            if(err) {
-                logger.error(err);
-                resolve('');
-            } else {
-                resolve(data);
-            }
-        })));
-
+export const readArchiveIndexFile = (archivePath: string): ArchiveIndex => {
+    const filePath = path.join(archivePath, `.index`);
+    const fileData: string = readFileSync(filePath, 'utf-8');
     return JSON.parse(fileData, (key, value) => {
         if(typeof value === 'object' && value?.dataType === 'Map') {
             return new Map(value.value);

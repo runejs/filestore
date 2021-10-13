@@ -1,12 +1,13 @@
-import { ByteBuffer } from '@runejs/common/buffer';
-import { existsSync, readFile } from 'graceful-fs';
 import { join } from 'path';
+import { existsSync, readFileSync } from 'graceful-fs';
+import { logger } from '@runejs/common';
+import { ByteBuffer } from '@runejs/common/buffer';
+
 import { Group } from './group';
 import { Archive } from './archive';
 import { FileIndex } from './archive-index';
 import { IndexedFileEntry } from './indexed-file-entry';
-import { logger } from '@runejs/common';
-import { readFileSync } from 'fs';
+import { FileError } from './file-error';
 
 
 export class File extends IndexedFileEntry<FileIndex> {
@@ -20,82 +21,44 @@ export class File extends IndexedFileEntry<FileIndex> {
         this.archive = group.archive;
     }
 
-    public readFlatFile(): boolean {
-        const { extension, group } = this;
-        const flatFilePath = group.path + extension;
-        let fileFound = true;
-
-        this._name = group.name;
-        this._nameHash = group.nameHash;
-
-        let fileData: ByteBuffer = new ByteBuffer([]);
-
-        if(!existsSync(flatFilePath)) {
-            fileFound = false;
-        } else {
-            fileData = this.readFileData(flatFilePath);
-        }
-
-        if(!fileData?.length) {
-            // logger.warn(`${flatFilePath} was not found.`);
-            fileFound = false;
-        }
-
-        group.setData(fileData, false);
-        this.setData(fileData, false);
-
-        this.stripeSizes = this.indexData.stripeSizes;
-        this.crc32 = this.indexData.crc32 ?? 0;
-        this.sha256 = this.indexData.sha256 ?? undefined;
-
-        if(this.size !== this.indexData.size || this.sha256 !== this.generateSha256()) {
-            this._modified = true;
-        }
-
-        this._loaded = true;
-
-        return fileFound;
-    }
-
-    public readGroupedFile(): boolean {
-        const { extension } = this;
-        let fileFound = true;
-
-        const filePath = this.path + extension;
-
-        let fileData: ByteBuffer = new ByteBuffer([]);
+    public readFileData(): ByteBuffer | null {
+        const flatFile = this.group.indexData.files.size === 1;
+        const filePath = (flatFile ? this.group.path : this.path) + this.extension;
+        const shortPath = `${this.archive.name}/${this.group.name}${!flatFile ? `/${this.index}` : ``}`;
 
         if(!existsSync(filePath)) {
-            fileFound = false;
+            logger.warn(`File not found: ${shortPath}`);
+            this.recordError(FileError.NOT_FOUND);
+            return null;
+        }
+
+        // Async `readFile` runs a lot slower than `readFileSync` here
+        const data = readFileSync(filePath);
+
+        if(!data) {
+            this.recordError(FileError.INVALID);
+        } else if(!data.length) {
+            this.recordError(FileError.EMPTY);
         } else {
-            fileData = this.readFileData(filePath);
+            const fileData = new ByteBuffer(data);
+
+            if(flatFile) {
+                this.group.setData(fileData, false);
+                this._name = this.group.name;
+                this._nameHash = this.group.nameHash;
+            }
+
+            this.setUncompressedData(fileData);
+            this._loaded = true;
+
+            return fileData;
         }
 
-        if(!fileData?.length) {
-            // logger.warn(`${filePath} was not found.`);
-            fileFound = false;
-        }
-
-        this.setData(fileData, false);
-
-        this.stripeSizes = this.indexData.stripeSizes;
-        this.crc32 = this.indexData.crc32 ?? 0;
-        this.sha256 = this.indexData.sha256 ?? undefined;
-
-        if(this.size !== this.indexData.size || this.sha256 !== this.generateSha256()) {
-            this._modified = true;
-        }
-
-        this._loaded = true;
-
-        return fileFound;
+        logger.warn(`Error reading file data: ${shortPath}`);
+        return null;
     }
 
-    public readFileData(filePath: string): ByteBuffer {
-        return new ByteBuffer(readFileSync(filePath) ?? []);
-    }
-
-    public generateIndexData(): FileIndex {
+    public override generateIndexData(): FileIndex {
         const { nameOrIndex: name, nameHash, size, crc32, sha256, stripeSizes } = this;
         this._indexData = {
             name, nameHash, size, stripeSizes, crc32, sha256
@@ -104,11 +67,23 @@ export class File extends IndexedFileEntry<FileIndex> {
         return this._indexData;
     }
 
-    public get path(): string {
+    public setUncompressedData(fileData: ByteBuffer): void {
+        this.setData(fileData, false);
+
+        this.stripeSizes = this.indexData.stripeSizes;
+        this.crc32 = this.indexData.crc32 ?? 0;
+        this.sha256 = this.indexData.sha256 ?? undefined;
+
+        if(this.size !== this.indexData.size || this.sha256 !== this.generateSha256()) {
+            this._modified = true;
+        }
+    }
+
+    public override get path(): string {
         return join(this.group.path, this.indexData?.name ?? '');
     }
 
-    public get outputPath(): string {
+    public override get outputPath(): string {
         return join(this.group.outputPath, this.indexData?.name ?? '');
     }
 

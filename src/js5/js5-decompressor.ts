@@ -1,10 +1,10 @@
 import { createHash } from 'crypto';
 import { Buffer } from 'buffer';
+import path from 'path';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { StoreConfig, Js5Archive, Js5File, Js5FileGroup, Js5Store } from '@runejs/js5';
 import { DecompressorOptions } from './decompressor-options';
-import path from 'path';
 import {
     ArchiveIndex,
     GroupIndex, FileIndex,

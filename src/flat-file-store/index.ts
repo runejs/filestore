@@ -4,4 +4,4 @@ export * from './file';
 export * from './flat-file-store';
 export * from './group';
 export * from './indexed-file-entry';
-
+export * from './file-error';

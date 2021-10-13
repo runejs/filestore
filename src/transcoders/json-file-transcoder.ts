@@ -93,7 +93,7 @@ export class JsonFileTranscoder {
                         }
                     } else if(typeof instruction[1] === 'string') {
                         // Basic single field
-                        const fieldType = instruction[1] as DataType | 'string';
+                        const fieldType = instruction[1] as DataType;
                         const signedness = (instruction.length === 3 ? instruction[2] : 'signed') as Signedness;
 
                         if(fieldIndex !== -1) {

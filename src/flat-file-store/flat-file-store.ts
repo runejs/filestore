@@ -71,13 +71,17 @@ export class FlatFileStore {
         return this.archives;
     }
 
-    public async readStore(compress: boolean = false): Promise<void> {
+    public readStore(compress: boolean = false): void {
         if(!this.loaded) {
             this.getAllArchives();
         }
 
         for(const [ , archive ] of this.archives) {
-            await archive.readFiles(compress);
+            archive.readFiles(compress);
+        }
+
+        if(compress) {
+            this.buildMainIndex();
         }
     }
 

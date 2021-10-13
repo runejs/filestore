@@ -1,7 +1,7 @@
 import { join } from 'path';
 import { logger } from '@runejs/common';
 import { createObject } from './util/objects';
-import { run } from './util/cmd';
+import { run } from './util';
 import { FlatFileStore } from './flat-file-store';
 
 
@@ -33,13 +33,7 @@ run(async args => {
             logger.info(argDebugString);
         }
 
-        await flatFileStore.readStore(options.compress);
-
-        /*const archives = await flatFileStore.getAllArchives();
-        for(const [ , archive ] of archives) {
-            logger.info(`Indexing archive ${archive.archiveName}...`);
-            await archive.indexArchiveFiles();
-        }*/
+        flatFileStore.readStore(options.compress);
     } else {
         logger.info(`Indexing flat file store archive ${options.archive}${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
@@ -47,6 +41,6 @@ run(async args => {
         }
 
         const archive = await flatFileStore.getArchive(options.archive);
-        await archive.readFiles(options.compress);
+        archive.readFiles(options.compress);
     }
 });

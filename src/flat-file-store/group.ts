@@ -77,12 +77,12 @@ export class Group extends IndexedFileEntry<GroupIndex> {
         return this._data;
     }
 
-    public compress(): ByteBuffer {
+    public override compress(): ByteBuffer {
         this.encode();
         return this.data?.length ? super.compress() : null;
     }
 
-    public async readFiles(compress: boolean = false): Promise<boolean> {
+    public readFiles(compress: boolean = false): boolean {
         if(!this.indexData) {
             this.generateIndexData();
         }
@@ -130,7 +130,7 @@ export class Group extends IndexedFileEntry<GroupIndex> {
             const fileIndexData = indexData.files.get(fileIndex);
             const file = new File(fileIndex, this, fileIndexData);
 
-            if(!file.readFlatFile()) {
+            if(!file.readFileData()) {
                 fileNotFound = true;
             }
 
@@ -139,7 +139,7 @@ export class Group extends IndexedFileEntry<GroupIndex> {
             for(const [ fileIndex, fileDetails ] of indexData.files) {
                 const file = new File(fileIndex, this, fileDetails);
                 this.files.set(fileIndex, file);
-                file.readGroupedFile();
+                file.readFileData();
             }
         }
 
@@ -153,8 +153,7 @@ export class Group extends IndexedFileEntry<GroupIndex> {
         this.generateSha256();
 
         if(!this.sha256) {
-            logger.warn(`File ${this.archive.name}/${groupName} was not found.`);
-            return false;
+            logger.error(`File ${this.archive.name}/${groupName} was not loaded.`);
         } else if(originalDigest !== this.sha256) {
             logger.warn(`File ${this.archive.name}/${groupName} digest has changed:`,
                 `Orig: ${originalDigest}`, `New:  ${this.sha256}`);
@@ -237,10 +236,10 @@ export class Group extends IndexedFileEntry<GroupIndex> {
     }
 
     public indexFiles(): void {
-
+        // @TODO
     }
 
-    public generateIndexData(): GroupIndex {
+    public override generateIndexData(): GroupIndex {
         const { nameOrIndex: name, nameHash, size, crc32, sha256, version, stripeCount, files } = this;
         const fileMetadata = new Map<string, GroupIndex>();
 
@@ -251,7 +250,13 @@ export class Group extends IndexedFileEntry<GroupIndex> {
         }
 
         this._indexData = {
-            name, nameHash, size, crc32, sha256, version, stripeCount,
+            name,
+            nameHash,
+            size,
+            crc32,
+            sha256,
+            version,
+            stripeCount,
             files: fileMetadata
         };
 
@@ -267,11 +272,11 @@ export class Group extends IndexedFileEntry<GroupIndex> {
         return String(Math.max(...fileIndices) + 1);
     }
 
-    public get path(): string {
+    public override get path(): string {
         return join(this.archive.path, this.indexData?.name ?? '');
     }
 
-    public get outputPath(): string {
+    public override get outputPath(): string {
         return join(this.archive.outputPath, this.indexData?.name ?? '');
     }
 

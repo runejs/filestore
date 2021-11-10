@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-const parser = require('node-properties-parser');
+const parser = require('properties-parser');
 
 
 export function hash(name: string): number {

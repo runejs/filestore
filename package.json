@@ -32,8 +32,8 @@
     "dependencies": {
         "@runejs/core": "^1.5.4",
         "canvas": "^2.8.0",
-        "node-properties-parser": "0.0.2",
         "pngjs": "^6.0.0",
+        "properties-parser": "^0.3.1",
         "seek-bzip": "^1.0.5",
         "tslib": "^2.1.0"
     },

@@ -1,6 +1,6 @@
 {
     "name": "@runejs/filestore",
-    "version": "0.15.2",
+    "version": "0.15.3",
     "description": "Tools for managing the RuneJS filestore.",
     "main": "lib/index.js",
     "types": "lib/index.d.ts",

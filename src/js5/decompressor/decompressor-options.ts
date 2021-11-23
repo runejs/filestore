@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { createObject } from '../util/objects';
+import { createObject } from '../../util/objects';
 
 
 /**

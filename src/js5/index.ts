@@ -1,2 +1,4 @@
-export * from './decompressor-options';
-export * from './js5-decompressor';
+export * from './js5-store';
+export * from './js5-archive';
+export * from './js5-group';
+export * from './js5-file';

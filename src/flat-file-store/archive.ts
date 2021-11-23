@@ -1,6 +1,5 @@
 import { join } from 'path';
-import { existsSync, readFileSync, readdirSync, statSync } from 'graceful-fs';
-import { ArchiveDetails, StoreConfig } from '@runejs/js5';
+import { existsSync, readFileSync, readdirSync, statSync, mkdirSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { FileCompression } from '@runejs/common/compression';
@@ -9,20 +8,21 @@ import { File } from './file';
 import { Group } from './group';
 import { FlatFileStore } from './flat-file-store';
 import { nameSorter } from '../util';
-import { IndexedFileEntry } from './indexed-file-entry';
+import { ArchiveDetails, StoreConfig } from '../config';
+import { IndexedFile } from './indexed-file';
 
 
-export class Archive extends IndexedFileEntry<ArchiveIndex> {
+export class Archive extends IndexedFile<ArchiveIndex> {
 
     public readonly groups: Map<string, Group>;
-    public readonly config: ArchiveDetails;
+    public readonly details: ArchiveDetails;
 
     public constructor(index: string | number, store: FlatFileStore) {
         super(index, store);
         this.groups = new Map<string, Group>();
         this.name = StoreConfig.getArchiveName(this.index);
-        this.config = StoreConfig.getArchiveDetails(this.index);
-        this.compression = FileCompression[this.config.compression];
+        this.details = StoreConfig.getArchiveDetails(this.index);
+        this.compression = FileCompression[this.details.compression];
     }
 
     public readFiles(compress: boolean = false): void {
@@ -56,8 +56,8 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
         const groupCount = this.groups.size;
 
         // Write index file header
-        buffer.put(this.config.format ?? 5); // '5' for 'JS5' by default
-        buffer.put(this.config.saveFileNames ? 1 : 0);
+        buffer.put(this.details.format ?? 5); // '5' for 'JS5' by default
+        buffer.put(this.details.saveFileNames ? 1 : 0);
         buffer.put(groupCount, 'short');
 
         // Write file indexes
@@ -69,7 +69,7 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
         }
 
         // Write name hashes (if applicable)
-        if(this.config.saveFileNames) {
+        if(this.details.saveFileNames) {
             for(const [ , file ] of groups) {
                 buffer.put(file.nameHash ?? 0, 'int');
             }
@@ -82,7 +82,7 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
 
         // Write file version numbers
         for(const [ , file ] of groups) {
-            buffer.put(file.version ?? 0, 'int');
+            buffer.put(0, 'int');
         }
 
         // Write file group child counts
@@ -106,7 +106,7 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
         }
 
         // Write group file name hashes (if applicable)
-        if(this.config.saveFileNames) {
+        if(this.details.saveFileNames) {
             for(const [ , group ] of groups) {
                 if(group.files.size > 1) {
                     for(const [ , file ] of group.files) {
@@ -148,7 +148,7 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
     }
 
     public findGroupIndex(groupIndexOrName: string): string {
-        const nameSearch = this.config.saveFileNames && !(/^\d*$/.test(groupIndexOrName));
+        const nameSearch = this.details.saveFileNames && !(/^\d*$/.test(groupIndexOrName));
 
         for(const [ groupIndex, group ] of this.indexData.groups) {
             if(nameSearch) {
@@ -193,6 +193,10 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
 
     public writeArchiveIndexFile(): void {
         try {
+            if(!existsSync(this.outputPath)) {
+                mkdirSync(this.outputPath, { recursive: true });
+            }
+
             writeArchiveIndexFile(this.outputPath, this.generateIndexData());
         } catch(error) {
             logger.error(error);
@@ -205,7 +209,7 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
         }
 
         const directoryFileNames = readdirSync(this.path).filter(fileName => fileName && fileName !== '.index');
-        const fileExtension = this.config.fileExtension ?? '';
+        const fileExtension = this.details.fileExtension ?? '';
         let indexChanges = false;
 
         for(let fileName of directoryFileNames) {
@@ -258,14 +262,14 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
 
         if(group.name !== groupName) {
             group.name = groupName;
-            if(!this.config.saveFileNames) {
+            if(!this.details.saveFileNames) {
                 group.nameHash = 0;
             }
         }
 
         let groupPath = join(this.path, groupName);
         const fileStats = statSync(groupPath);
-        const fileExtension = this.config.fileExtension ?? undefined;
+        const fileExtension = this.details.fileExtension ?? undefined;
 
         if(fileStats.isDirectory()) {
             const groupFileNames = Array.from(group.files.values()).map(file => file.nameOrIndex);
@@ -328,7 +332,7 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
     }
 
     public indexNewGroup(groupName: string): void {
-        const fileExtension = this.config.fileExtension ?? '';
+        const fileExtension = this.details.fileExtension ?? '';
         const fileIndex = this.newGroupIndex();
 
         if(!fileIndex) {
@@ -343,7 +347,7 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
         group.stripeCount = 1;
         group.size = 0;
 
-        if(this.config.saveFileNames) {
+        if(this.details.saveFileNames) {
             group.name = groupName;
         } else {
             group.name = fileIndex;
@@ -372,7 +376,7 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
                 const file = new File(fileIndex, group);
                 group.files.set(fileIndex, file);
 
-                if(this.config.saveFileNames) {
+                if(this.details.saveFileNames) {
                     file.name = fileName;
                 } else {
                     file.name = fileIndex;
@@ -415,6 +419,23 @@ export class Archive extends IndexedFileEntry<ArchiveIndex> {
 
         this.groups.set(fileIndex, group);
         this.indexData.groups.set(fileIndex, group.generateIndexData());
+    }
+
+    /**
+     * Adds a new or replaces an existing group within the archive.
+     * @param fileIndex The index of the group to add or change.
+     * @param group The group to add or change.
+     */
+    public setGroup(fileIndex: number | string, group: Group): void {
+        this.groups.set(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex, group);
+    }
+
+    /**
+     * Fetches a group from this archive by index.
+     * @param fileIndex The index of the group to find.
+     */
+    public getGroup(fileIndex: number | string): Group {
+        return this.groups.get(typeof fileIndex === 'number' ? String(fileIndex) : fileIndex);
     }
 
     public override get path(): string {

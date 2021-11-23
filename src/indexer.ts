@@ -1,7 +1,6 @@
 import { join } from 'path';
 import { logger } from '@runejs/common';
-import { createObject } from './util/objects';
-import { run } from './util';
+import { run, createObject } from './util';
 import { FlatFileStore } from './flat-file-store';
 
 
@@ -42,5 +41,6 @@ run(async args => {
 
         const archive = await flatFileStore.getArchive(options.archive);
         archive.readFiles(options.compress);
+        archive.writeArchiveIndexFile();
     }
 });

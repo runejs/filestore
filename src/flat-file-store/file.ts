@@ -6,11 +6,11 @@ import { ByteBuffer } from '@runejs/common/buffer';
 import { Group } from './group';
 import { Archive } from './archive';
 import { FileIndex } from './archive-index';
-import { IndexedFileEntry } from './indexed-file-entry';
+import { IndexedFile } from './indexed-file';
 import { FileError } from './file-error';
 
 
-export class File extends IndexedFileEntry<FileIndex> {
+export class File extends IndexedFile<FileIndex> {
 
     public readonly group: Group;
     public readonly archive: Archive;
@@ -88,6 +88,6 @@ export class File extends IndexedFileEntry<FileIndex> {
     }
 
     public get extension(): string {
-        return this.archive?.config?.fileExtension ?? '';
+        return this.archive?.details?.fileExtension ?? '';
     }
 }

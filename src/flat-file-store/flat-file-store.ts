@@ -1,8 +1,8 @@
-import { Archive } from './archive';
-import { StoreConfig } from '@runejs/js5';
 import { join } from 'path';
 import { ByteBuffer } from '@runejs/common/buffer';
-import { Crc32 } from '@runejs/js5/lib/crc32';
+import { StoreConfig } from '../config';
+import { Crc32 } from '../util';
+import { Archive } from './archive';
 
 
 export interface FlatFileStoreOptions {

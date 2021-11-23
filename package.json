@@ -1,19 +1,35 @@
 {
     "name": "@runejs/filestore",
-    "version": "1.0.0-beta.6",
+    "version": "1.0.0-beta.12",
     "description": "Tools for managing the RuneJS asset file store.",
-    "main": "lib/index.js",
-    "types": "lib/index.d.ts",
+    "main": "./index.js",
+    "types": "./index.d.ts",
+    "exports": {
+        ".": "./index.js",
+        "./js5": "./js5/index.js",
+        "./js5/compression": "./js5/compression/index.js",
+        "./flat-file-store": "./flat-file-store/index.js",
+        "./config": "./config/index.js",
+        "./util": "./util/index.js",
+        "./encryption": "./encryption/index.js",
+        "./transcoders": "./transcoders/index.js",
+        "./indexer": "./indexer.js",
+        "./unpacker": "./unpacker.js"
+    },
     "scripts": {
         "build": "tsc",
-        "start": "ts-node src/dev.ts",
+        "start": "ts-node-dev src/dev.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
-        "package": "rimraf lib && npm i && npm run build && npm publish --dry-run",
-        "unpack": "ts-node src/unpacker.ts",
-        "unpacker": "ts-node src/unpacker.ts",
-        "index": "ts-node src/indexer.ts",
-        "indexer": "ts-node src/indexer.ts"
+        "unpack": "ts-node-dev src/unpacker.ts",
+        "unpacker": "ts-node-dev src/unpacker.ts",
+        "index": "ts-node-dev src/indexer.ts",
+        "indexer": "ts-node-dev src/indexer.ts",
+        "copy-documents": "copyfiles package.json README.md .npmignore LICENSE lib",
+        "package": "rimraf lib && npm i && npm run build && npm run copy-documents && cd lib && npm publish --dry-run",
+        "publish:next": "npm run package && cd lib && npm publish -tag next",
+        "publish:beta": "npm run package && cd lib && npm publish -tag beta",
+        "publish:rc": "npm run package && cd lib && npm publish -tag rc"
     },
     "repository": {
         "type": "git",
@@ -40,13 +56,11 @@
         "typescript": ">=4.4.0"
     },
     "dependencies": {
-        "@runejs/common": "2.0.0-rc.5",
-        "@runejs/js5": "1.0.0-next.7",
+        "@runejs/common": "^2.0.0-rc.9",
         "graceful-fs": "^4.2.8",
         "json5": "^2.2.0",
         "pngjs": "^6.0.0",
         "reflect-metadata": "^0.1.13",
-        "source-map-support": "^0.5.20",
         "tslib": "^2.3.1"
     },
     "devDependencies": {
@@ -57,9 +71,12 @@
         "@types/pngjs": "^3.4.2",
         "@typescript-eslint/eslint-plugin": "^4.29.3",
         "@typescript-eslint/parser": "^4.29.3",
+        "copyfiles": "^2.4.1",
         "eslint": "^7.32.0",
         "rimraf": "^3.0.2",
+        "source-map-support": "^0.5.20",
         "ts-node": "^10.3.0",
+        "ts-node-dev": "^1.1.8",
         "typescript": "^4.4.4"
     },
     "eslintConfig": {

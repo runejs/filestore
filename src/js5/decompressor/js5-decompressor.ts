@@ -3,14 +3,15 @@ import { Buffer } from 'buffer';
 import path from 'path';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
-import { StoreConfig, Js5Archive, Js5File, Js5FileGroup, Js5Store } from '@runejs/js5';
+import { Js5Archive, Js5File, Js5Group, Js5Store } from '..';
+import { StoreConfig } from '../../config';
 import { DecompressorOptions } from './decompressor-options';
 import {
     ArchiveIndex,
     GroupIndex, FileIndex,
     writeArchiveIndexFile
-} from '../flat-file-store';
- import Js5Transcoder from '../transcoders/js5-transcoder';
+} from '../../flat-file-store';
+ import Js5Transcoder from '../../transcoders/js5-transcoder';
 
 
 export class Js5Decompressor {
@@ -37,7 +38,7 @@ export class Js5Decompressor {
     public decompressArchive(archiveIndex: string, archive: Js5Archive): void;
     public decompressArchive(archiveId: string, archive?: Js5Archive): void {
         if(!archive) {
-            archive = this.store.getArchive(archiveId);
+            archive = this.store.getArchive(StoreConfig.getArchiveIndex(archiveId) ?? archiveId);
             archiveId = archive?.index;
             archive.decode();
         }
@@ -84,7 +85,7 @@ export class Js5Decompressor {
         const manifest: ArchiveIndex = {
             index: archive.numericIndex,
             crc32: archive.crc32,
-            sha256: createHash('sha256').update(archive.data).digest('hex'),
+            sha256: createHash('sha256').update(archive.data.toNodeBuffer()).digest('hex'),
             groups: groupMetaData
         };
 
@@ -96,7 +97,7 @@ export class Js5Decompressor {
         }
     }
 
-    public decompressGroup(groupMetadata: Map<string, GroupIndex>, fileGroup: Js5FileGroup,
+    public decompressGroup(groupMetadata: Map<string, GroupIndex>, fileGroup: Js5Group,
                            outputPath: string, fileExtension?: string | undefined): GroupIndex {
         if(!fileGroup) {
             throw new Error(`Invalid file group.`);
@@ -152,10 +153,10 @@ export class Js5Decompressor {
 
                 const fileMetadata = {
                     name: groupedFileName,
-                    nameHash: file.nameHash,
-                    stripeSizes: file.stripeSizes,
-                    size: file.size,
-                    sha256: file.sha256
+                    nameHash: file.nameHash ?? undefined,
+                    stripeSizes: file.stripeSizes ?? [ 0 ],
+                    size: file.size ?? 0,
+                    sha256: file.sha256 ?? undefined
                 };
                 metadata.files.set(fileIndex, fileMetadata);
             }
@@ -198,45 +199,46 @@ export class Js5Decompressor {
         const isArray: boolean = decodedContent?.length && typeof decodedContent[0] !== 'number';
         let multipleDecompressedFiles: boolean = isArray && decodedContent?.length > 1;
 
-        if(!debug) {
-            if(multipleDecompressedFiles) {
-                const groupDir = path.join(outputPath, groupName);
-                mkdirSync(groupDir);
+        try {
+            if(!debug) {
+                if(multipleDecompressedFiles) {
+                    const groupDir = path.join(outputPath, groupName);
+                    mkdirSync(groupDir);
 
-                for(let i = 0; i < decodedContent.length; i++) {
-                    const groupedFile = decodedContent[i] as Buffer | null;
-                    if(groupedFile?.length) {
-                        writeFileSync(path.join(groupDir, i + (fileExtension ?? '')), groupedFile);
+                    for(let i = 0; i < decodedContent.length; i++) {
+                        const content: Buffer = decodedContent[i] as Buffer | null;
+
+                        if(content?.length) {
+                            writeFileSync(path.join(groupDir, i + (fileExtension ?? '')), content);
+                        }
                     }
-                }
-            } else {
-                try {
-                    const content = decodedContent[0] instanceof Buffer ? decodedContent[0] : decodedContent as any[];
+                } else {
+                    const content: Buffer = decodedContent[0] instanceof Buffer ? decodedContent[0] : Buffer.from(decodedContent as any[]);
                     if(content?.length) {
-                        writeFileSync(path.join(outputPath, groupName + (fileExtension ?? '')), Buffer.from(content));
+                        writeFileSync(path.join(outputPath, groupName + (fileExtension ?? '')), content);
                     }
-                } catch(error) {
-                    logger.error(`Error writing file:`, error);
                 }
             }
+        } catch(error) {
+            logger.error(`Error writing file:`, error);
         }
 
         const metadata: GroupIndex = {
             name: groupName,
-            nameHash: file.nameHash,
+            nameHash: file.nameHash ?? undefined,
             size: file.size ?? 0,
-            crc32: file.crc32,
-            sha256: file.sha256,
-            version: file.version,
-            stripeCount: file.stripeCount,
+            crc32: file.crc32 ?? undefined,
+            sha256: file.sha256 ?? undefined,
+            version: file.version ?? undefined,
+            stripeCount: file.stripeCount ?? 0,
             files: new Map<string, FileIndex>()
         };
 
         metadata.files.set('0', {
             name: groupName,
-            nameHash: file?.nameHash,
-            stripeSizes: file.stripeSizes,
-            sha256: file.sha256
+            nameHash: file?.nameHash ?? undefined,
+            stripeSizes: file.stripeSizes ?? [ 0 ],
+            sha256: file.sha256 ?? undefined
         });
 
         return metadata;

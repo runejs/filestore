@@ -1,9 +1,8 @@
 import { join } from 'path';
 import { logger } from '@runejs/common';
-import { Js5Store } from '@runejs/js5';
-import { createObject } from './util/objects';
-import { run } from './util/cmd';
-import { DecompressorOptions, Js5Decompressor } from './js5';
+import { Js5Store } from './js5';
+import { run, createObject } from './util';
+import { DecompressorOptions, Js5Decompressor } from './js5/decompressor';
 
 
 class UnpackOptions {

@@ -9,7 +9,7 @@
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
         "sourceMap": true,
-        "baseUrl": ".",
+        "baseUrl": "./src",
         "allowJs": true,
         "declaration": true,
         "outDir": "./lib",
@@ -17,10 +17,6 @@
             "node"
         ]
     },
-    "include": [
-        "src/**/*.ts"
-    ],
-    "exclude": [
-        "node_modules"
-    ]
+    "include": [ "src/" ],
+    "exclude": [ "!src/" ]
 }

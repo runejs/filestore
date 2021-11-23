@@ -1,14 +1,14 @@
-import { ByteBuffer } from '@runejs/common/buffer';
+import { join } from 'path';
+import { existsSync, readdirSync, statSync } from 'graceful-fs';
+import { ByteBuffer, logger } from '@runejs/common';
 import { Archive } from './archive';
 import { File } from './file';
 import { GroupIndex } from './archive-index';
-import { join } from 'path';
-import { existsSync, readdirSync, statSync } from 'graceful-fs';
-import { logger } from '@runejs/common';
-import { IndexedFileEntry } from './indexed-file-entry';
+import { IndexedFile } from './indexed-file';
+import { FileCompression } from '@runejs/common/compression';
 
 
-export class Group extends IndexedFileEntry<GroupIndex> {
+export class Group extends IndexedFile<GroupIndex> {
 
     public readonly archive: Archive;
     public readonly files: Map<string, File>;
@@ -20,6 +20,8 @@ export class Group extends IndexedFileEntry<GroupIndex> {
         this.archive = archive;
         this.files = new Map<string, File>();
         this._encoded = false;
+        this.compression = FileCompression[this.archive.details.compression];
+        this.compressed = false;
     }
 
     public encode(): ByteBuffer {
@@ -77,9 +79,23 @@ export class Group extends IndexedFileEntry<GroupIndex> {
         return this._data;
     }
 
-    public override compress(): ByteBuffer {
+    public override compress(): ByteBuffer | null {
         this.encode();
-        return this.data?.length ? super.compress() : null;
+        return super.compress();
+        /*const compressedFile = super.compress();
+
+        if(!compressedFile) {
+            return null;
+        }
+
+        if(this.archive.details.versioned) {
+            const versionedFile = new ByteBuffer(compressedFile.length + 2);
+            compressedFile.copy(versionedFile);
+            versionedFile.put(this.version ?? 0, 'short');
+            return versionedFile;
+        } else {
+            return compressedFile;
+        }*/
     }
 
     public readFiles(compress: boolean = false): boolean {
@@ -112,7 +128,7 @@ export class Group extends IndexedFileEntry<GroupIndex> {
         this.compression = this.compression;
         this.stripeCount = indexData.stripeCount;
 
-        if(this.archive.config.versioned) {
+        if(this.archive.details.versioned) {
             this.version = indexData.version;
         }
 
@@ -173,7 +189,7 @@ export class Group extends IndexedFileEntry<GroupIndex> {
                 this._modified = true;
             }
 
-            if(this.archive.config.versioned) {
+            if(this.archive.details.versioned) {
                 // this.appendVersionNumber();
             }
         }
@@ -200,7 +216,7 @@ export class Group extends IndexedFileEntry<GroupIndex> {
 
         let data = this.data;
 
-        if(this.archive.config.versioned) {
+        if(this.archive.details.versioned) {
             data = new ByteBuffer((this._data.length + 2));
             this._data.copy(data, 0, 0);
             data.put(this.version ?? 1, 'short');

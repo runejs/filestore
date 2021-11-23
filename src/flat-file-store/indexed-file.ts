@@ -1,10 +1,10 @@
-import { StoreFileBase } from '@runejs/js5';
+import { AssetFile } from '../fs';
 import { FlatFileStore } from './flat-file-store';
 import { IndexBase } from './archive-index';
 import { FileError } from './file-error';
 
 
-export abstract class IndexedFileEntry<T extends IndexBase> extends StoreFileBase {
+export abstract class IndexedFile<T extends IndexBase> extends AssetFile {
 
     public readonly store: FlatFileStore;
 

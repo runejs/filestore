@@ -8,8 +8,8 @@
         "experimentalDecorators": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
-        "sourceMap": false,
-        "baseUrl": ".",
+        "sourceMap": true,
+        "baseUrl": "./src",
         "allowJs": true,
         "declaration": true,
         "outDir": "./lib",
@@ -17,10 +17,6 @@
             "node"
         ]
     },
-    "include": [
-        "src/**/*.ts"
-    ],
-    "exclude": [
-        "node_modules"
-    ]
+    "include": [ "src/" ],
+    "exclude": [ "!src/" ]
 }

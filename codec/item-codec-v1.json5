@@ -1,0 +1,15 @@
+{
+    widgetModel: [ 1, 'short', '?' ],
+    name: [ 2, 'string', '?' ],
+    model2d: {
+        zoom: [ 4, 'short' ],
+        rotationX: [ 5, 'short' ],
+        rotationY: [ 6, 'short' ],
+        offsetX: [ 7, 'short' ],
+        offsetY: [ 8, 'short' ]
+    },
+    stackable: [ 11, '?' ],
+    value: [ 12, 'int', '?' ],
+    members: [ 16, '?' ],
+    // ...
+}

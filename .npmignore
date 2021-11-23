@@ -1,10 +1,4 @@
 /tsconfig.json
 /src
 /.idea
-/packed
-/config
-/unpacked
-/output
-/dist
-/stores
-/dist/run.*
+/dev.js

@@ -1,6 +1,6 @@
 {
     "name": "@runejs/filestore",
-    "version": "1.0.0-beta.11",
+    "version": "1.0.0-beta.12",
     "description": "Tools for managing the RuneJS asset file store.",
     "main": "./index.js",
     "types": "./index.d.ts",

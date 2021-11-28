@@ -1,15 +1,19 @@
 import { createHash } from 'crypto';
 import { join } from 'path';
+import { existsSync, readFileSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
-import { FileIndex, FileProperties, IndexBase } from './index';
+import { FileError, FileIndex, FileProperties } from './index';
 import { Crc32 } from '../util';
 
 
-export class BinaryFile<T extends IndexBase = FileIndex> extends FileProperties<T> {
+export class BinaryFile<T extends FileIndex = FileIndex> extends FileProperties<T> {
 
     protected _data: ByteBuffer | null;
+    protected _loaded: boolean;
+    protected _modified: boolean;
+    protected _errors: FileError[] = [];
 
     public constructor(index: string | number, properties?: Partial<FileProperties<T>>) {
         super(properties);
@@ -40,8 +44,51 @@ export class BinaryFile<T extends IndexBase = FileIndex> extends FileProperties<
         }
     }
 
-    public read(compress: boolean = false): void {
-        // @TODO
+    public read(compress: boolean = false): ByteBuffer | null {
+        if(!this.group) {
+            throw new Error(`Flat file ${this.fileKey} could not be read as it does not belong to any known groups.`);
+        }
+
+        const filePath = this.path + this.type;
+
+        if(!existsSync(filePath)) {
+            logger.warn(`Flat file not found: ${shortPath}`);
+            this.recordError(FileError.NOT_FOUND);
+            return null;
+        }
+
+        const data = readFileSync(filePath);
+
+        if(!data) {
+            this.recordError(FileError.INVALID);
+        } else if(!data.length) {
+            this.recordError(FileError.EMPTY);
+        } else {
+            const fileData = new ByteBuffer(data);
+
+            if(flatFile) {
+                this.group.setData(fileData, false);
+                this.name = this.group.name;
+                this.nameHash = this.group.nameHash;
+            }
+
+            this.setData(fileData, false);
+
+            this.stripeSizes = this.fileIndex.stripeSizes;
+            this.crc32 = this.fileIndex.crc32 ?? 0;
+            this.sha256 = this.fileIndex.sha256 ?? undefined;
+
+            if(this.size !== this.fileIndex.size || this.sha256 !== this.generateSha256()) {
+                this._modified = true;
+            }
+
+            this._loaded = true;
+
+            return fileData;
+        }
+
+        logger.warn(`Error reading file data: ${shortPath}`);
+        return null;
     }
 
     public decrypt(): ByteBuffer {
@@ -265,8 +312,36 @@ export class BinaryFile<T extends IndexBase = FileIndex> extends FileProperties<
         return this.sha256;
     }
 
+    public clearErrors(): void {
+        this._errors = [];
+    }
+
+    public recordError(error: FileError): void {
+        if(!this.hasErrors) {
+            this._errors = [ error ];
+        } else if(this._errors.indexOf(error) === -1) {
+            this._errors.push(error);
+        }
+    }
+
     public get data(): ByteBuffer {
         return this._data;
+    }
+
+    public get loaded(): boolean {
+        return this._loaded;
+    }
+
+    public get modified(): boolean {
+        return this._modified;
+    }
+
+    public get errors(): FileError[] {
+        return this._errors;
+    }
+
+    public get hasErrors(): boolean {
+        return (this._errors?.length ?? 0) !== 0;
     }
 
     public get empty(): boolean {
@@ -281,6 +356,10 @@ export class BinaryFile<T extends IndexBase = FileIndex> extends FileProperties<
         }
 
         return join(this.group?.path || this.archive?.path, this.name || this.fileKey);
+    }
+
+    public get type(): string {
+        return this.archive?.archiveProperties?.contentType ?? '';
     }
 
 }

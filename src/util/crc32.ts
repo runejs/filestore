@@ -5,7 +5,7 @@ export class Crc32 {
 
     public static crcLookupTable: number[] = new Array(256);
 
-    public static calculateCrc(offset: number, size: number, data: ByteBuffer | Buffer | Uint8Array | number[]): number {
+    public static update(offset: number, size: number, data: ByteBuffer | Buffer | Uint8Array | number[]): number {
         let crc = -1;
 
         for(let currentByte = offset; currentByte < size; currentByte++) {
@@ -17,7 +17,7 @@ export class Crc32 {
         return crc;
     }
 
-    public static generateCrcLookupTable(): void {
+    public static init(): void {
         for(let i = 0; i < 256; i++) {
             let currentByte = i;
 

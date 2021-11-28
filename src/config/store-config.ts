@@ -2,12 +2,18 @@ import * as fs from 'graceful-fs';
 import path from 'path';
 import JSON5 from 'json5';
 import { logger } from '@runejs/common';
-import { Xtea, XteaKeys } from '../encryption';
+import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 
 
+/**
+ * @deprecated
+ */
 export type EncryptionMethod = 'none' | 'xtea';
 
 
+/**
+ * @deprecated
+ */
 export interface ArchiveDetails {
     index: number;
     name: string;
@@ -21,23 +27,48 @@ export interface ArchiveDetails {
 }
 
 
+/**
+ * @deprecated
+ */
 export class StoreConfig {
 
+    /**
+     * @deprecated
+     */
     public static gameVersion: number | undefined;
 
+    /**
+     * @deprecated
+     */
     public static readonly archives: Map<string, ArchiveDetails> = new Map<string, ArchiveDetails>();
+
+    /**
+     * @deprecated
+     */
     public static readonly fileNames: Map<number, string> = new Map<number, string>();
 
+    /**
+     * @deprecated
+     */
     public static xteaKeys: Map<string, XteaKeys[]> = new Map<string, XteaKeys[]>();
 
+    /**
+     * @deprecated
+     */
     private static _storePath: string;
 
+    /**
+     * @deprecated
+     */
     public static register(storePath: string, gameVersion?: number | undefined): void {
         StoreConfig._storePath = storePath;
         StoreConfig.gameVersion = gameVersion;
         StoreConfig.loadArchiveConfig();
     }
 
+    /**
+     * @deprecated
+     */
     public static getXteaKey(fileName: string): XteaKeys | XteaKeys[] | null {
         if(!StoreConfig.xteaKeys.size) {
             StoreConfig.loadXteaKeys();
@@ -60,6 +91,9 @@ export class StoreConfig {
         return keySets;
     }
 
+    /**
+     * @deprecated
+     */
     public static archiveExists(archiveIndex: string): boolean {
         if(!StoreConfig.archives.size) {
             StoreConfig.loadArchiveConfig();
@@ -68,6 +102,9 @@ export class StoreConfig {
         return StoreConfig.archives.has(archiveIndex);
     }
 
+    /**
+     * @deprecated
+     */
     public static getArchiveDetails(archiveIndex: string): ArchiveDetails {
         if(!StoreConfig.archives.size) {
             StoreConfig.loadArchiveConfig();
@@ -76,14 +113,23 @@ export class StoreConfig {
         return StoreConfig.archives.get(archiveIndex);
     }
 
+    /**
+     * @deprecated
+     */
     public static getArchiveGroupNames(archiveIndex: string): { [groupName: string]: number } {
         return StoreConfig.getArchiveDetails(archiveIndex)?.defaultFileNames ?? {};
     }
 
+    /**
+     * @deprecated
+     */
     public static getArchiveName(archiveIndex: string): string | undefined {
         return StoreConfig.getArchiveDetails(archiveIndex)?.name ?? undefined;
     }
 
+    /**
+     * @deprecated
+     */
     public static getArchiveIndex(archiveName: string): string | undefined {
         for(const [ archiveIndex, archive ] of StoreConfig.archives) {
             if(archive.name === archiveName) {
@@ -94,6 +140,9 @@ export class StoreConfig {
         return undefined;
     }
 
+    /**
+     * @deprecated
+     */
     public static hashFileName(fileName: string): number {
         let hash = 0;
         for(let i = 0; i < fileName.length; i++) {
@@ -103,6 +152,9 @@ export class StoreConfig {
         return hash | 0;
     }
 
+    /**
+     * @deprecated
+     */
     public static getFileName(nameHash: string | number): string | undefined {
         if(typeof nameHash === 'string') {
             nameHash = Number(nameHash);
@@ -115,10 +167,16 @@ export class StoreConfig {
         return StoreConfig.fileNames.get(nameHash) ?? undefined;
     }
 
+    /**
+     * @deprecated
+     */
     public static loadXteaKeys(): void {
         StoreConfig.xteaKeys = Xtea.loadKeys(path.join(StoreConfig.storePath, 'config', 'xtea'));
     }
 
+    /**
+     * @deprecated
+     */
     public static loadFileNames(): void {
         const configPath = path.join(StoreConfig.storePath, 'config', 'name-hashes.json');
         if(!fs.existsSync(configPath)) {
@@ -134,6 +192,9 @@ export class StoreConfig {
         }
     }
 
+    /**
+     * @deprecated
+     */
     public static loadArchiveConfig(): void {
         const configPath = path.join(StoreConfig.storePath, 'config', 'archives.json5');
         if(!fs.existsSync(configPath)) {
@@ -154,6 +215,9 @@ export class StoreConfig {
         }
     }
 
+    /**
+     * @deprecated
+     */
     public static get storePath(): string {
         return StoreConfig._storePath;
     }

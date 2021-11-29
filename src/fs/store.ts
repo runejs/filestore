@@ -17,11 +17,10 @@ export class Store extends Archive {
     private _archiveConfig: { [key: string]: ArchiveProperties };
     private _encryptionKeys: Map<string, XteaKeys[]>;
     private _gameVersion: number | undefined;
-    private _missingEncryptionKeys: number;
     private _gameVersionMissing: boolean;
 
     public constructor(storePath: string, gameVersion?: number) {
-        super(255);
+        super(255, { name: 'main' });
         this.store = this;
         this.js5 = new Js5Store(this);
         Crc32.init();
@@ -29,6 +28,10 @@ export class Store extends Archive {
         this._path = storePath;
         this._gameVersion = gameVersion;
         this.load();
+    }
+
+    public override js5Decode(): ByteBuffer | null {
+        return new ByteBuffer([]); // @TODO
     }
 
     public override js5Encode(): ByteBuffer {
@@ -47,7 +50,7 @@ export class Store extends Archive {
         return null; // @TODO return main index file (crc table)
     }
 
-    public override read(compress: boolean = false): void {
+    public override read(compress: boolean = false): ByteBuffer | null {
         if(!this.children?.size) {
             this.load(true, compress);
         } else {
@@ -58,6 +61,8 @@ export class Store extends Archive {
                 archives.forEach(archive => archive.compress());
             }
         }
+
+        return null;
     }
 
     public load(readFiles: boolean = false, compress: boolean = false): void {
@@ -75,7 +80,9 @@ export class Store extends Archive {
             const archive = new Archive(config.index, {
                 archive: this,
                 encryption: config.encryption ?? 'none',
-                compression: config.compression ?? 'none'
+                compression: config.compression ?? 'none',
+                name: config.name,
+                nameHash: this.hashFileName(config.name)
             });
 
             this.set(config.index, archive);
@@ -134,6 +141,10 @@ export class Store extends Archive {
     }
 
     public hashFileName(fileName: string): number {
+        if(!fileName) {
+            return 0;
+        }
+
         let hash = 0;
         for(let i = 0; i < fileName.length; i++) {
             hash = fileName.charCodeAt(i) + ((hash << 5) - hash);
@@ -170,10 +181,6 @@ export class Store extends Archive {
         }
     }
 
-    public incrementMissingEncryptionKeys(): void {
-        this._missingEncryptionKeys++;
-    }
-
     public setGameVersionMissing(): void {
         this._gameVersionMissing = true;
     }
@@ -192,10 +199,6 @@ export class Store extends Archive {
 
     public get encryptionKeys(): Map<string, XteaKeys[]> {
         return this._encryptionKeys;
-    }
-
-    public get missingEncryptionKeys(): number {
-        return this._missingEncryptionKeys;
     }
 
     public get gameVersionMissing(): boolean {

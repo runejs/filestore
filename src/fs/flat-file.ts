@@ -8,24 +8,19 @@ import { FileError, FileIndex, FileProperties } from './index';
 import { Crc32 } from '../util';
 
 
-export class BinaryFile<T extends FileIndex = FileIndex> extends FileProperties<T> {
+export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T> {
 
     protected _data: ByteBuffer | null;
     protected _loaded: boolean;
     protected _modified: boolean;
-    protected _errors: FileError[] = [];
+    protected _errors: FileError[];
+    protected _js5Encoded: boolean;
 
     public constructor(index: string | number, properties?: Partial<FileProperties<T>>) {
         super(properties);
         this.fileKey = typeof index === 'number' ? String(index) : index;
-
-        // Ensure that the file name and name hash are both present if one is supplied
-
-        if(this.name && this.nameHash === -1) {
-            this.nameHash = this.store.hashFileName(this.name);
-        } else if(!this.name && this.nameHash !== -1) {
-            this.name = this.store.findFileName(this.nameHash);
-        }
+        this._errors = [];
+        this._js5Encoded = false;
 
         // Attempt to infer the archive or store that this file belongs to, if not provided in the options
 
@@ -42,6 +37,24 @@ export class BinaryFile<T extends FileIndex = FileIndex> extends FileProperties<
                 this.store = this.group.store;
             }
         }
+
+        // Ensure that the file name and name hash are both present if one is supplied
+
+        if(this.store) {
+            if(this.name && this.nameHash === -1) {
+                this.nameHash = this.store.hashFileName(this.name);
+            } else if(!this.name && this.nameHash !== -1) {
+                this.name = this.store.findFileName(this.nameHash);
+            }
+        }
+    }
+
+    public js5Decode(): ByteBuffer | null {
+        return this._data;
+    }
+
+    public js5Encode(): ByteBuffer | null {
+        return this._data;
     }
 
     public read(compress: boolean = false): ByteBuffer | null {
@@ -52,7 +65,7 @@ export class BinaryFile<T extends FileIndex = FileIndex> extends FileProperties<
         const filePath = this.path + this.type;
 
         if(!existsSync(filePath)) {
-            logger.warn(`Flat file not found: ${shortPath}`);
+            logger.error(`Flat file not found: ${filePath}`);
             this.recordError(FileError.NOT_FOUND);
             return null;
         }
@@ -66,17 +79,13 @@ export class BinaryFile<T extends FileIndex = FileIndex> extends FileProperties<
         } else {
             const fileData = new ByteBuffer(data);
 
-            if(flatFile) {
-                this.group.setData(fileData, false);
-                this.name = this.group.name;
-                this.nameHash = this.group.nameHash;
-            }
-
-            this.setData(fileData, false);
-
+            this.name = this.group.name;
+            this.nameHash = this.group.nameHash;
             this.stripeSizes = this.fileIndex.stripeSizes;
             this.crc32 = this.fileIndex.crc32 ?? 0;
             this.sha256 = this.fileIndex.sha256 ?? undefined;
+
+            this.setData(fileData, false);
 
             if(this.size !== this.fileIndex.size || this.sha256 !== this.generateSha256()) {
                 this._modified = true;
@@ -87,7 +96,7 @@ export class BinaryFile<T extends FileIndex = FileIndex> extends FileProperties<
             return fileData;
         }
 
-        logger.warn(`Error reading file data: ${shortPath}`);
+        logger.error(`Error reading file data: ${filePath}`);
         return null;
     }
 
@@ -147,12 +156,12 @@ export class BinaryFile<T extends FileIndex = FileIndex> extends FileProperties<
                 dataCopy.readerIndex = readerIndex;
                 return dataCopy;
             } else {
-                this.store?.incrementMissingEncryptionKeys();
-                logger.warn(`Invalid XTEA keys found for file ${this.name} using game version ${gameVersion}.`);
+                this.archive?.incrementMissingEncryptionKeys();
+                logger.warn(`Invalid XTEA decryption keys found for file ${this.name} using game version ${gameVersion}.`);
             }
         } else {
-            this.store?.incrementMissingEncryptionKeys();
-            logger.warn(`No XTEA keys found for file ${this.name} using game version ${gameVersion}.`);
+            this.archive?.incrementMissingEncryptionKeys();
+            logger.warn(`No XTEA decryption keys found for file ${this.name} using game version ${gameVersion}.`);
         }
 
         return this._data;
@@ -340,6 +349,10 @@ export class BinaryFile<T extends FileIndex = FileIndex> extends FileProperties<
         return this._errors;
     }
 
+    public get js5Encoded(): boolean {
+        return this._js5Encoded;
+    }
+
     public get hasErrors(): boolean {
         return (this._errors?.length ?? 0) !== 0;
     }
@@ -359,7 +372,7 @@ export class BinaryFile<T extends FileIndex = FileIndex> extends FileProperties<
     }
 
     public get type(): string {
-        return this.archive?.archiveProperties?.contentType ?? '';
+        return this.archive?.config?.contentType ?? '';
     }
 
 }

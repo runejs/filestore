@@ -19,6 +19,7 @@ export class Js5Store {
         this.store = store;
     }
 
+    // @TODO move to flat-file as js5Decode
     public extractFile(archive: Archive, fileKey: string | number): { properties: FileProperties, data: ByteBuffer } | null {
         const indexDataLength = 6;
         const usingMainIndex = archive.numericKey === 255;

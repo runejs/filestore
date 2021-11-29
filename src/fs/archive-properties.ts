@@ -9,7 +9,7 @@ export interface ArchiveProperties {
     versioned?: boolean;
     compression?: CompressionMethod;
     encryption?: EncryptionMethod;
-    fileExtension?: string;
+    contentType?: string;
     saveFileNames?: boolean;
     defaultFileNames?: { [key: string]: number };
 }

@@ -1,6 +1,6 @@
 export * from './file-properties';
 export * from './archive-properties';
-export * from './binary-file';
+export * from './flat-file';
 export * from './group';
 export * from './archive';
 export * from './store';

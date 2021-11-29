@@ -2,16 +2,12 @@ import { writeFileSync, readFileSync } from 'graceful-fs';
 import path from 'path';
 
 
-export interface IndexBase {
-    crc32?: number;
-    sha256?: string;
-}
-
-
-export interface FileIndex extends IndexBase {
+export interface FileIndex {
     name: string;
     nameHash?: number;
     size?: number;
+    crc32?: number;
+    sha256?: string;
     stripeCount?: number;
     stripeSizes?: number[];
 }
@@ -24,7 +20,7 @@ export interface GroupIndex extends FileIndex {
 }
 
 
-export interface ArchiveIndex extends IndexBase {
+export interface ArchiveIndex extends FileIndex {
     index: number;
     groups: Map<string, GroupIndex>;
 }

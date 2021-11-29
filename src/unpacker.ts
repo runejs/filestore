@@ -1,8 +1,7 @@
 import { join } from 'path';
 import { logger } from '@runejs/common';
-import { Js5Store } from './js5';
 import { run, createObject } from './util';
-import { DecompressorOptions, Js5Decompressor } from './js5/decompressor';
+import { Store } from './fs';
 
 
 class UnpackOptions {
@@ -33,7 +32,7 @@ run(async args => {
 
     const outputPath = join(storePath, 'output');
 
-    const decompressionOptions = DecompressorOptions.create({
+    /*const decompressionOptions = DecompressorOptions.create({
         matchMapFiles,
         debug,
         outputPath
@@ -45,9 +44,12 @@ run(async args => {
         gameVersion: gameVersion !== -1 ? gameVersion : undefined
     });
 
-    const decompressor = new Js5Decompressor(store, decompressionOptions);
+    const decompressor = new Js5Decompressor(store, decompressionOptions);*/
     const argDebugString = args.size !== 0 ? Array.from(args.entries())
         .map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
+
+    const store = new Store(storePath, gameVersion);
+    store.js5.load();
 
     if(archive === 'main') {
         logger.info(`Unpacking JS5 file store${args.size !== 0 ? ` with arguments:` : `...`}`);
@@ -55,13 +57,25 @@ run(async args => {
             logger.info(argDebugString);
         }
 
-        decompressor.decompressStore();
+        store.js5Decode();
+
+        // decompressor.decompressStore();
     } else {
         logger.info(`Unpacking JS5 archive ${archive}${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
             logger.info(argDebugString);
         }
 
-        decompressor.decompressArchive(archive);
+        const a = store.find(archive);
+
+        if(!a) {
+            throw new Error(`Archive ${a} was not found.`);
+        }
+
+        a.js5Decode();
+
+        console.log(a.data);
+
+        // decompressor.decompressArchive(archive);
     }
 });

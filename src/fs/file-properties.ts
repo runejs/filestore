@@ -1,10 +1,10 @@
 import { CompressionMethod } from '@runejs/common/compress';
 import { EncryptionMethod } from '@runejs/common/encrypt';
-import { Archive, FileIndex, Group, IndexBase, Store } from './index';
+import { Archive, FileIndex, Group, Store } from './index';
 import { setObjectProps } from '@runejs/common/util';
 
 
-export class FileProperties<T extends IndexBase = FileIndex> {
+export class FileProperties<T extends FileIndex = FileIndex> {
     fileKey: string;
     fileIndex: T;
 

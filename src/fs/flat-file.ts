@@ -1,11 +1,12 @@
 import { createHash } from 'crypto';
 import { join } from 'path';
-import { existsSync, readFileSync } from 'graceful-fs';
+import { existsSync, readFileSync, writeFileSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { FileError, FileIndex, FileProperties } from './index';
 import { Crc32 } from '../util';
+import { mkdirSync, rmSync } from 'fs';
 
 
 export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T> {
@@ -98,6 +99,22 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
 
         logger.error(`Error reading file data: ${filePath}`);
         return null;
+    }
+
+    public write(): void {
+        if(this.empty) {
+            logger.error(`Error writing file ${this.name || this.fileKey}: File is empty.`);
+            return;
+        }
+
+        const filePath = this.outputPath;
+        const fileData = this.data.toNodeBuffer();
+
+        if(existsSync(filePath)) {
+            rmSync(filePath, { recursive: true, force: true });
+        }
+
+        writeFileSync(filePath, fileData);
     }
 
     public decrypt(): ByteBuffer {
@@ -389,13 +406,33 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
     }
 
     public get path(): string {
-        const archivePath = this.archive?.path || null;
         const groupPath = this.group?.path || null;
-        if(!groupPath && !archivePath) {
-            throw new Error(`Error generating file path; File ${this.fileKey} has not been added to an archive or group.`);
+        if(!groupPath) {
+            throw new Error(`Error generating file path; File ${this.fileKey} has not been added to a group.`);
         }
 
-        return join(this.group?.path || this.archive?.path, this.name || this.fileKey);
+        const extension = (this.archive?.config?.contentType || '');
+
+        if(this.group.files.size === 1) {
+            return groupPath + extension;
+        } else {
+            return join(groupPath, (this.name || this.fileKey) + extension);
+        }
+    }
+
+    public get outputPath(): string {
+        const groupOutputPath = this.group?.outputPath || null;
+        if(!groupOutputPath) {
+            throw new Error(`Error generating file output path; File ${this.fileKey} has not been added to a group.`);
+        }
+
+        const extension = (this.archive?.config?.contentType || '');
+
+        if(this.group.files.size === 1) {
+            return groupOutputPath + extension;
+        } else {
+            return join(groupOutputPath, (this.name || this.fileKey) + extension);
+        }
     }
 
     public get type(): string {

@@ -1,8 +1,9 @@
 import { join } from 'path';
-import { readFileSync, writeFileSync } from 'graceful-fs';
+import { existsSync, readFileSync, writeFileSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { ArchiveProperties, ArchiveIndex, FileProperties, Group, FlatFile } from './index';
+import { mkdirSync, rmSync } from 'fs';
 
 
 export class Archive extends FlatFile<ArchiveIndex> {
@@ -341,6 +342,29 @@ export class Archive extends FlatFile<ArchiveIndex> {
         this._loaded = true;
     }
 
+    public override write(): void {
+        if(!this.children.size) {
+            logger.error(`Error writing archive ${this.name || this.fileKey}: Archive is empty.`);
+            return;
+        }
+
+        const start = Date.now();
+        logger.info(`Writing archive ${this.name || this.fileKey}...`);
+
+        const archivePath = this.outputPath;
+
+        if(existsSync(archivePath)) {
+            rmSync(archivePath, { recursive: true, force: true });
+        }
+
+        mkdirSync(archivePath, { recursive: true });
+
+        Array.from(this.children.values()).forEach(file => file.write());
+
+        const end = Date.now();
+        logger.info(`Archive ${this.name || this.fileKey} written in ${(end - start) * 1000} seconds.`)
+    }
+
     public reload(compress: boolean = false): void {
         this.children.clear();
         this.read(compress);
@@ -359,8 +383,9 @@ export class Archive extends FlatFile<ArchiveIndex> {
         }) as ArchiveIndex;
     }
 
+    // @TODO regenerate index data during read and js5Decode before we can use this
     public writeIndexFile(): void {
-        const filePath = join(this.path, `.index`);
+        const filePath = join(this.outputPath, `.index`);
         const fileData: string = JSON.stringify(this.fileIndex, (key, value) => {
             if(value instanceof Map) {
                 return { dataType: 'Map', value: Array.from(value.entries()) };
@@ -410,6 +435,17 @@ export class Archive extends FlatFile<ArchiveIndex> {
         }
 
         return join(this.store.path, 'archives', this.name);
+    }
+
+    public override get outputPath(): string {
+        if(!this.store?.outputPath) {
+            throw new Error(`Error generating archive output path; Store output path not provided for archive ${this.fileKey}.`);
+        }
+        if(!this.name) {
+            throw new Error(`Error generating archive output path; Name not provided for archive ${this.fileKey}.`);
+        }
+
+        return join(this.store.outputPath, this.name);
     }
 
     public get versioned(): boolean {

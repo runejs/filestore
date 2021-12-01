@@ -6,6 +6,7 @@ import { ByteBuffer } from '@runejs/common/buffer';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
 import { ArchiveProperties, Js5Store, Archive } from './index';
+import { mkdirSync, rmSync } from 'fs';
 
 
 export class Store {
@@ -16,13 +17,15 @@ export class Store {
 
     private _data: ByteBuffer;
     private _path: string;
+    private _outputPath: string;
     private _archiveConfig: { [key: string]: ArchiveProperties };
     private _encryptionKeys: Map<string, XteaKeys[]>;
     private _gameVersion: number | undefined;
     private _gameVersionMissing: boolean;
 
-    public constructor(storePath: string, gameVersion?: number) {
+    public constructor(gameVersion: number, storePath: string, outputPath: string) {
         this._path = storePath;
+        this._outputPath = outputPath;
         this._gameVersion = gameVersion;
         this.loadArchiveConfig();
         this.js5 = new Js5Store(this);
@@ -74,6 +77,26 @@ export class Store {
         }
 
         return null;
+    }
+
+    public write(): void {
+        if(!this.archives.size) {
+            throw new Error(`Archives not loaded, please load a flat file store or a JS5 store.`);
+        }
+
+        const start = Date.now();
+        logger.info(`Writing flat file store...`);
+
+        if(existsSync(this.outputPath)) {
+            rmSync(this.outputPath, { recursive: true, force: true });
+        }
+
+        mkdirSync(this.outputPath, { recursive: true });
+
+        Array.from(this.archives.values()).forEach(archive => archive.write());
+
+        const end = Date.now();
+        logger.info(`Flat file store written in ${(end - start) * 1000} seconds.`);
     }
 
     public load(readFiles: boolean = false, compress: boolean = false): void {
@@ -207,6 +230,10 @@ export class Store {
 
     public get path(): string {
         return this._path;
+    }
+
+    public get outputPath(): string {
+        return this._outputPath;
     }
 
     public get gameVersion(): number | undefined {

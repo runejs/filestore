@@ -5,6 +5,7 @@ import { FileProperties } from './file-properties';
 import { FlatFile } from './flat-file';
 import { GroupIndex } from './file-index';
 import { logger } from '@runejs/common';
+import { mkdirSync, rmSync } from 'fs';
 
 
 export class Group extends FlatFile<GroupIndex> {
@@ -287,6 +288,25 @@ export class Group extends FlatFile<GroupIndex> {
         return this._data;
     }
 
+    public override write(): void {
+        if(!this.files.size) {
+            logger.error(`Error writing group ${this.name || this.fileKey}: Group is empty.`);
+            return;
+        }
+
+        const groupPath = this.outputPath;
+
+        if(existsSync(groupPath)) {
+            rmSync(groupPath, { recursive: true, force: true });
+        }
+
+        if(this.files.size > 1) {
+            mkdirSync(groupPath, { recursive: true });
+        }
+
+        Array.from(this.files.values()).forEach(file => file.write());
+    }
+
     public has(fileIndex: string | number): boolean {
         return this.files.has(String(fileIndex));
     }
@@ -306,6 +326,15 @@ export class Group extends FlatFile<GroupIndex> {
         }
 
         return join(archivePath, this.name || this.fileKey);
+    }
+
+    public override get outputPath(): string {
+        const archiveOutputPath = this.archive?.outputPath || null;
+        if(!archiveOutputPath) {
+            throw new Error(`Error generating group output path; Archive output path not provided to group ${this.fileKey}.`);
+        }
+
+        return join(archiveOutputPath, this.name || this.fileKey);
     }
 
 }

@@ -20,11 +20,11 @@ export class Js5Store {
     }
 
     // @TODO move to flat-file as js5Decode
-    public extractFile(archive: Archive, fileKey: string | number): { properties: FileProperties, data: ByteBuffer } | null {
+    public extractFile(archive: Archive | Store, fileKey: string | number): { properties: FileProperties, data: ByteBuffer } | null {
         const indexDataLength = 6;
-        const usingMainIndex = archive.numericKey === 255;
-        const archiveIndex = archive.fileKey;
-        const indexChannel = usingMainIndex ? this.mainIndex : this.archiveIndexes.get(archiveIndex);
+        const usingMainIndex = archive instanceof Store;
+        const archiveIndex = archive instanceof Archive ? archive.numericKey : 255;
+        const indexChannel = usingMainIndex ? this.mainIndex : this.archiveIndexes.get(String(archiveIndex));
         const dataChannel = this.archiveData;
         const numericKey = Number(fileKey);
         const fileProps = new FileProperties({ fileKey: String(fileKey) });
@@ -86,8 +86,8 @@ export class Js5Store {
                 data.writerIndex = (data.writerIndex + stripeDataLength);
                 remaining -= stripeDataLength;
 
-                if(stripeArchiveIndex !== archive.numericKey) {
-                    logger.error(`Archive index mismatch, expected archive ${archive.fileKey} but found archive ${stripeFileIndex}`);
+                if(stripeArchiveIndex !== archiveIndex) {
+                    logger.error(`Archive index mismatch, expected archive ${archiveIndex} but found archive ${stripeFileIndex}`);
                     return null;
                 }
 

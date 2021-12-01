@@ -107,6 +107,21 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
             return this._data;
         }
 
+        if(this.archive?.config?.encryptionPattern) {
+            // File name must match the given pattern to be encrypted
+            if(!this.name) {
+                throw new Error(`Error decrypting file ${this.fileKey}: File name not found.`);
+            }
+
+            const patternRegex = new RegExp(this.archive.config.encryptionPattern);
+
+            if(!patternRegex.test(this.name)) {
+                // File name does not match the pattern, data should be unencrypted
+                this.encrypted = false;
+                return this._data;
+            }
+        }
+
         const gameVersion = this.store.gameVersion ?? null;
 
         // XTEA requires that we know which game version is running so that we pick the correct keystore file
@@ -156,12 +171,10 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
                 dataCopy.readerIndex = readerIndex;
                 return dataCopy;
             } else {
-                this.archive?.incrementMissingEncryptionKeys();
-                logger.warn(`Invalid XTEA decryption keys found for file ${this.name} using game version ${gameVersion}.`);
+                logger.warn(`Invalid XTEA decryption keys found for file ${this.name || this.fileKey} using game version ${gameVersion}.`);
             }
         } else {
-            this.archive?.incrementMissingEncryptionKeys();
-            logger.warn(`No XTEA decryption keys found for file ${this.name} using game version ${gameVersion}.`);
+            // logger.warn(`No XTEA decryption keys found for file ${this.name || this.fileKey} using game version ${gameVersion}.`);
         }
 
         return this._data;
@@ -207,12 +220,22 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
 
                 compressedData.copy(decompressedData, 0, compressedData.readerIndex);
 
-                data = this.compression === 'bzip' ? Bzip2.decompress(decompressedData) : Gzip.decompress(decompressedData);
+                try {
+                    data = this.compression === 'bzip' ? Bzip2.decompress(decompressedData) : Gzip.decompress(decompressedData);
 
-                compressedData.readerIndex = compressedData.readerIndex + compressedLength;
+                    compressedData.readerIndex = compressedData.readerIndex + compressedLength;
 
-                if(data.length !== decompressedLength) {
-                    logger.error(`Compression length mismatch.`);
+                    if(data.length !== decompressedLength) {
+                        logger.error(`Compression length mismatch.`);
+                        data = null;
+                    }
+                } catch(error) {
+                    if(this.encrypted) {
+                        logger.error(`Unable to decrypt file ${this.name || this.fileKey}.`);
+                        this.archive?.incrementMissingEncryptionKeys();
+                    } else {
+                        logger.error(`Unable to decompress file ${this.name || this.fileKey}: ${error?.message ?? error}`);
+                    }
                     data = null;
                 }
             }
@@ -351,6 +374,10 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
 
     public get js5Encoded(): boolean {
         return this._js5Encoded;
+    }
+
+    public set js5Encoded(value: boolean) {
+        this._js5Encoded = value;
     }
 
     public get hasErrors(): boolean {

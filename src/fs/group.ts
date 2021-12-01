@@ -3,7 +3,7 @@ import { existsSync, readdirSync, statSync } from 'graceful-fs';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { FileProperties } from './file-properties';
 import { FlatFile } from './flat-file';
-import { GroupIndex } from './archive-index';
+import { GroupIndex } from './file-index';
 import { logger } from '@runejs/common';
 
 
@@ -24,7 +24,8 @@ export class Group extends FlatFile<GroupIndex> {
         }
 
         if(!this._data?.length) {
-            this.store?.js5.extractFile(this.archive, this.fileKey);
+            const js5File = this.store?.js5.extractFile(this.archive, this.fileKey);
+            this.setData(js5File.data, true);
         }
 
         this.encryption = this.archive.encryption ?? 'none';
@@ -38,6 +39,8 @@ export class Group extends FlatFile<GroupIndex> {
 
         if(this.files.size === 1) {
             const flatFile: FlatFile = Array.from(this.files.values())[0];
+            flatFile.fileKey = '0';
+            flatFile.name = this.name;
             flatFile.nameHash = this.nameHash;
             flatFile.sha256 = this.sha256;
             flatFile.crc32 = this.crc32;

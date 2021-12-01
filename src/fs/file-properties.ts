@@ -28,9 +28,26 @@ export class FileProperties<T extends FileIndex = FileIndex> {
 
     public constructor(properties?: Partial<FileProperties<T>>) {
         setObjectProps<FileProperties<T>>(this, properties);
+
+        if(properties.fileIndex) {
+            this.fileIndex = properties.fileIndex;
+        }
     }
 
     public get numericKey(): number {
         return Number(this.fileKey);
     }
+}
+
+export interface ArchiveProperties {
+    index: number;
+    name: string;
+    format?: number;
+    versioned?: boolean;
+    compression?: CompressionMethod;
+    encryption?: EncryptionMethod;
+    encryptionPattern?: string | undefined;
+    contentType?: string;
+    saveFileNames?: boolean;
+    defaultFileNames?: { [key: string]: number };
 }

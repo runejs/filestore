@@ -1,7 +1,8 @@
 import { join } from 'path';
+import { readFileSync, writeFileSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
-import { ArchiveProperties, ArchiveIndex, FileProperties, Group, FlatFile, readArchiveIndexFile } from './index';
+import { ArchiveProperties, ArchiveIndex, FileProperties, Group, FlatFile } from './index';
 
 
 export class Archive extends FlatFile<ArchiveIndex> {
@@ -11,30 +12,31 @@ export class Archive extends FlatFile<ArchiveIndex> {
 
     private _missingEncryptionKeys: number;
 
-    public constructor(index: string | number, properties?: Partial<FileProperties<ArchiveIndex>>) {
+    public constructor(index: string | number, config: ArchiveProperties, properties?: Partial<FileProperties<ArchiveIndex>>) {
         super(index, properties);
 
         this.children = new Map<string, Archive | Group | FlatFile>();
 
-        if(this.numericKey !== 255) {
-            this.config = this.store.archiveConfig[this.name];
-            this.encryption = this.config.encryption ?? 'none';
-            this.compression = this.config.compression ?? 'none';
-        }
+        config.saveFileNames = config.saveFileNames || false;
+        config.versioned = config.versioned || false;
+        config.format = config.format || 5;
+
+        this.config = config;
+        this.encryption = this.config.encryption ?? 'none';
+        this.compression = this.config.compression ?? 'none';
+        this.fileIndex = this.readIndexFile();
     }
 
     public override js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
         this._missingEncryptionKeys = 0;
-        this.name = this.config.name;
-        this.nameHash = this.store.hashFileName(this.name);
 
-        if(this.numericKey === 255) {
-            return null;
+        if(this.name) {
+            this.nameHash = this.store.hashFileName(this.name);
         }
 
         logger.info(`Decoding archive ${this.name}...`);
 
-        const js5File = this.store.js5.extractFile(this.archive, this.fileKey);
+        const js5File = this.store.js5.extractFile(this.store, this.fileKey);
         this.setData(js5File.data, true);
         this.fileIndex.stripeCount = js5File.properties.stripeCount;
 
@@ -72,19 +74,26 @@ export class Archive extends FlatFile<ArchiveIndex> {
         for(let i = 0; i < fileCount; i++) {
             const delta = archiveData.get('short', 'unsigned');
             groupIndices[i] = accumulator += delta;
-            this.set(groupIndices[i], new Group(groupIndices[i], {
+            const fileIndex = this.fileIndex.groups.get(String(groupIndices[i]));
+            const group = new Group(groupIndices[i], {
                 archive: this,
                 encryption: this.encryption,
                 encrypted,
                 compression: this.compression,
-                compressed: true
-                // @TODO fileIndex
-            }));
+                compressed: true,
+                fileIndex
+            });
+
+            group.js5Encoded = true;
+
+            this.set(groupIndices[i], group);
         }
 
         if(filesNamed) {
             for(const groupIndex of groupIndices) {
-                this.get(groupIndex).nameHash = archiveData.get('int');
+                const group = this.get(groupIndex);
+                group.nameHash = archiveData.get('int');
+                group.name = this.store.findFileName(group.nameHash);
             }
         }
 
@@ -117,8 +126,10 @@ export class Archive extends FlatFile<ArchiveIndex> {
                 const childFileIndex = accumulator += delta;
                 group.set(childFileIndex, new FlatFile(childFileIndex, {
                     archive: this,
-                    group: group
-                    // @TODO fileIndex
+                    group: group,
+                    name: group.name,
+                    nameHash: group.nameHash,
+                    fileIndex: group.fileIndex?.files?.get(String(childFileIndex)) ?? undefined
                 }));
             }
         }
@@ -132,6 +143,7 @@ export class Archive extends FlatFile<ArchiveIndex> {
                     const nameHash = archiveData.get('int');
                     if(childFile) {
                         childFile.nameHash = nameHash;
+                        childFile.name = this.store.findFileName(childFile.nameHash);
                     }
                 }
             }
@@ -143,7 +155,7 @@ export class Archive extends FlatFile<ArchiveIndex> {
 
             for(const [ , group ] of this.children) {
                 try {
-                    group.js5Decode();
+                    (group as Group).js5Decode();
 
                     if(group.data?.length && !group.compressed) {
                         successes++;
@@ -297,7 +309,6 @@ export class Archive extends FlatFile<ArchiveIndex> {
 
         logger.info(`Reading archive ${this.name}...`);
 
-        this.fileIndex = readArchiveIndexFile(this.path);
         this.crc32 = this.fileIndex.crc32;
         this.sha256 = this.fileIndex.sha256;
 
@@ -333,6 +344,32 @@ export class Archive extends FlatFile<ArchiveIndex> {
     public reload(compress: boolean = false): void {
         this.children.clear();
         this.read(compress);
+    }
+
+    public readIndexFile(): ArchiveIndex {
+        const filePath = join(this.path, `.index`);
+        const fileData: string = readFileSync(filePath, 'utf-8');
+
+        return JSON.parse(fileData, (key, value) => {
+            if(typeof value === 'object' && value?.dataType === 'Map') {
+                return new Map(value.value);
+            } else {
+                return value;
+            }
+        }) as ArchiveIndex;
+    }
+
+    public writeIndexFile(): void {
+        const filePath = join(this.path, `.index`);
+        const fileData: string = JSON.stringify(this.fileIndex, (key, value) => {
+            if(value instanceof Map) {
+                return { dataType: 'Map', value: Array.from(value.entries()) };
+            } else {
+                return value;
+            }
+        }, 4);
+
+        writeFileSync(filePath, fileData);
     }
 
     public has(childIndex: string | number): boolean {

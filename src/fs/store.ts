@@ -8,11 +8,13 @@ import { Crc32 } from '../util';
 import { ArchiveProperties, Js5Store, Archive } from './index';
 
 
-export class Store extends Archive {
+export class Store {
 
+    public readonly archives: Map<string, Archive>;
     public readonly fileNameHashes: Map<number, string>;
     public readonly js5: Js5Store;
 
+    private _data: ByteBuffer;
     private _path: string;
     private _archiveConfig: { [key: string]: ArchiveProperties };
     private _encryptionKeys: Map<string, XteaKeys[]>;
@@ -20,29 +22,38 @@ export class Store extends Archive {
     private _gameVersionMissing: boolean;
 
     public constructor(storePath: string, gameVersion?: number) {
-        super(255, { name: 'main' });
-        this.store = this;
-        this.js5 = new Js5Store(this);
-        Crc32.init();
-        this.fileNameHashes = new Map<number, string>();
         this._path = storePath;
         this._gameVersion = gameVersion;
+        this.loadArchiveConfig();
+        this.js5 = new Js5Store(this);
+        Crc32.init();
+        this.archives = new Map<string, Archive>();
+        this.fileNameHashes = new Map<number, string>();
         this.load();
     }
 
-    public override js5Decode(): ByteBuffer | null {
+    public js5Decode(): ByteBuffer | null {
+        const archives = Array.from(this.archives.values());
+        archives.forEach(archive => {
+            if(archive.numericKey === 255) {
+                return;
+            }
+
+            archive.js5Decode();
+        });
+
         return new ByteBuffer([]); // @TODO
     }
 
-    public override js5Encode(): ByteBuffer {
+    public js5Encode(): ByteBuffer {
         return new ByteBuffer([]); // @TODO
     }
 
-    public override compress(): ByteBuffer | null {
-        if(!this.children?.size) {
+    public compress(): ByteBuffer | null {
+        if(!this.archives?.size) {
             this.load(true, true);
         } else {
-            const archives = Array.from(this.children.values());
+            const archives = Array.from(this.archives.values());
             archives.forEach(archive => archive.read());
             archives.forEach(archive => archive.compress());
         }
@@ -50,11 +61,11 @@ export class Store extends Archive {
         return null; // @TODO return main index file (crc table)
     }
 
-    public override read(compress: boolean = false): ByteBuffer | null {
-        if(!this.children?.size) {
+    public read(compress: boolean = false): ByteBuffer | null {
+        if(!this.archives?.size) {
             this.load(true, compress);
         } else {
-            const archives = Array.from(this.children.values());
+            const archives = Array.from(this.archives.values());
             archives.forEach(archive => archive.read());
 
             if(compress) {
@@ -66,36 +77,45 @@ export class Store extends Archive {
     }
 
     public load(readFiles: boolean = false, compress: boolean = false): void {
-        this.loadArchiveConfig();
         this.loadEncryptionKeys();
         this.loadFileNames();
 
-        const archiveConfigs = Object.values(this.archiveConfig);
+        this.archives.clear();
 
-        for(const config of archiveConfigs) {
+        const archiveConfigs = Object.entries(this.archiveConfig);
+
+        for(const [ name, config ] of archiveConfigs) {
             if(config.index === 255) {
                 continue;
             }
 
-            const archive = new Archive(config.index, {
-                archive: this,
+            const archive = new Archive(config.index, config, {
+                store: this,
                 encryption: config.encryption ?? 'none',
                 compression: config.compression ?? 'none',
-                name: config.name,
-                nameHash: this.hashFileName(config.name)
+                name
             });
 
-            this.set(config.index, archive);
+            this.archives.set(archive.fileKey, archive);
         }
 
         if(readFiles) {
-            const archives = Array.from(this.children.values());
+            const archives = Array.from(this.archives.values());
             archives.forEach(archive => archive.read());
 
             if(compress) {
                 archives.forEach(archive => archive.compress());
             }
         }
+    }
+
+    public find(archiveName: string): Archive {
+        const archives = Array.from(this.archives.values());
+        return archives.find(child => child?.name === archiveName) ?? null;
+    }
+
+    public has(archiveIndex: string | number): boolean {
+        return this.archives.has(String(archiveIndex));
     }
 
     public loadArchiveConfig(): void {

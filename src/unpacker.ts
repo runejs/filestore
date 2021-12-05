@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { logger } from '@runejs/common';
+import { logger, setLoggerDest } from '@runejs/common';
 import { run, createObject } from './util';
 import { Store } from './fs';
 
@@ -28,7 +28,13 @@ run(async args => {
         version: gameVersion
     } = UnpackOptions.create(args as any);
 
+    if(!gameVersion || gameVersion === -1) {
+        throw new Error(`Please supply the desired game version to unpack using the --version argument.`)
+    }
+
     const outputPath = join(storePath, 'output');
+
+    setLoggerDest(join(storePath, 'logs', `unpack-${gameVersion}.log`));
 
     const argDebugString = args.size !== 0 ? Array.from(args.entries())
         .map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';

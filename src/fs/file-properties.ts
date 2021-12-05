@@ -4,9 +4,9 @@ import { Archive, FileIndex, Group, Store } from './index';
 import { setObjectProps } from '@runejs/common/util';
 
 
-export class FileProperties<T extends FileIndex = FileIndex> {
-    fileKey: string;
-    fileIndex: T;
+export class FileProperties {
+    key: string;
+    index: FileIndex;
 
     store: Store | null = null;
     archive: Archive | null = null;
@@ -21,21 +21,20 @@ export class FileProperties<T extends FileIndex = FileIndex> {
     nameHash: number = -1;
     version: number = 0;
     size: number = 0;
-    stripeCount: number = 0;
-    stripeSizes: number[] = [];
+    stripes: number[] = [];
     crc32: number = -1;
     sha256: string = '';
 
-    public constructor(properties?: Partial<FileProperties<T>>) {
-        setObjectProps<FileProperties<T>>(this, properties);
+    public constructor(properties?: Partial<FileProperties>) {
+        setObjectProps<FileProperties>(this, properties);
 
-        if(properties.fileIndex) {
-            this.fileIndex = properties.fileIndex;
+        if(properties.index) {
+            this.index = properties.index;
         }
     }
 
     public get numericKey(): number {
-        return Number(this.fileKey);
+        return Number(this.key);
     }
 }
 

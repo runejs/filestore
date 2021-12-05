@@ -27,7 +27,7 @@ export class Js5Store {
         const indexChannel = usingMainIndex ? this.mainIndex : this.archiveIndexes.get(String(archiveIndex));
         const dataChannel = this.archiveData;
         const numericKey = Number(fileKey);
-        const fileProps = new FileProperties({ fileKey: String(fileKey) });
+        const fileProps = new FileProperties({ key: String(fileKey) });
 
         let pointer = numericKey * indexDataLength;
 
@@ -50,7 +50,7 @@ export class Js5Store {
         }
 
         fileProps.size = fileIndexData.get('int24', 'unsigned');
-        fileProps.stripeCount = fileIndexData.get('int24', 'unsigned');
+        const stripeCount = fileIndexData.get('int24', 'unsigned');
 
         if(fileProps.size <= 0) {
             logger.warn(`Extracted JS5 file ${fileKey} has a recorded size of 0, no file data will be extracted.`);
@@ -63,7 +63,7 @@ export class Js5Store {
 
         let stripe = 0;
         let remaining = fileProps.size;
-        pointer = fileProps.stripeCount * stripeLength;
+        pointer = stripeCount * stripeLength;
 
         do {
             const temp = new ByteBuffer(stripeLength);

@@ -2,18 +2,18 @@ import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
-import { ArchiveProperties, ArchiveIndex, FileProperties, Group, FlatFile } from './index';
+import { ArchiveProperties, FileProperties, Group, FlatFile, FileIndex, FileError } from './index';
 import { mkdirSync, rmSync } from 'fs';
 
 
-export class Archive extends FlatFile<ArchiveIndex> {
+export class Archive extends FlatFile {
 
     public readonly config: ArchiveProperties;
     public readonly children: Map<string, Archive | Group | FlatFile>;
 
     private _missingEncryptionKeys: number;
 
-    public constructor(index: string | number, config: ArchiveProperties, properties?: Partial<FileProperties<ArchiveIndex>>) {
+    public constructor(index: string | number, config: ArchiveProperties, properties?: Partial<FileProperties>) {
         super(index, properties);
 
         this.children = new Map<string, Archive | Group | FlatFile>();
@@ -25,7 +25,7 @@ export class Archive extends FlatFile<ArchiveIndex> {
         this.config = config;
         this.encryption = this.config.encryption ?? 'none';
         this.compression = this.config.compression ?? 'none';
-        this.fileIndex = this.readIndexFile();
+        this.index = this.readIndexFile();
     }
 
     public override js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
@@ -37,13 +37,16 @@ export class Archive extends FlatFile<ArchiveIndex> {
 
         logger.info(`Decoding archive ${this.name}...`);
 
-        const js5File = this.store.js5.extractFile(this.store, this.fileKey);
+        const js5File = this.store.js5.extractFile(this.store, this.key);
         this.setData(js5File.data, true);
-        this.fileIndex.stripeCount = js5File.properties.stripeCount;
+
+        if(js5File.properties.stripes) {
+            this.index.stripes = js5File.properties.stripes;
+        }
 
         this.generateCrc32();
 
-        logger.info(`Archive ${this.name ?? this.fileKey} calculated checksum: ${this.crc32}`);
+        logger.info(`Archive ${this.name ?? this.key} calculated checksum: ${this.crc32}`);
 
         const archiveData = this.decompress();
 
@@ -75,14 +78,12 @@ export class Archive extends FlatFile<ArchiveIndex> {
         for(let i = 0; i < fileCount; i++) {
             const delta = archiveData.get('short', 'unsigned');
             groupIndices[i] = accumulator += delta;
-            const fileIndex = this.fileIndex.groups.get(String(groupIndices[i]));
             const group = new Group(groupIndices[i], {
                 archive: this,
                 encryption: this.encryption,
                 encrypted,
                 compression: this.compression,
-                compressed: true,
-                fileIndex
+                compressed: true
             });
 
             group.js5Encoded = true;
@@ -129,8 +130,7 @@ export class Archive extends FlatFile<ArchiveIndex> {
                     archive: this,
                     group: group,
                     name: group.name,
-                    nameHash: group.nameHash,
-                    fileIndex: group.fileIndex?.files?.get(String(childFileIndex)) ?? undefined
+                    nameHash: group.nameHash
                 }));
             }
         }
@@ -225,13 +225,13 @@ export class Archive extends FlatFile<ArchiveIndex> {
         // Write name hashes (if applicable)
         if(this.config.saveFileNames) {
             for(const [ , file ] of groups) {
-                buffer.put(file.nameHash ?? 0, 'int');
+                buffer.put(file.nameHash ?? -1, 'int');
             }
         }
 
         // Write file crc values
         for(const [ , file ] of groups) {
-            buffer.put(file.crc32 ?? 0, 'int');
+            buffer.put(file.crc32 ?? -1, 'int');
         }
 
         // Write file version numbers
@@ -264,7 +264,7 @@ export class Archive extends FlatFile<ArchiveIndex> {
             for(const [ , group ] of groups) {
                 if(group instanceof Group && group.files.size > 1) {
                     for(const [ , file ] of group.files) {
-                        buffer.put(file.nameHash ?? 0, 'int');
+                        buffer.put(file.nameHash ?? -1, 'int');
                     }
                 } else {
                     buffer.put(0, 'int');
@@ -281,7 +281,7 @@ export class Archive extends FlatFile<ArchiveIndex> {
 
             if(indexDigest !== this.sha256) {
                 // logger.warn(`Archive ${this.name} digest has changed:`, `Orig: ${indexDigest}`, `New:  ${this.sha256}`);
-                this.fileIndex.sha256 = this.sha256;
+                this.index.sha256 = this.sha256;
             }
 
             if(compress) {
@@ -310,20 +310,20 @@ export class Archive extends FlatFile<ArchiveIndex> {
 
         logger.info(`Reading archive ${this.name}...`);
 
-        this.crc32 = this.fileIndex.crc32;
-        this.sha256 = this.fileIndex.sha256;
+        this.crc32 = this.index.crc32;
+        this.sha256 = this.index.sha256;
 
         // Read in all groups within the archive
-        for(const [ groupIndex, groupDetails ] of this.fileIndex.groups) {
-            const { name, nameHash, version, size, stripeCount, stripeSizes, crc32, sha256 } = groupDetails;
+        for(const [ groupIndex, groupDetails ] of this.index.children) {
+            const { name, nameHash, version, size, stripes, crc32, sha256 } = groupDetails;
             const group = new Group(groupIndex, {
                 archive: this,
-                name, nameHash, version, size, stripeCount, stripeSizes, crc32, sha256,
+                name, nameHash, version, size, stripes, crc32, sha256,
                 compression: this.config.compression,
                 compressed: false,
                 encryption: this.config.encryption,
                 encrypted: false,
-                fileIndex: groupDetails
+                index: groupDetails
             });
             this.children.set(groupIndex, group);
             group.read(false);
@@ -344,12 +344,12 @@ export class Archive extends FlatFile<ArchiveIndex> {
 
     public override write(): void {
         if(!this.children.size) {
-            logger.error(`Error writing archive ${this.name || this.fileKey}: Archive is empty.`);
+            logger.error(`Error writing archive ${this.name || this.key}: Archive is empty.`);
             return;
         }
 
         const start = Date.now();
-        logger.info(`Writing archive ${this.name || this.fileKey}...`);
+        logger.info(`Writing archive ${this.name || this.key}...`);
 
         const archivePath = this.outputPath;
 
@@ -361,8 +361,10 @@ export class Archive extends FlatFile<ArchiveIndex> {
 
         Array.from(this.children.values()).forEach(file => file.write());
 
+        this.writeIndexFile();
+
         const end = Date.now();
-        logger.info(`Archive ${this.name || this.fileKey} written in ${(end - start) * 1000} seconds.`)
+        logger.info(`Archive ${this.name || this.key} written in ${(end - start) / 1000} seconds.`)
     }
 
     public reload(compress: boolean = false): void {
@@ -370,7 +372,7 @@ export class Archive extends FlatFile<ArchiveIndex> {
         this.read(compress);
     }
 
-    public readIndexFile(): ArchiveIndex {
+    public readIndexFile(): FileIndex {
         const filePath = join(this.path, `.index`);
         const fileData: string = readFileSync(filePath, 'utf-8');
 
@@ -380,13 +382,28 @@ export class Archive extends FlatFile<ArchiveIndex> {
             } else {
                 return value;
             }
-        }) as ArchiveIndex;
+        }) as FileIndex;
     }
 
-    // @TODO regenerate index data during read and js5Decode before we can use this
+    public override generateIndex(): FileIndex {
+        const fileIndex = super.generateIndex();
+
+        const children = new Map<string, FileIndex>();
+
+        for(const [ childKey, child ] of this.children) {
+            children.set(childKey, child.generateIndex());
+        }
+
+        this.index = { ...fileIndex, children };
+
+        return this.index;
+    }
+
     public writeIndexFile(): void {
+        this.generateIndex();
+
         const filePath = join(this.outputPath, `.index`);
-        const fileData: string = JSON.stringify(this.fileIndex, (key, value) => {
+        const fileData: string = JSON.stringify(this.index, (key, value) => {
             if(value instanceof Map) {
                 return { dataType: 'Map', value: Array.from(value.entries()) };
             } else {
@@ -428,10 +445,10 @@ export class Archive extends FlatFile<ArchiveIndex> {
 
     public override get path(): string {
         if(!this.store?.path) {
-            throw new Error(`Error generating archive path; Store path not provided for archive ${this.fileKey}.`);
+            throw new Error(`Error generating archive path; Store path not provided for archive ${this.key}.`);
         }
         if(!this.name) {
-            throw new Error(`Error generating archive path; Name not provided for archive ${this.fileKey}.`);
+            throw new Error(`Error generating archive path; Name not provided for archive ${this.key}.`);
         }
 
         return join(this.store.path, 'archives', this.name);
@@ -439,10 +456,10 @@ export class Archive extends FlatFile<ArchiveIndex> {
 
     public override get outputPath(): string {
         if(!this.store?.outputPath) {
-            throw new Error(`Error generating archive output path; Store output path not provided for archive ${this.fileKey}.`);
+            throw new Error(`Error generating archive output path; Store output path not provided for archive ${this.key}.`);
         }
         if(!this.name) {
-            throw new Error(`Error generating archive output path; Name not provided for archive ${this.fileKey}.`);
+            throw new Error(`Error generating archive output path; Name not provided for archive ${this.key}.`);
         }
 
         return join(this.store.outputPath, this.name);

@@ -11,7 +11,7 @@ export const run = async (executor: (args: ArgumentMap) => void | Promise<void>)
 
     const end = Date.now();
     const duration = end - start;
-    logger.info(`Operations completed in ${duration / 1000} seconds.`);
+    // logger.info(`Operations completed in ${duration / 1000} seconds.`);
 };
 
 

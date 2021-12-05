@@ -96,7 +96,7 @@ export class Store {
         Array.from(this.archives.values()).forEach(archive => archive.write());
 
         const end = Date.now();
-        logger.info(`Flat file store written in ${(end - start) * 1000} seconds.`);
+        logger.info(`Flat file store written in ${(end - start) / 1000} seconds.`);
     }
 
     public load(readFiles: boolean = false, compress: boolean = false): void {
@@ -119,7 +119,7 @@ export class Store {
                 name
             });
 
-            this.archives.set(archive.fileKey, archive);
+            this.archives.set(archive.key, archive);
         }
 
         if(readFiles) {

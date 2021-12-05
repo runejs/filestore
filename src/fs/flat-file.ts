@@ -9,7 +9,7 @@ import { Crc32 } from '../util';
 import { mkdirSync, rmSync } from 'fs';
 
 
-export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T> {
+export class FlatFile extends FileProperties {
 
     protected _data: ByteBuffer | null;
     protected _loaded: boolean;
@@ -17,9 +17,9 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
     protected _errors: FileError[];
     protected _js5Encoded: boolean;
 
-    public constructor(index: string | number, properties?: Partial<FileProperties<T>>) {
+    public constructor(index: string | number, properties?: Partial<FileProperties>) {
         super(properties);
-        this.fileKey = typeof index === 'number' ? String(index) : index;
+        this.key = typeof index === 'number' ? String(index) : index;
         this._errors = [];
         this._js5Encoded = false;
 
@@ -60,35 +60,35 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
 
     public read(compress: boolean = false): ByteBuffer | null {
         if(!this.group) {
-            throw new Error(`Flat file ${this.fileKey} could not be read as it does not belong to any known groups.`);
+            throw new Error(`Flat file ${this.key} could not be read as it does not belong to any known groups.`);
         }
 
         const filePath = this.path + this.type;
 
         if(!existsSync(filePath)) {
             logger.error(`Flat file not found: ${filePath}`);
-            this.recordError(FileError.NOT_FOUND);
+            this.recordError('NOT_FOUND');
             return null;
         }
 
         const data = readFileSync(filePath);
 
         if(!data) {
-            this.recordError(FileError.INVALID);
+            this.recordError('INVALID');
         } else if(!data.length) {
-            this.recordError(FileError.EMPTY);
+            this.recordError('EMPTY');
         } else {
             const fileData = new ByteBuffer(data);
 
             this.name = this.group.name;
             this.nameHash = this.group.nameHash;
-            this.stripeSizes = this.fileIndex.stripeSizes;
-            this.crc32 = this.fileIndex.crc32 ?? 0;
-            this.sha256 = this.fileIndex.sha256 ?? undefined;
+            this.stripes = this.index.stripes;
+            this.crc32 = this.index.crc32 ?? 0;
+            this.sha256 = this.index.sha256 ?? undefined;
 
             this.setData(fileData, false);
 
-            if(this.size !== this.fileIndex.size || this.sha256 !== this.generateSha256()) {
+            if(this.size !== this.index.size || this.sha256 !== this.generateSha256()) {
                 this._modified = true;
             }
 
@@ -103,18 +103,27 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
 
     public write(): void {
         if(this.empty) {
-            logger.error(`Error writing file ${this.name || this.fileKey}: File is empty.`);
-            return;
+            let name = (this.name || this.key);
+
+            if(this.group) {
+                if(this.group.files.size > 1) {
+                    name = `${(this.group.name || this.group.key)}/${name}`;
+                } else {
+                    name = (this.group.name || this.group.key);
+                }
+            }
+
+            logger.error(`Error writing file ${name}: File is empty.`);
+        } else {
+            const filePath = this.outputPath;
+            const fileData = this.data.toNodeBuffer();
+
+            if(existsSync(filePath)) {
+                rmSync(filePath, { recursive: true, force: true });
+            }
+
+            writeFileSync(filePath, fileData);
         }
-
-        const filePath = this.outputPath;
-        const fileData = this.data.toNodeBuffer();
-
-        if(existsSync(filePath)) {
-            rmSync(filePath, { recursive: true, force: true });
-        }
-
-        writeFileSync(filePath, fileData);
     }
 
     public decrypt(): ByteBuffer {
@@ -127,7 +136,7 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
         if(this.archive?.config?.encryptionPattern) {
             // File name must match the given pattern to be encrypted
             if(!this.name) {
-                throw new Error(`Error decrypting file ${this.fileKey}: File name not found.`);
+                throw new Error(`Error decrypting file ${this.key}: File name not found.`);
             }
 
             const patternRegex = new RegExp(this.archive.config.encryptionPattern);
@@ -188,7 +197,7 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
                 dataCopy.readerIndex = readerIndex;
                 return dataCopy;
             } else {
-                logger.warn(`Invalid XTEA decryption keys found for file ${this.name || this.fileKey} using game version ${gameVersion}.`);
+                logger.warn(`Invalid XTEA decryption keys found for file ${this.name || this.key} using game version ${gameVersion}.`);
             }
         } else {
             // logger.warn(`No XTEA decryption keys found for file ${this.name || this.fileKey} using game version ${gameVersion}.`);
@@ -248,10 +257,10 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
                     }
                 } catch(error) {
                     if(this.encrypted) {
-                        logger.error(`Unable to decrypt file ${this.name || this.fileKey}.`);
+                        logger.error(`Unable to decrypt file ${this.name || this.key}.`);
                         this.archive?.incrementMissingEncryptionKeys();
                     } else {
-                        logger.error(`Unable to decompress file ${this.name || this.fileKey}: ${error?.message ?? error}`);
+                        logger.error(`Unable to decompress file ${this.name || this.key}: ${error?.message ?? error}`);
                     }
                     data = null;
                 }
@@ -327,13 +336,60 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
 
             if(originalCrc !== this.crc32) {
                 // logger.warn(`Archive ${this.name} checksum has changed from ${originalCrc} to ${this.crc32}.`);
-                this.fileIndex.crc32 = this.crc32;
+                this.index.crc32 = this.crc32;
             }
 
             return this._data;
         } else {
             return null;
         }
+    }
+
+    public generateIndex(): FileIndex {
+        const isNamed = !!this.name && this.name.length;
+        let name = this.name;
+        let nameHash: number | undefined = undefined;
+
+        if(!isNamed) {
+            if(this.nameHash !== -1) {
+                name = this.store.findFileName(this.nameHash) ?? String(this.nameHash);
+                nameHash = this.nameHash;
+            } else {
+                name = this.key;
+            }
+        } else if(this.nameHash === -1) {
+            this.nameHash = this.store.hashFileName(name);
+        }
+
+        if(!this.sha256?.length) {
+            if(this.compressed) {
+                this.decompress();
+            }
+
+            this.generateSha256();
+        }
+
+        if(!this.crc32 || this.crc32 === -1) {
+            if(!this.compressed) {
+                this.compress();
+            }
+
+            this.generateCrc32();
+        }
+
+        this.index = {
+            key: this.numericKey,
+            name,
+            nameHash,
+            size: this.size || 0,
+            crc32: this.crc32 || undefined,
+            sha256: this.sha256 || undefined,
+            version: this.version || undefined,
+            stripes: this.stripes?.length ? this.stripes : undefined,
+            errors: this.errors?.length ? this.errors : undefined
+        };
+
+        return this.index;
     }
 
     public setData(data: ByteBuffer, compressed: boolean): void {
@@ -408,7 +464,7 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
     public get path(): string {
         const groupPath = this.group?.path || null;
         if(!groupPath) {
-            throw new Error(`Error generating file path; File ${this.fileKey} has not been added to a group.`);
+            throw new Error(`Error generating file path; File ${this.key} has not been added to a group.`);
         }
 
         const extension = (this.archive?.config?.contentType || '');
@@ -416,14 +472,14 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
         if(this.group.files.size === 1) {
             return groupPath + extension;
         } else {
-            return join(groupPath, (this.name || this.fileKey) + extension);
+            return join(groupPath, (this.name || this.key) + extension);
         }
     }
 
     public get outputPath(): string {
         const groupOutputPath = this.group?.outputPath || null;
         if(!groupOutputPath) {
-            throw new Error(`Error generating file output path; File ${this.fileKey} has not been added to a group.`);
+            throw new Error(`Error generating file output path; File ${this.key} has not been added to a group.`);
         }
 
         const extension = (this.archive?.config?.contentType || '');
@@ -431,7 +487,7 @@ export class FlatFile<T extends FileIndex = FileIndex> extends FileProperties<T>
         if(this.group.files.size === 1) {
             return groupOutputPath + extension;
         } else {
-            return join(groupOutputPath, (this.name || this.fileKey) + extension);
+            return join(groupOutputPath, (this.name || this.key) + extension);
         }
     }
 

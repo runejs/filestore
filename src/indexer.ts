@@ -1,7 +1,7 @@
 import { join } from 'path';
 import { logger } from '@runejs/common';
 import { run, createObject } from './util';
-import { FlatFileStore } from './flat-file-store';
+import { Store } from './fs';
 
 
 class IndexerOptions {
@@ -10,6 +10,7 @@ class IndexerOptions {
     public debug: boolean = false;
     public compress: boolean = false;
     public archive: string = 'main';
+    public version: number = -1;
 
     public static create(options?: Partial<IndexerOptions>): IndexerOptions {
         return createObject<IndexerOptions>(IndexerOptions, options, true);
@@ -18,13 +19,11 @@ class IndexerOptions {
 }
 
 
-run(async args => {
+run(args => {
     const options = IndexerOptions.create(args as any);
     const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 
-    const flatFileStore = new FlatFileStore({
-        storePath: options.store
-    });
+    const fileStore = new Store(options.version, options.store, join(options.store, 'output'));
 
     if(options.archive === 'main') {
         logger.info(`Indexing flat file store${args.size !== 0 ? ` with arguments:` : `...`}`);
@@ -32,15 +31,19 @@ run(async args => {
             logger.info(argDebugString);
         }
 
-        flatFileStore.readStore(options.compress);
+        fileStore.read(options.compress);
+        Array.from(fileStore.archives.values()).forEach(archive => archive.writeIndexFile());
     } else {
         logger.info(`Indexing flat file store archive ${options.archive}${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
             logger.info(argDebugString);
         }
 
-        const archive = await flatFileStore.getArchive(options.archive);
-        archive.readFiles(options.compress);
-        archive.writeArchiveIndexFile();
+        fileStore.load();
+
+        const archive = fileStore.find(options.archive);
+
+        archive.read(options.compress);
+        archive.writeIndexFile();
     }
 });

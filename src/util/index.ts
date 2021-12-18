@@ -6,3 +6,4 @@ export * from './cmd';
 export * from './names';
 export * from './crc32';
 export * from './objects';
+export * from './terminal-interface';

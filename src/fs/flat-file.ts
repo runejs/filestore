@@ -66,7 +66,7 @@ export class FlatFile extends FileProperties {
         const filePath = this.path + this.type;
 
         if(!existsSync(filePath)) {
-            logger.error(`Flat file not found: ${filePath}`);
+            logger.error(`File not found: ${filePath}`);
             this.recordError('NOT_FOUND');
             return null;
         }
@@ -76,7 +76,7 @@ export class FlatFile extends FileProperties {
         try {
             data = readFileSync(filePath);
         } catch(error) {
-            logger.error(`Error reading flat file at ${filePath}:`, error);
+            logger.error(`Error reading file at ${filePath}:`, error);
             data = null;
         }
 
@@ -114,7 +114,7 @@ export class FlatFile extends FileProperties {
 
             if(this.group) {
                 if(this.group.fileCount > 1) {
-                    name = `${(this.group.name || this.group.key)}/${name}`;
+                    name = `${(this.group.name || this.group.key)}:${name}`;
                 } else {
                     name = (this.group.name || this.group.key);
                 }

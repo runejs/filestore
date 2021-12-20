@@ -269,10 +269,8 @@ export class Group extends FlatFile {
         const originalDigest = this.sha256;
         this.generateSha256();
 
-        if(!this.sha256) {
-            logger.error(`File ${this.archive.name}/${groupName} was not loaded.`);
-        } else if(originalDigest !== this.sha256) {
-            logger.info(`Detected changes in file ${this.archive.name}/${groupName}.`);
+        if(this.sha256 && originalDigest !== this.sha256) {
+            logger.info(`Detected changes in file ${this.archive.name}:${groupName}.`);
             this.index.sha256 = this.sha256;
             this._modified = true;
         }
@@ -283,14 +281,11 @@ export class Group extends FlatFile {
             const originalCrc = this.crc32;
 
             if(originalCrc !== this.generateCrc32()) {
-                // logger.warn(`File ${this.archive.name}/${groupName} checksum has changed from ${originalCrc} ` +
-                //     `to ${this.crc32}.`);
+                if(!this._modified) {
+                    logger.info(`Detected changes in file ${this.archive.name}:${groupName}.`);
+                }
                 this.index.crc32 = this.crc32;
                 this._modified = true;
-            }
-
-            if(this.archive.versioned) {
-                // this.appendVersionNumber();
             }
         }
 

@@ -71,7 +71,14 @@ export class FlatFile extends FileProperties {
             return null;
         }
 
-        const data = readFileSync(filePath);
+        let data: Buffer | null = null;
+
+        try {
+            data = readFileSync(filePath);
+        } catch(error) {
+            logger.error(`Error reading flat file at ${filePath}:`, error);
+            data = null;
+        }
 
         if(!data) {
             this.recordError('INVALID');
@@ -106,7 +113,7 @@ export class FlatFile extends FileProperties {
             let name = (this.name || this.key);
 
             if(this.group) {
-                if(this.group.files.size > 1) {
+                if(this.group.fileCount > 1) {
                     name = `${(this.group.name || this.group.key)}/${name}`;
                 } else {
                     name = (this.group.name || this.group.key);
@@ -239,10 +246,8 @@ export class FlatFile extends FileProperties {
                 logger.error(this.encryption === 'xtea' ? `Missing or invalid XTEA key.` :
                     `Invalid decompressed file length: ${decompressedLength}`);
             } else {
-                const decompressedData = new ByteBuffer(
-                    this.compression === 'bzip' ? decompressedLength :
-                        (compressedData.length - compressedData.readerIndex + 2)
-                );
+                const decompressedData = new ByteBuffer(this.compression === 'bzip' ?
+                    decompressedLength : (compressedData.length - compressedData.readerIndex + 2));
 
                 compressedData.copy(decompressedData, 0, compressedData.readerIndex);
 
@@ -469,10 +474,10 @@ export class FlatFile extends FileProperties {
 
         const extension = (this.archive?.config?.contentType || '');
 
-        if(this.group.files.size === 1) {
+        if(this.group.fileCount === 1) {
             return groupPath + extension;
         } else {
-            return join(groupPath, (this.name || this.key) + extension);
+            return join(groupPath, String(this.name || this.key) + extension);
         }
     }
 
@@ -484,10 +489,10 @@ export class FlatFile extends FileProperties {
 
         const extension = (this.archive?.config?.contentType || '');
 
-        if(this.group.files.size === 1) {
+        if(this.group.fileCount === 1) {
             return groupOutputPath + extension;
         } else {
-            return join(groupOutputPath, (this.name || this.key) + extension);
+            return join(groupOutputPath, String(this.name || this.key) + extension);
         }
     }
 

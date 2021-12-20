@@ -1,4 +1,4 @@
-import fs from 'graceful-fs';
+/*import fs from 'graceful-fs';
 import { join } from 'path';
 import { logger } from '@runejs/common';
 import { run } from './util';
@@ -71,4 +71,4 @@ run(async args => {
 
     console.log(flatFileData);
     console.log(js5FileData);
-});
+});*/

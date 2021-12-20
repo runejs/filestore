@@ -325,6 +325,7 @@ export class Archive extends FlatFile {
                 encrypted: false,
                 index: groupDetails
             });
+
             this.children.set(groupIndex, group);
             group.read(false);
         }
@@ -401,6 +402,10 @@ export class Archive extends FlatFile {
 
     public writeIndexFile(): void {
         this.generateIndex();
+
+        if(!existsSync(this.outputPath)) {
+            mkdirSync(this.outputPath, { recursive: true });
+        }
 
         const filePath = join(this.outputPath, `.index`);
         const fileData: string = JSON.stringify(this.index, (key, value) => {

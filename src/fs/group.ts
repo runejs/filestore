@@ -13,10 +13,13 @@ export class Group extends FlatFile {
     public files: Map<string, FlatFile>;
     public fileSizes: Map<string, number>;
 
+    private _fileCount: number;
+
     public constructor(index: string | number, properties?: Partial<FileProperties>) {
         super(index, properties);
         this.files = new Map<string, FlatFile>();
         this.fileSizes = new Map<string, number>();
+        this._fileCount = 0;
     }
 
     public override js5Decode(): ByteBuffer | null {
@@ -32,13 +35,16 @@ export class Group extends FlatFile {
         this.encryption = this.archive.encryption ?? 'none';
         this.encrypted = (this.archive.encryption ?? 'none') !== 'none';
 
+        this.files.clear();
+        this.fileSizes.clear();
+
         if(this.compressed) {
             this.decompress();
         }
 
         this.generateSha256();
 
-        if(this.files.size === 1) {
+        if(this._fileCount === 1) {
             const flatFile: FlatFile = Array.from(this.files.values())[0];
             flatFile.key = '0';
             flatFile.name = this.name;
@@ -59,8 +65,6 @@ export class Group extends FlatFile {
             this._data.readerIndex = (dataLength - 1); // EOF
 
             const stripeCount = this._data.get('byte', 'unsigned');
-
-            this.fileSizes.clear();
 
             this._data.readerIndex = (dataLength - 1 - stripeCount * this.files.size * 4); // Stripe data footer
 
@@ -119,6 +123,7 @@ export class Group extends FlatFile {
             }
         }
 
+        this._fileCount = this.files.size;
         this._js5Encoded = false;
         return this._data ?? null;
     }
@@ -129,7 +134,7 @@ export class Group extends FlatFile {
         }
 
         // Single-file group
-        if(this.files.size === 1) {
+        if(this._fileCount === 1) {
             const flatFile = Array.from(this.files.values())[0];
             this.setData(flatFile.data ?? new ByteBuffer([]), false);
             this._js5Encoded = true;
@@ -139,7 +144,7 @@ export class Group extends FlatFile {
         // Multi-file group
         const fileData: ByteBuffer[] = Array.from(this.files.values()).map(file => file?.data ?? new ByteBuffer(0));
         const fileSizes = fileData.map(data => data.length);
-        const fileCount = fileSizes.length;
+        const fileCount = this._fileCount;
         const stripeCount = this.stripes?.length ?? 1;
 
         if(!stripeCount) {
@@ -156,6 +161,10 @@ export class Group extends FlatFile {
         // Write file content stripes
         for(let stripe = 0; stripe < stripeCount; stripe++) {
             for(const [ , file ] of this.files) {
+                if(!file?.data?.length) {
+                    continue;
+                }
+
                 const stripeSize = file.stripes[stripe];
 
                 if(stripeSize) {
@@ -169,6 +178,10 @@ export class Group extends FlatFile {
         for(let stripe = 0; stripe < stripeCount; stripe++) {
             let prevSize = 0;
             for(const [ , file ] of this.files) {
+                if(!file?.data?.length) {
+                    continue;
+                }
+
                 const stripeSize = file.stripes[stripe] ?? 0;
                 groupBuffer.put(stripeSize - prevSize, 'int');
                 prevSize = stripeSize;
@@ -188,26 +201,31 @@ export class Group extends FlatFile {
     }
 
     public override read(compress: boolean = false): ByteBuffer | null {
-        const indexData = this.index;
-
-        if(!indexData) {
+        // @TODO re-index this automatically
+        if(!this.index) {
             throw new Error(`Error reading group ${this.name} files: Group is not indexed, please re-index the ` +
                 `${this.archive.name} archive.`);
         }
 
-        if(!this.index.children.size) {
-            throw new Error(`Error reading group ${this.name} files: File group is empty or not loaded.`);
+        let children = this.index.children;
+
+        if(!children?.size) {
+            // Set default single child file (which is excluded from the .index file to save on disk space)
+            children = new Map<string, FileIndex>();
+            const { name, nameHash, size, version, crc32, sha256, stripes } = this.index;
+            children.set('0', {
+                key: 0, name, nameHash, size, version, crc32, sha256, stripes
+            });
         }
 
-        let fileNotFound = false;
         let isDirectory = false;
         let childFileCount = 1;
 
-        const groupName = indexData.name;
+        const groupName = this.index.name;
         const groupPath = this.path;
 
         if(this.archive.versioned) {
-            this.version = indexData.version;
+            this.version = this.index.version;
         }
 
         if(existsSync(groupPath) && statSync(groupPath).isDirectory()) {
@@ -215,45 +233,38 @@ export class Group extends FlatFile {
             isDirectory = true;
         }
 
-        if(indexData.children.size !== childFileCount) {
+        if(children.size !== childFileCount) {
             this._modified = true;
         }
 
-        if(!isDirectory) {
-            const fileIndex = '0';
-            const fileIndexData = indexData.children.get(fileIndex);
+        this.files.clear();
+        this.fileSizes.clear();
+
+        // Load the group's files
+        for(const [ fileIndex, fileIndexData ] of children) {
+            const { size, stripes, crc32, sha256 } = fileIndexData;
             const file = new FlatFile(fileIndex, {
                 group: this, archive: this.archive,
+                size, stripes, crc32, sha256,
                 index: fileIndexData
             });
 
             this.files.set(fileIndex, file);
+            this.fileSizes.set(fileIndex, size);
+        }
 
-            if(!file.read(compress)) {
-                fileNotFound = true;
-            } else {
-                this.setData(file.data, file.compressed);
-            }
-        } else {
-            for(const [ fileIndex, fileIndexData ] of indexData.children) {
-                const { size, stripes, crc32, sha256 } = fileIndexData;
-                const file = new FlatFile(fileIndex, {
-                    group: this, archive: this.archive,
-                    size, stripes, crc32, sha256,
-                    index: fileIndexData
-                });
+        this._fileCount = this.files.size;
 
-                this.files.set(fileIndex, file);
+        // Read the content of each file within the group
+        Array.from(this.files.values()).forEach(file => file.read(compress));
 
-                file.read(compress);
-            }
+        if(this._fileCount === 1) {
+            // Single file group, set the group data to match the flat file data
+            const file = this.files.get('0');
+            this.setData(file.data, file.compressed);
         }
 
         this.js5Encode();
-
-        if(fileNotFound) {
-            return null;
-        }
 
         const originalDigest = this.sha256;
         this.generateSha256();
@@ -261,8 +272,7 @@ export class Group extends FlatFile {
         if(!this.sha256) {
             logger.error(`File ${this.archive.name}/${groupName} was not loaded.`);
         } else if(originalDigest !== this.sha256) {
-            logger.warn(`File ${this.archive.name}/${groupName} digest has changed:`,
-                `Orig: ${originalDigest}`, `New:  ${this.sha256}`);
+            logger.info(`Detected changes in file ${this.archive.name}/${groupName}.`);
             this.index.sha256 = this.sha256;
             this._modified = true;
         }
@@ -289,7 +299,7 @@ export class Group extends FlatFile {
     }
 
     public override write(): void {
-        if(!this.files.size) {
+        if(!this._fileCount) {
             logger.error(`Error writing group ${this.name || this.key}: Group is empty.`);
             return;
         }
@@ -310,7 +320,7 @@ export class Group extends FlatFile {
     public override generateIndex(): FileIndex {
         const fileIndex = super.generateIndex();
 
-        if(this.files.size <= 1) {
+        if(this._fileCount <= 1) {
             // Single file group
             return this.index;
         } else {
@@ -337,6 +347,7 @@ export class Group extends FlatFile {
 
     public set(fileIndex: string | number, file: FlatFile): void {
         this.files.set(String(fileIndex), file);
+        this._fileCount = this.files.size;
     }
 
     public override get path(): string {
@@ -345,7 +356,7 @@ export class Group extends FlatFile {
             throw new Error(`Error generating group path; Archive path not provided to group ${this.key}.`);
         }
 
-        return join(archivePath, this.name || this.key);
+        return join(archivePath, String(this.name || this.key));
     }
 
     public override get outputPath(): string {
@@ -354,7 +365,10 @@ export class Group extends FlatFile {
             throw new Error(`Error generating group output path; Archive output path not provided to group ${this.key}.`);
         }
 
-        return join(archiveOutputPath, this.name || this.key);
+        return join(archiveOutputPath, String(this.name || this.key));
     }
 
+    public get fileCount(): number {
+        return this._fileCount;
+    }
 }

@@ -15,8 +15,8 @@ export const createObject = <T>(objectType: new () => T,
             });
 
             if(existingKey) {
-                let value = options instanceof Map ? options.get(key) : options[key];
-                if(typeof object[existingKey] === 'number' || /^\d*$/.test(value)) {
+                const value = options instanceof Map ? options.get(key) : options[key];
+                if(typeof object[existingKey] === 'number') {
                     object[existingKey] = Number(value);
                 } else {
                     object[existingKey] = value;

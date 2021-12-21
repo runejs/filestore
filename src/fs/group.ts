@@ -1,10 +1,9 @@
 import { join } from 'path';
-import { existsSync, readdirSync, statSync } from 'graceful-fs';
+import { existsSync, readdirSync, statSync, mkdirSync, rmSync } from 'graceful-fs';
 import { ByteBuffer } from '@runejs/common/buffer';
+import { logger } from '@runejs/common';
 import { FileProperties } from './file-properties';
 import { FlatFile } from './flat-file';
-import { logger } from '@runejs/common';
-import { mkdirSync, rmSync } from 'fs';
 import { FileIndex } from './file-index';
 
 
@@ -202,6 +201,7 @@ export class Group extends FlatFile {
 
     public override read(compress: boolean = false): ByteBuffer | null {
         // @TODO re-index this automatically
+
         if(!this.index) {
             throw new Error(`Error reading group ${this.name} files: Group is not indexed, please re-index the ` +
                 `${this.archive.name} archive.`);
@@ -242,8 +242,9 @@ export class Group extends FlatFile {
 
         // Load the group's files
         for(const [ fileIndex, fileIndexData ] of children) {
-            const { size, stripes, crc32, sha256 } = fileIndexData;
+            const { name, nameHash, size, stripes, crc32, sha256 } = fileIndexData;
             const file = new FlatFile(fileIndex, {
+                name, nameHash,
                 group: this, archive: this.archive,
                 size, stripes, crc32, sha256,
                 index: fileIndexData

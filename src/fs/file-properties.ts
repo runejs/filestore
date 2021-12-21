@@ -36,6 +36,10 @@ export class FileProperties {
     public get numericKey(): number {
         return Number(this.key);
     }
+
+    public get hasNameHash(): boolean {
+        return this.nameHash !== undefined && this.nameHash !== null && this.nameHash !== -1 && !isNaN(this.nameHash);
+    }
 }
 
 export interface ArchiveProperties {

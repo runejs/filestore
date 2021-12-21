@@ -1,12 +1,11 @@
 import { createHash } from 'crypto';
 import { join } from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'graceful-fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { FileError, FileIndex, FileProperties } from './index';
 import { Crc32 } from '../util';
-import { mkdirSync, rmSync } from 'fs';
 
 
 export class FlatFile extends FileProperties {
@@ -19,6 +18,7 @@ export class FlatFile extends FileProperties {
 
     public constructor(index: string | number, properties?: Partial<FileProperties>) {
         super(properties);
+
         this.key = typeof index === 'number' ? String(index) : index;
         this._errors = [];
         this._js5Encoded = false;
@@ -36,16 +36,6 @@ export class FlatFile extends FileProperties {
                 this.store = this.archive.store;
             } else if(this.group?.store) {
                 this.store = this.group.store;
-            }
-        }
-
-        // Ensure that the file name and name hash are both present if one is supplied
-
-        if(this.store) {
-            if(this.name && this.nameHash === -1) {
-                this.nameHash = this.store.hashFileName(this.name);
-            } else if(!this.name && this.nameHash !== -1) {
-                this.name = this.store.findFileName(this.nameHash);
             }
         }
     }
@@ -87,11 +77,25 @@ export class FlatFile extends FileProperties {
         } else {
             const fileData = new ByteBuffer(data);
 
-            this.name = this.group.name;
-            this.nameHash = this.group.nameHash;
-            this.stripes = this.index.stripes;
-            this.crc32 = this.index.crc32 ?? 0;
-            this.sha256 = this.index.sha256 ?? undefined;
+            if(!this.name) {
+                this.name = this.group.name || this.key;
+            }
+
+            if(!this.nameHash) {
+                this.nameHash = this.group.nameHash || undefined;
+            }
+
+            if(!this.stripes) {
+                this.stripes = this.index.stripes;
+            }
+
+            if(!this.crc32) {
+                this.crc32 = this.index.crc32 ?? 0;
+            }
+
+            if(!this.sha256) {
+                this.sha256 = this.index.sha256 ?? undefined;
+            }
 
             this.setData(fileData, false);
 
@@ -356,13 +360,13 @@ export class FlatFile extends FileProperties {
         let nameHash: number | undefined = undefined;
 
         if(!isNamed) {
-            if(this.nameHash !== -1) {
-                name = this.store.findFileName(this.nameHash) ?? String(this.nameHash);
+            if(this.hasNameHash) {
+                name = this.store.findFileName(this.nameHash, String(this.nameHash));
                 nameHash = this.nameHash;
             } else {
                 name = this.key;
             }
-        } else if(this.nameHash === -1) {
+        } else if(this.hasNameHash) {
             this.nameHash = this.store.hashFileName(name);
         }
 
@@ -384,8 +388,8 @@ export class FlatFile extends FileProperties {
 
         this.index = {
             key: this.numericKey,
-            name,
-            nameHash,
+            name: name || this.key,
+            nameHash: nameHash || undefined,
             size: this.size || 0,
             crc32: this.crc32 || undefined,
             sha256: this.sha256 || undefined,

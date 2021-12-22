@@ -34,9 +34,6 @@ export class Group extends FlatFile {
         this.encryption = this.archive.encryption ?? 'none';
         this.encrypted = (this.archive.encryption ?? 'none') !== 'none';
 
-        this.files.clear();
-        this.fileSizes.clear();
-
         if(this.compressed) {
             this.decompress();
         }

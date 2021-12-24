@@ -1,9 +1,8 @@
 import { join } from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'graceful-fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { ArchiveProperties, FileProperties, Group, FlatFile, FileIndex, FileError } from './index';
-import { mkdirSync, rmSync } from 'fs';
 
 
 export class Archive extends FlatFile {
@@ -79,6 +78,7 @@ export class Archive extends FlatFile {
             const delta = archiveData.get('short', 'unsigned');
             groupIndices[i] = accumulator += delta;
             const group = new Group(groupIndices[i], {
+                name: String(groupIndices[i]),
                 archive: this,
                 encryption: this.encryption,
                 encrypted,
@@ -95,7 +95,7 @@ export class Archive extends FlatFile {
             for(const groupIndex of groupIndices) {
                 const group = this.get(groupIndex);
                 group.nameHash = archiveData.get('int');
-                group.name = this.store.findFileName(group.nameHash);
+                group.name = this.store.findFileName(group.nameHash, String(group.nameHash));
             }
         }
 
@@ -129,8 +129,7 @@ export class Archive extends FlatFile {
                 group.set(childFileIndex, new FlatFile(childFileIndex, {
                     archive: this,
                     group: group,
-                    name: group.name,
-                    nameHash: group.nameHash
+                    name: String(childFileIndex)
                 }));
             }
         }
@@ -144,7 +143,7 @@ export class Archive extends FlatFile {
                     const nameHash = archiveData.get('int');
                     if(childFile) {
                         childFile.nameHash = nameHash;
-                        childFile.name = this.store.findFileName(childFile.nameHash);
+                        childFile.name = this.store.findFileName(childFile.nameHash, String(childFile.nameHash));
                     }
                 }
             }
@@ -325,6 +324,7 @@ export class Archive extends FlatFile {
                 encrypted: false,
                 index: groupDetails
             });
+
             this.children.set(groupIndex, group);
             group.read(false);
         }
@@ -401,6 +401,10 @@ export class Archive extends FlatFile {
 
     public writeIndexFile(): void {
         this.generateIndex();
+
+        if(!existsSync(this.outputPath)) {
+            mkdirSync(this.outputPath, { recursive: true });
+        }
 
         const filePath = join(this.outputPath, `.index`);
         const fileData: string = JSON.stringify(this.index, (key, value) => {

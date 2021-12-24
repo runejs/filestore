@@ -1,12 +1,11 @@
 import { createHash } from 'crypto';
 import { join } from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'graceful-fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { FileError, FileIndex, FileProperties } from './index';
 import { Crc32 } from '../util';
-import { mkdirSync, rmSync } from 'fs';
 
 
 export class FlatFile extends FileProperties {
@@ -19,6 +18,7 @@ export class FlatFile extends FileProperties {
 
     public constructor(index: string | number, properties?: Partial<FileProperties>) {
         super(properties);
+
         this.key = typeof index === 'number' ? String(index) : index;
         this._errors = [];
         this._js5Encoded = false;
@@ -36,16 +36,6 @@ export class FlatFile extends FileProperties {
                 this.store = this.archive.store;
             } else if(this.group?.store) {
                 this.store = this.group.store;
-            }
-        }
-
-        // Ensure that the file name and name hash are both present if one is supplied
-
-        if(this.store) {
-            if(this.name && this.nameHash === -1) {
-                this.nameHash = this.store.hashFileName(this.name);
-            } else if(!this.name && this.nameHash !== -1) {
-                this.name = this.store.findFileName(this.nameHash);
             }
         }
     }
@@ -66,12 +56,19 @@ export class FlatFile extends FileProperties {
         const filePath = this.path + this.type;
 
         if(!existsSync(filePath)) {
-            logger.error(`Flat file not found: ${filePath}`);
+            logger.error(`File not found: ${filePath}`);
             this.recordError('NOT_FOUND');
             return null;
         }
 
-        const data = readFileSync(filePath);
+        let data: Buffer | null = null;
+
+        try {
+            data = readFileSync(filePath);
+        } catch(error) {
+            logger.error(`Error reading file at ${filePath}:`, error);
+            data = null;
+        }
 
         if(!data) {
             this.recordError('INVALID');
@@ -80,11 +77,25 @@ export class FlatFile extends FileProperties {
         } else {
             const fileData = new ByteBuffer(data);
 
-            this.name = this.group.name;
-            this.nameHash = this.group.nameHash;
-            this.stripes = this.index.stripes;
-            this.crc32 = this.index.crc32 ?? 0;
-            this.sha256 = this.index.sha256 ?? undefined;
+            if(!this.name) {
+                this.name = this.group.name || this.key;
+            }
+
+            if(!this.nameHash) {
+                this.nameHash = this.group.nameHash || undefined;
+            }
+
+            if(!this.stripes) {
+                this.stripes = this.index.stripes;
+            }
+
+            if(!this.crc32) {
+                this.crc32 = this.index.crc32 ?? 0;
+            }
+
+            if(!this.sha256) {
+                this.sha256 = this.index.sha256 ?? undefined;
+            }
 
             this.setData(fileData, false);
 
@@ -106,8 +117,8 @@ export class FlatFile extends FileProperties {
             let name = (this.name || this.key);
 
             if(this.group) {
-                if(this.group.files.size > 1) {
-                    name = `${(this.group.name || this.group.key)}/${name}`;
+                if(this.group.fileCount > 1) {
+                    name = `${(this.group.name || this.group.key)}:${name}`;
                 } else {
                     name = (this.group.name || this.group.key);
                 }
@@ -239,10 +250,8 @@ export class FlatFile extends FileProperties {
                 logger.error(this.encryption === 'xtea' ? `Missing or invalid XTEA key.` :
                     `Invalid decompressed file length: ${decompressedLength}`);
             } else {
-                const decompressedData = new ByteBuffer(
-                    this.compression === 'bzip' ? decompressedLength :
-                        (compressedData.length - compressedData.readerIndex + 2)
-                );
+                const decompressedData = new ByteBuffer(this.compression === 'bzip' ?
+                    decompressedLength : (compressedData.length - compressedData.readerIndex + 2));
 
                 compressedData.copy(decompressedData, 0, compressedData.readerIndex);
 
@@ -351,13 +360,13 @@ export class FlatFile extends FileProperties {
         let nameHash: number | undefined = undefined;
 
         if(!isNamed) {
-            if(this.nameHash !== -1) {
-                name = this.store.findFileName(this.nameHash) ?? String(this.nameHash);
+            if(this.hasNameHash) {
+                name = this.store.findFileName(this.nameHash, String(this.nameHash));
                 nameHash = this.nameHash;
             } else {
                 name = this.key;
             }
-        } else if(this.nameHash === -1) {
+        } else if(this.hasNameHash) {
             this.nameHash = this.store.hashFileName(name);
         }
 
@@ -379,8 +388,8 @@ export class FlatFile extends FileProperties {
 
         this.index = {
             key: this.numericKey,
-            name,
-            nameHash,
+            name: name || this.key,
+            nameHash: nameHash || undefined,
             size: this.size || 0,
             crc32: this.crc32 || undefined,
             sha256: this.sha256 || undefined,
@@ -469,10 +478,10 @@ export class FlatFile extends FileProperties {
 
         const extension = (this.archive?.config?.contentType || '');
 
-        if(this.group.files.size === 1) {
+        if(this.group.fileCount === 1) {
             return groupPath + extension;
         } else {
-            return join(groupPath, (this.name || this.key) + extension);
+            return join(groupPath, String(this.name || this.key) + extension);
         }
     }
 
@@ -484,10 +493,10 @@ export class FlatFile extends FileProperties {
 
         const extension = (this.archive?.config?.contentType || '');
 
-        if(this.group.files.size === 1) {
+        if(this.group.fileCount === 1) {
             return groupOutputPath + extension;
         } else {
-            return join(groupOutputPath, (this.name || this.key) + extension);
+            return join(groupOutputPath, String(this.name || this.key) + extension);
         }
     }
 

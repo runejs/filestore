@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'graceful-fs';
+import { existsSync, readFileSync, mkdirSync, rmSync } from 'graceful-fs';
 import { join } from 'path';
 import JSON5 from 'json5';
 import { logger } from '@runejs/common';
@@ -6,7 +6,6 @@ import { ByteBuffer } from '@runejs/common/buffer';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
 import { ArchiveProperties, Js5Store, Archive } from './index';
-import { mkdirSync, rmSync } from 'fs';
 
 
 export class Store {
@@ -196,16 +195,24 @@ export class Store {
         return hash | 0;
     }
 
-    public findFileName(nameHash: string | number): string | undefined {
+    public findFileName(nameHash: string | number | undefined, defaultName?: string | undefined): string | undefined {
         if(!this.fileNameHashes.size) {
             this.loadFileNames();
+        }
+
+        if(nameHash === undefined || nameHash === null) {
+            return defaultName;
         }
 
         if(typeof nameHash === 'string') {
             nameHash = Number(nameHash);
         }
 
-        return this.fileNameHashes.get(nameHash) ?? undefined;
+        if(isNaN(nameHash) || nameHash === -1 || nameHash === 0) {
+            return defaultName;
+        }
+
+        return this.fileNameHashes.get(nameHash) || defaultName;
     }
 
     public loadFileNames(): void {

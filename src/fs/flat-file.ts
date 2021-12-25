@@ -147,7 +147,7 @@ export class FlatFile extends FileProperties {
             throw new Error(`Flat file ${this.key} could not be read as it does not belong to any known groups.`);
         }
 
-        const filePath = this.path + this.type;
+        const filePath = this.path;
 
         if(!existsSync(filePath)) {
             logger.error(`File not found: ${filePath}`);
@@ -575,7 +575,7 @@ export class FlatFile extends FileProperties {
         if(this.group.fileCount === 1) {
             return groupPath + extension;
         } else {
-            return join(groupPath, String(this.name || this.key) + extension);
+            return join(groupPath, String(this.name || this.key)) + extension;
         }
     }
 
@@ -585,12 +585,10 @@ export class FlatFile extends FileProperties {
             throw new Error(`Error generating file output path; File ${this.key} has not been added to a group.`);
         }
 
-        const extension = (this.archive?.config?.contentType || '');
-
         if(this.group.fileCount === 1) {
-            return groupOutputPath + extension;
+            return groupOutputPath + this.type;
         } else {
-            return join(groupOutputPath, String(this.name || this.key) + extension);
+            return join(groupOutputPath, String(this.name || this.key) + this.type);
         }
     }
 

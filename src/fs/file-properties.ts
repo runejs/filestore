@@ -49,7 +49,7 @@ export interface ArchiveProperties {
     versioned?: boolean;
     compression?: CompressionMethod;
     encryption?: EncryptionMethod;
-    encryptionPattern?: string | undefined;
+    encryptionPattern?: string | undefined; // @TODO apply region regex filter for lx_y files to the archives.json5 file
     contentType?: string;
     saveFileNames?: boolean;
     defaultFileNames?: { [key: string]: number };

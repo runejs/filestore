@@ -5,4 +5,3 @@ export * from './archive';
 export * from './store';
 export * from './file-index';
 export * from './file-error';
-export * from './js5';

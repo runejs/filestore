@@ -1,19 +1,23 @@
-import { existsSync, readFileSync, mkdirSync, rmSync } from 'graceful-fs';
+import { existsSync, readFileSync, mkdirSync, rmSync, statSync, readdirSync } from 'graceful-fs';
 import { join } from 'path';
 import JSON5 from 'json5';
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
-import { ArchiveProperties, Js5Store, Archive } from './index';
+import { ArchiveProperties, Archive } from './index';
 
 
 export class Store {
 
     public readonly archives: Map<string, Archive>;
     public readonly fileNameHashes: Map<number, string>;
-    public readonly js5: Js5Store;
 
+    private _js5MainIndex: ByteBuffer;
+    private _js5ArchiveIndexes: Map<string, ByteBuffer>;
+    private _js5MainArchiveData: ByteBuffer;
+
+    private _mainArchive: Archive;
     private _data: ByteBuffer;
     private _path: string;
     private _outputPath: string;
@@ -27,11 +31,70 @@ export class Store {
         this._outputPath = outputPath;
         this._gameVersion = gameVersion;
         this.loadArchiveConfig();
-        this.js5 = new Js5Store(this);
         Crc32.init();
         this.archives = new Map<string, Archive>();
         this.fileNameHashes = new Map<number, string>();
+
         this.load();
+    }
+
+    public js5Load(): void {
+        const js5StorePath = join(this.path, 'js5');
+
+        if(!existsSync(js5StorePath)) {
+            throw new Error(`${js5StorePath} could not be found.`);
+        }
+
+        const stats = statSync(js5StorePath);
+        if(!stats?.isDirectory()) {
+            throw new Error(`${js5StorePath} is not a valid directory.`);
+        }
+
+        const storeFileNames = readdirSync(js5StorePath);
+        const dataFile = 'main_file_cache.dat2'; // @TODO support more
+        const mainIndexFile = 'main_file_cache.idx255';
+
+        if(storeFileNames.indexOf(dataFile) === -1) {
+            throw new Error(`The main ${dataFile} data file could not be found.`);
+        }
+
+        if(storeFileNames.indexOf(mainIndexFile) === -1) {
+            throw new Error(`The main ${mainIndexFile} index file could not be found.`);
+        }
+
+        const indexFilePrefix = 'main_file_cache.idx';
+        const dataFilePath = join(js5StorePath, dataFile);
+        const mainIndexFilePath = join(js5StorePath, mainIndexFile);
+
+        this._js5MainArchiveData = new ByteBuffer(readFileSync(dataFilePath));
+        this._js5MainIndex = new ByteBuffer(readFileSync(mainIndexFilePath));
+        this._js5ArchiveIndexes = new Map<string, ByteBuffer>();
+
+        for(const fileName of storeFileNames) {
+            if(!fileName?.length || fileName === mainIndexFile || fileName === dataFile) {
+                continue;
+            }
+
+            if(!fileName.startsWith(indexFilePrefix)) {
+                continue;
+            }
+
+            const index = fileName.substring(fileName.indexOf('.idx') + 4);
+            const numericIndex = Number(index);
+
+            if(isNaN(numericIndex)) {
+                logger.error(`Index file ${fileName} does not have a valid extension.`);
+            }
+
+            if(!this.has(index)) {
+                logger.warn(`Archive ${index} was found within the JS5 store, but is not configured for flat file store use.`,
+                    `Please add the archive to the archives.json5 configuration file to load it properly.`);
+                continue;
+            }
+
+            const fileData = new ByteBuffer(readFileSync(join(js5StorePath, fileName)));
+            this._js5ArchiveIndexes.set(index, fileData);
+        }
     }
 
     public js5Decode(): ByteBuffer | null {
@@ -105,6 +168,17 @@ export class Store {
         this.archives.clear();
 
         const archiveConfigs = Object.entries(this.archiveConfig);
+        const mainArchiveConfig = Array.from(Object.values(this.archiveConfig)).find(a => a.index === 255);
+
+        if(!mainArchiveConfig) {
+            throw new Error(`Main archive (index 255) configuration was not found. ` +
+                `Please configure the main archive using the archives.json5 file within the store config directory.`)
+        }
+
+        this._mainArchive = new Archive(255, mainArchiveConfig, {
+            store: this,
+            name: 'main'
+        });
 
         for(const [ name, config ] of archiveConfigs) {
             if(config.index === 255) {
@@ -113,6 +187,7 @@ export class Store {
 
             const archive = new Archive(config.index, config, {
                 store: this,
+                archive: this._mainArchive,
                 encryption: config.encryption ?? 'none',
                 compression: config.compression ?? 'none',
                 name
@@ -233,6 +308,34 @@ export class Store {
 
     public setGameVersionMissing(): void {
         this._gameVersionMissing = true;
+    }
+
+    public get js5MainIndex(): ByteBuffer {
+        if(!this._js5MainIndex?.length || !this._js5MainArchiveData?.length) {
+            this.js5Decode();
+        }
+
+        return this._js5MainIndex;
+    }
+
+    public get js5ArchiveIndexes(): Map<string, ByteBuffer> {
+        if(!this._js5MainIndex?.length || !this._js5MainArchiveData?.length) {
+            this.js5Decode();
+        }
+
+        return this._js5ArchiveIndexes;
+    }
+
+    public get js5MainArchiveData(): ByteBuffer {
+        if(!this._js5MainIndex?.length || !this._js5MainArchiveData?.length) {
+            this.js5Decode();
+        }
+
+        return this._js5MainArchiveData;
+    }
+
+    public get mainArchive(): Archive {
+        return this._mainArchive;
     }
 
     public get path(): string {

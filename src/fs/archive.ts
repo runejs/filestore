@@ -22,9 +22,18 @@ export class Archive extends FlatFile {
         config.format = config.format || 5;
 
         this.config = config;
-        this.encryption = this.config.encryption ?? 'none';
-        this.compression = this.config.compression ?? 'none';
-        this.index = this.readIndexFile();
+        this.encryption = this.config.encryption || 'none';
+        this.compression = this.config.compression || 'none';
+
+        if(this.numericKey !== 255) {
+            this.index = this.readIndexFile();
+        } else {
+            this.index = {
+                key: 255,
+                name: this.name,
+                children: new Map<string, FileIndex>()
+            };
+        }
     }
 
     public override js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
@@ -36,11 +45,11 @@ export class Archive extends FlatFile {
 
         logger.info(`Decoding archive ${this.name}...`);
 
-        const js5File = this.store.js5.extractFile(this.store, this.key);
-        this.setData(js5File.data, true);
+        const js5File = super.js5Decode();
+        this.setData(js5File, true);
 
-        if(js5File.properties.stripes) {
-            this.index.stripes = js5File.properties.stripes;
+        if(this.stripes) {
+            this.index.stripes = this.stripes;
         }
 
         this.generateCrc32();

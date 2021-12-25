@@ -26,7 +26,7 @@ const unpackFiles = (store: Store, archiveName: string, args: ArgumentMap, debug
         .map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 
     try {
-        store.js5.load();
+        store.js5Load();
 
         if (archiveName === 'main') {
             logger.info(`Unpacking JS5 file store${ args.size !== 0 ? ` with arguments:` : `...` }`);

@@ -232,22 +232,29 @@ export class FlatFile extends FileProperties {
     }
 
     public decrypt(): ByteBuffer {
-        // Only XTEA encryption is supported for v1.0.0
-        if(!this.encrypted || this.encryption !== 'xtea') {
+        if(!this.encrypted) {
             // Data is not encrypted
             return this._data;
         }
 
-        if(this.archive?.config?.encryptionPattern) {
+        if(this.archive?.config?.encryption) {
             // File name must match the given pattern to be encrypted
             if(!this.name) {
                 throw new Error(`Error decrypting file ${this.key}: File name not found.`);
             }
 
-            const patternRegex = new RegExp(this.archive.config.encryptionPattern);
+            if(Array.isArray(this.archive.config.encryption)) {
+                const [ encryption, pattern ] = this.archive.config.encryption;
+                const patternRegex = new RegExp(pattern);
 
-            if(!patternRegex.test(this.name)) {
-                // File name does not match the pattern, data should be unencrypted
+                // Only XTEA encryption is supported for v1.0.0
+                if(encryption !== 'xtea' || !patternRegex.test(this.name)) {
+                    // File name does not match the pattern, data should be unencrypted
+                    this.encrypted = false;
+                    return this._data;
+                }
+            } else if(this.archive.config.encryption !== 'xtea') {
+                // Only XTEA encryption is supported for v1.0.0
                 this.encrypted = false;
                 return this._data;
             }

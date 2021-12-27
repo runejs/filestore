@@ -12,7 +12,7 @@ export class FileProperties {
     archive: Archive | null = null;
     group: Group | null = null;
 
-    encryption: EncryptionMethod = 'none';
+    encryption: EncryptionMethod | [ EncryptionMethod, string ] = 'none';
     encrypted: boolean = false;
     compression: CompressionMethod = 'none';
     compressed: boolean = false;
@@ -48,9 +48,8 @@ export interface ArchiveProperties {
     format?: number;
     versioned?: boolean;
     compression?: CompressionMethod;
-    encryption?: EncryptionMethod;
-    encryptionPattern?: string | undefined; // @TODO apply region regex filter for lx_y files to the archives.json5 file
+    encryption?: EncryptionMethod | [ EncryptionMethod, string ];
     contentType?: string;
-    saveFileNames?: boolean;
-    defaultFileNames?: { [key: string]: number };
+    filesNamed?: boolean;
+    groupNames?: { [key: string]: number };
 }

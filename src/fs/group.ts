@@ -22,17 +22,13 @@ export class Group extends FlatFile {
     }
 
     public override js5Decode(): ByteBuffer | null {
-        if(!this._js5Encoded) {
-            return this._data ?? null;
-        }
-
         if(!this._data?.length) {
-            const js5File = this.store?.js5.extractFile(this.archive, this.key);
-            this.setData(js5File.data, true);
+            const js5File = super.js5Decode();
+            this.setData(js5File, true);
         }
 
-        this.encryption = this.archive.encryption ?? 'none';
-        this.encrypted = (this.archive.encryption ?? 'none') !== 'none';
+        this.encryption = this.archive.encryption || 'none';
+        this.encrypted = (this.archive.encryption || 'none') !== 'none';
 
         if(this.compressed) {
             this.decompress();
@@ -51,9 +47,9 @@ export class Group extends FlatFile {
             flatFile.encrypted = this.encrypted;
             flatFile.setData(this._data, this.compressed);
         } else {
-            const dataLength = this._data?.length ?? 0;
+            const dataLength = this._data?.length || 0;
 
-            if(!dataLength) {
+            if(!dataLength || dataLength <= 0) {
                 logger.error(`Error decoding group ${this.key}`);
                 return;
             }
@@ -63,6 +59,11 @@ export class Group extends FlatFile {
             const stripeCount = this._data.get('byte', 'unsigned');
 
             this._data.readerIndex = (dataLength - 1 - stripeCount * this.files.size * 4); // Stripe data footer
+
+            if(this._data.readerIndex < 0) {
+                logger.error(`Invalid reader index of ${this._data.readerIndex} for group ${this.archive.name}:${this.key}.`);
+                return null;
+            }
 
             for(let stripe = 0; stripe < stripeCount; stripe++) {
                 let currentLength = 0;

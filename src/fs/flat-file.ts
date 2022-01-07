@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'grac
 import { ByteBuffer, logger } from '@runejs/common';
 import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
-import { FileError, FileIndex, FileProperties } from './index';
+import { Archive, FileError, FileIndex, FileProperties, Store } from './index';
 import { Crc32 } from '../util';
 
 
@@ -41,11 +41,105 @@ export class FlatFile extends FileProperties {
     }
 
     public js5Decode(): ByteBuffer | null {
-        return this._data;
+        const archive = this.archive;
+        if(!archive) {
+            logger.error(`JS5 file ${this.key} does not belong to an archive.`);
+            return null;
+        }
+
+        const indexDataLength = 6;
+        const usingMainIndex = archive.numericKey === 255;
+        const indexChannel = usingMainIndex ? this.store.js5MainIndex : this.store.js5ArchiveIndexes.get(this.archive?.key ?? this.key);
+        const dataChannel = this.store.js5MainArchiveData;
+
+        indexChannel.readerIndex = 0;
+        dataChannel.readerIndex = 0;
+
+        let pointer = this.numericKey * indexDataLength;
+
+        if(pointer < 0 || pointer >= indexChannel.length) {
+            if(!usingMainIndex) {
+                logger.error(`File ${this.key} was not found within the JS5 ${archive.name} archive index file.`);
+            } else {
+                logger.error(`Archive ${this.key} was not found within the main index file.`);
+            }
+
+            return null;
+        }
+
+        const fileIndexData = new ByteBuffer(indexDataLength);
+        indexChannel.copy(fileIndexData, 0, pointer, pointer + indexDataLength);
+
+        if(fileIndexData.readable !== indexDataLength) {
+            logger.error(`Error extracting JS5 file ${this.key}: the end of the data stream was reached.`);
+            return null;
+        }
+
+        this.size = fileIndexData.get('int24', 'unsigned');
+        const stripeCount = fileIndexData.get('int24', 'unsigned');
+
+        if(this.size <= 0) {
+            logger.warn(`Extracted JS5 file ${this.key} has a recorded size of 0, no file data will be extracted.`);
+            return null;
+        }
+
+        const data = new ByteBuffer(this.size);
+        const stripeDataLength = 512;
+        const stripeLength = 520;
+
+        let stripe = 0;
+        let remaining = this.size;
+        pointer = stripeCount * stripeLength;
+
+        do {
+            const temp = new ByteBuffer(stripeLength);
+            dataChannel.copy(temp, 0, pointer, pointer + stripeLength);
+
+            if(temp.readable !== stripeLength) {
+                logger.error(`Error reading stripe for packed file ${this.key}, the end of the data stream was reached.`);
+                return null;
+            }
+
+            const stripeFileIndex = temp.get('short', 'unsigned');
+            const currentStripe = temp.get('short', 'unsigned');
+            const nextStripe = temp.get('int24', 'unsigned');
+            const stripeArchiveIndex = temp.get('byte', 'unsigned');
+            const stripeData = new ByteBuffer(stripeDataLength);
+            temp.copy(stripeData, 0, temp.readerIndex, temp.readerIndex + stripeDataLength);
+
+            if(remaining > stripeDataLength) {
+                stripeData.copy(data, data.writerIndex, 0, stripeDataLength);
+                data.writerIndex = (data.writerIndex + stripeDataLength);
+                remaining -= stripeDataLength;
+
+                if(stripeArchiveIndex !== this.archive.numericKey) {
+                    logger.error(`Archive index mismatch, expected archive ${this.archive.key} but found archive ${stripeFileIndex}`);
+                    return null;
+                }
+
+                if(stripeFileIndex !== this.numericKey) {
+                    logger.error(`File index mismatch, expected ${this.key} but found ${stripeFileIndex}.`);
+                    return null;
+                }
+
+                if(currentStripe !== stripe++) {
+                    logger.error(`Error extracting JS5 file ${this.key}, file data is corrupted.`);
+                    return null;
+                }
+
+                pointer = nextStripe * stripeLength;
+            } else {
+                stripeData.copy(data, data.writerIndex, 0, remaining);
+                data.writerIndex = (data.writerIndex + remaining);
+                remaining = 0;
+            }
+        } while(remaining > 0);
+
+        return data?.length ? data : null;
     }
 
     public js5Encode(): ByteBuffer | null {
-        return this._data;
+        return this._data; // @TODO
     }
 
     public read(compress: boolean = false): ByteBuffer | null {
@@ -53,7 +147,7 @@ export class FlatFile extends FileProperties {
             throw new Error(`Flat file ${this.key} could not be read as it does not belong to any known groups.`);
         }
 
-        const filePath = this.path + this.type;
+        const filePath = this.path;
 
         if(!existsSync(filePath)) {
             logger.error(`File not found: ${filePath}`);
@@ -138,22 +232,29 @@ export class FlatFile extends FileProperties {
     }
 
     public decrypt(): ByteBuffer {
-        // Only XTEA encryption is supported for v1.0.0
-        if(!this.encrypted || this.encryption !== 'xtea') {
+        if(!this.encrypted) {
             // Data is not encrypted
             return this._data;
         }
 
-        if(this.archive?.config?.encryptionPattern) {
+        if(this.archive?.config?.encryption) {
             // File name must match the given pattern to be encrypted
             if(!this.name) {
                 throw new Error(`Error decrypting file ${this.key}: File name not found.`);
             }
 
-            const patternRegex = new RegExp(this.archive.config.encryptionPattern);
+            if(Array.isArray(this.archive.config.encryption)) {
+                const [ encryption, pattern ] = this.archive.config.encryption;
+                const patternRegex = new RegExp(pattern);
 
-            if(!patternRegex.test(this.name)) {
-                // File name does not match the pattern, data should be unencrypted
+                // Only XTEA encryption is supported for v1.0.0
+                if(encryption !== 'xtea' || !patternRegex.test(this.name)) {
+                    // File name does not match the pattern, data should be unencrypted
+                    this.encrypted = false;
+                    return this._data;
+                }
+            } else if(this.archive.config.encryption !== 'xtea') {
+                // Only XTEA encryption is supported for v1.0.0
                 this.encrypted = false;
                 return this._data;
             }
@@ -481,7 +582,7 @@ export class FlatFile extends FileProperties {
         if(this.group.fileCount === 1) {
             return groupPath + extension;
         } else {
-            return join(groupPath, String(this.name || this.key) + extension);
+            return join(groupPath, String(this.name || this.key)) + extension;
         }
     }
 
@@ -491,12 +592,10 @@ export class FlatFile extends FileProperties {
             throw new Error(`Error generating file output path; File ${this.key} has not been added to a group.`);
         }
 
-        const extension = (this.archive?.config?.contentType || '');
-
         if(this.group.fileCount === 1) {
-            return groupOutputPath + extension;
+            return groupOutputPath + this.type;
         } else {
-            return join(groupOutputPath, String(this.name || this.key) + extension);
+            return join(groupOutputPath, String(this.name || this.key) + this.type);
         }
     }
 

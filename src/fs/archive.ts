@@ -17,14 +17,23 @@ export class Archive extends FlatFile {
 
         this.children = new Map<string, Archive | Group | FlatFile>();
 
-        config.saveFileNames = config.saveFileNames || false;
+        config.filesNamed = config.filesNamed || false;
         config.versioned = config.versioned || false;
         config.format = config.format || 5;
 
         this.config = config;
-        this.encryption = this.config.encryption ?? 'none';
-        this.compression = this.config.compression ?? 'none';
-        this.index = this.readIndexFile();
+        this.encryption = this.config.encryption || 'none';
+        this.compression = this.config.compression || 'none';
+
+        if(this.numericKey !== 255) {
+            this.index = this.readIndexFile();
+        } else {
+            this.index = {
+                key: 255,
+                name: this.name,
+                children: new Map<string, FileIndex>()
+            };
+        }
     }
 
     public override js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
@@ -36,11 +45,11 @@ export class Archive extends FlatFile {
 
         logger.info(`Decoding archive ${this.name}...`);
 
-        const js5File = this.store.js5.extractFile(this.store, this.key);
-        this.setData(js5File.data, true);
+        const js5File = super.js5Decode();
+        this.setData(js5File, true);
 
-        if(js5File.properties.stripes) {
-            this.index.stripes = js5File.properties.stripes;
+        if(this.stripes) {
+            this.index.stripes = this.stripes;
         }
 
         this.generateCrc32();
@@ -66,8 +75,8 @@ export class Archive extends FlatFile {
             logger.warn(`Archive format mismatch; expected ${this.config.format} but received ${format}!`);
         }
 
-        if(filesNamed !== this.config.saveFileNames) {
-            logger.warn(`Archive file name flag mismatch; expected ${this.config.saveFileNames} ` +
+        if(filesNamed !== this.config.filesNamed) {
+            logger.warn(`Archive file name flag mismatch; expected ${this.config.filesNamed} ` +
                 `but received ${filesNamed}!`);
         }
 
@@ -210,7 +219,7 @@ export class Archive extends FlatFile {
 
         // Write index file header
         buffer.put(this.config.format ?? 5); // '5' for 'JS5' by default
-        buffer.put(this.config.saveFileNames ? 1 : 0);
+        buffer.put(this.config.filesNamed ? 1 : 0);
         buffer.put(groupCount, 'short');
 
         // Write file indexes
@@ -222,7 +231,7 @@ export class Archive extends FlatFile {
         }
 
         // Write name hashes (if applicable)
-        if(this.config.saveFileNames) {
+        if(this.config.filesNamed) {
             for(const [ , file ] of groups) {
                 buffer.put(file.nameHash ?? -1, 'int');
             }
@@ -259,7 +268,7 @@ export class Archive extends FlatFile {
         }
 
         // Write group file name hashes (if applicable)
-        if(this.config.saveFileNames) {
+        if(this.config.filesNamed) {
             for(const [ , group ] of groups) {
                 if(group instanceof Group && group.files.size > 1) {
                     for(const [ , file ] of group.files) {

@@ -142,7 +142,7 @@ export class FlatFile extends FileProperties {
         return this._data; // @TODO
     }
 
-    public read(compress: boolean = false): ByteBuffer | null {
+    public read(compress: boolean = false): ByteBuffer | null | Promise<ByteBuffer | null> {
         if(!this.group) {
             throw new Error(`Flat file ${this.key} could not be read as it does not belong to any known groups.`);
         }

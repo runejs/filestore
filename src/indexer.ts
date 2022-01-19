@@ -20,7 +20,7 @@ class IndexerOptions {
 }
 
 
-const indexFiles = (store: Store, archiveName: string, compress: boolean, args: ArgumentMap, debug: boolean): void => {
+const indexFiles = async (store: Store, archiveName: string, compress: boolean, args: ArgumentMap, debug: boolean): Promise<void> => {
     const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
     const outputDir = store.outputPath;
 
@@ -34,7 +34,7 @@ const indexFiles = (store: Store, archiveName: string, compress: boolean, args: 
             logger.info(argDebugString);
         }
 
-        store.read(compress);
+        await store.read(compress);
         Array.from(store.archives.values()).forEach(archive => archive.writeIndexFile());
     } else {
         logger.info(`Indexing flat file store archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
@@ -46,7 +46,7 @@ const indexFiles = (store: Store, archiveName: string, compress: boolean, args: 
 
         const archive = store.find(archiveName);
 
-        archive.read(compress);
+        await archive.read(compress);
         archive.writeIndexFile();
     }
 };
@@ -144,5 +144,5 @@ run(async args => {
 
     terminal.close();
 
-    indexFiles(store, archive, compress, args, debug);
+    await indexFiles(store, archive, compress, args, debug);
 });

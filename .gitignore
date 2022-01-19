@@ -8,6 +8,7 @@ node_modules
 /stores
 /packed
 /unpacked
+.env
 
 # Log files
 npm-debug.log*

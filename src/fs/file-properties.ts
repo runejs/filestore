@@ -21,9 +21,9 @@ export class FileProperties {
     nameHash: number = -1;
     version: number = 0;
     size: number = 0;
-    stripes: number[] = [];
     crc32: number = -1;
     sha256: string = '';
+    stripes: number[] = [];
 
     public constructor(properties?: Partial<FileProperties>) {
         setObjectProps<FileProperties>(this, properties);

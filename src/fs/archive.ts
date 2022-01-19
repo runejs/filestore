@@ -310,13 +310,15 @@ export class Archive extends FlatFile {
         return super.compress();
     }
 
-    public override read(compress: boolean = false): ByteBuffer | null {
+    public override async read(compress: boolean = false): Promise<ByteBuffer | null> {
         if(this.children.size > 0) {
             logger.warn(`Archive ${this.name} has already been read, please use reload() to re-read the archive's contents.`);
             return null;
         }
 
         logger.info(`Reading archive ${this.name}...`);
+
+        const archiveIndex = await this.store.indexer.loadArchiveIndex(this);
 
         this.crc32 = this.index.crc32;
         this.sha256 = this.index.sha256;

@@ -6,12 +6,14 @@ import { ByteBuffer } from '@runejs/common/buffer';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
 import { ArchiveProperties, Archive } from './index';
+import { Indexer } from '../db/indexer';
 
 
 export class Store {
 
     public readonly archives: Map<string, Archive>;
     public readonly fileNameHashes: Map<number, string>;
+    public readonly indexer: Indexer;
 
     private _js5MainIndex: ByteBuffer;
     private _js5ArchiveIndexes: Map<string, ByteBuffer>;
@@ -30,6 +32,7 @@ export class Store {
         this._path = storePath;
         this._outputPath = outputPath;
         this._gameVersion = gameVersion;
+        this.indexer = new Indexer(this);
         this.loadArchiveConfig();
         Crc32.init();
         this.archives = new Map<string, Archive>();
@@ -126,12 +129,15 @@ export class Store {
         return null; // @TODO return main index file (crc table)
     }
 
-    public read(compress: boolean = false): ByteBuffer | null {
+    public async read(compress: boolean = false): Promise<ByteBuffer | null> {
         if(!this.archives?.size) {
             this.load(true, compress);
         } else {
             const archives = Array.from(this.archives.values());
-            archives.forEach(archive => archive.read());
+
+            for(const archive of archives) {
+                await archive.read();
+            }
 
             if(compress) {
                 archives.forEach(archive => archive.compress());

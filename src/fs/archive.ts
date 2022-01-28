@@ -3,6 +3,7 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'grac
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { ArchiveProperties, FileProperties, Group, FlatFile, FileIndex, FileError } from './index';
+import { ArchiveIndexEntity } from '../db';
 
 
 export class Archive extends FlatFile {
@@ -24,16 +25,6 @@ export class Archive extends FlatFile {
         this.config = config;
         this.encryption = this.config.encryption || 'none';
         this.compression = this.config.compression || 'none';
-
-        if(this.numericKey !== 255) {
-            this.index = this.readIndexFile();
-        } else {
-            this.index = {
-                key: 255,
-                name: this.name,
-                children: new Map<string, FileIndex>()
-            };
-        }
     }
 
     public override js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
@@ -47,10 +38,6 @@ export class Archive extends FlatFile {
 
         const js5File = super.js5Decode();
         this.setData(js5File, true);
-
-        if(this.stripes) {
-            this.index.stripes = this.stripes;
-        }
 
         this.generateCrc32();
 
@@ -318,25 +305,26 @@ export class Archive extends FlatFile {
 
         logger.info(`Reading archive ${this.name}...`);
 
-        const archiveIndex = await this.store.indexer.loadArchiveIndex(this);
+        this.index = await this.store.indexRepo.getArchiveIndex(this);
 
         this.crc32 = this.index.crc32;
         this.sha256 = this.index.sha256;
 
         // Read in all groups within the archive
-        for(const [ groupIndex, groupDetails ] of this.index.children) {
-            const { name, nameHash, version, size, stripes, crc32, sha256 } = groupDetails;
-            const group = new Group(groupIndex, {
+        const groups = (this.index as ArchiveIndexEntity).groups;
+        for(const groupIndex of groups) {
+            const { name, nameHash, version, size, stripeCount, crc32, sha256 } = groupIndex;
+            const group = new Group(groupIndex.key, {
                 archive: this,
-                name, nameHash, version, size, stripes, crc32, sha256,
+                name, nameHash, version, size, stripeCount, crc32, sha256,
                 compression: this.config.compression,
                 compressed: false,
                 encryption: this.config.encryption,
                 encrypted: false,
-                index: groupDetails
+                index: groupIndex
             });
 
-            this.children.set(groupIndex, group);
+            this.children.set(group.key, group);
             group.read(false);
         }
 
@@ -353,7 +341,7 @@ export class Archive extends FlatFile {
         this._loaded = true;
     }
 
-    public override write(): void {
+    public override async write(): Promise<void> {
         if(!this.children.size) {
             logger.error(`Error writing archive ${this.name || this.key}: Archive is empty.`);
             return;
@@ -370,63 +358,30 @@ export class Archive extends FlatFile {
 
         mkdirSync(archivePath, { recursive: true });
 
-        Array.from(this.children.values()).forEach(file => file.write());
+        Array.from(this.children.values()).forEach(group => group.write());
 
-        this.writeIndexFile();
+        await this.saveIndexData();
 
         const end = Date.now();
         logger.info(`Archive ${this.name || this.key} written in ${(end - start) / 1000} seconds.`)
     }
 
-    public reload(compress: boolean = false): void {
+    public async reload(compress: boolean = false): Promise<void> {
         this.children.clear();
-        this.read(compress);
+        await this.read(compress);
     }
 
-    public readIndexFile(): FileIndex {
-        const filePath = join(this.path, `.index`);
-        const fileData: string = readFileSync(filePath, 'utf-8');
+    public override verify(): void {
+        super.verify();
 
-        return JSON.parse(fileData, (key, value) => {
-            if(typeof value === 'object' && value?.dataType === 'Map') {
-                return new Map(value.value);
-            } else {
-                return value;
-            }
-        }) as FileIndex;
+        this.children.forEach(group => group.verify());
     }
 
-    public override generateIndex(): FileIndex {
-        const fileIndex = super.generateIndex();
+    public override async saveIndexData(): Promise<void> {
+        this.verify();
+        await this.store.indexRepo.saveArchiveIndex(this);
 
-        const children = new Map<string, FileIndex>();
-
-        for(const [ childKey, child ] of this.children) {
-            children.set(childKey, child.generateIndex());
-        }
-
-        this.index = { ...fileIndex, children };
-
-        return this.index;
-    }
-
-    public writeIndexFile(): void {
-        this.generateIndex();
-
-        if(!existsSync(this.outputPath)) {
-            mkdirSync(this.outputPath, { recursive: true });
-        }
-
-        const filePath = join(this.outputPath, `.index`);
-        const fileData: string = JSON.stringify(this.index, (key, value) => {
-            if(value instanceof Map) {
-                return { dataType: 'Map', value: Array.from(value.entries()) };
-            } else {
-                return value;
-            }
-        }, 4);
-
-        writeFileSync(filePath, fileData);
+        await Array.from(this.children.values()).forEachAsync(async group => (group as Group).saveIndexData());
     }
 
     public has(childIndex: string | number): boolean {

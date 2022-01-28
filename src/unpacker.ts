@@ -21,139 +21,141 @@ class UnpackOptions {
 }
 
 
-const unpackFiles = (store: Store, archiveName: string, args: ArgumentMap, debug: boolean): void => {
+const unpackFiles = async (store: Store, archiveName: string, args: ArgumentMap, debug: boolean): Promise<void> => {
     const argDebugString = args.size !== 0 ? Array.from(args.entries())
-        .map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
+        .map(([ key, val ]) => `${ key } = ${ val }`).join(', ') : '';
 
     try {
         store.js5Load();
 
-        if (archiveName === 'main') {
+        if(archiveName === 'main') {
             logger.info(`Unpacking JS5 file store${ args.size !== 0 ? ` with arguments:` : `...` }`);
-            if (args.size !== 0) {
+            if(args.size !== 0) {
                 logger.info(argDebugString);
             }
 
             store.js5Decode();
 
-            if (!debug) {
-                store.write();
+            if(!debug) {
+                await store.write();
             } else {
                 logger.info(`Flat file store writing is disabled in debug mode.`, `Decoding completed.`);
             }
         } else {
             logger.info(`Unpacking JS5 archive ${ archiveName }${ args.size !== 0 ? ` with arguments:` : `...` }`);
-            if (args.size !== 0) {
+            if(args.size !== 0) {
                 logger.info(argDebugString);
             }
 
             const a = store.find(archiveName);
 
-            if (!a) {
+            if(!a) {
                 throw new Error(`Archive ${ a } was not found.`);
             }
 
             a.js5Decode();
 
-            if (!debug) {
-                a.write();
+            if(!debug) {
+                await a.write();
             } else {
                 logger.info(`Archive writing is disabled in debug mode.`, `Decoding completed.`);
             }
         }
-    } catch (error) {
+    } catch(error) {
         logger.error(error);
     }
 };
 
 
-run(async args => {
-    const options = UnpackOptions.create(args as any);
-    const {
-        debug
-    } = options;
+(async function() {
+    await run(async args => {
+        const options = UnpackOptions.create(args as any);
+        const {
+            debug
+        } = options;
 
-    let {
-        version: gameVersion,
-        archive,
-        store: storePath
-    } = options;
+        let {
+            version: gameVersion,
+            archive,
+            store: storePath
+        } = options;
 
-    const terminal: TerminalInterface = new TerminalInterface();
-    const defaultStorePath = join('..', 'store');
+        const terminal: TerminalInterface = new TerminalInterface();
+        const defaultStorePath = join('..', 'store');
 
-    while(!storePath) {
-        const storePathInput = await terminal.question(`Store path (default ${defaultStorePath}):`, defaultStorePath);
+        while(!storePath) {
+            const storePathInput = await terminal.question(`Store path (default ${ defaultStorePath }):`, defaultStorePath);
 
-        if(storePathInput) {
-            storePath = storePathInput;
+            if(storePathInput) {
+                storePath = storePathInput;
 
-            if(!storePath || typeof storePath !== 'string' || !storePath.trim()) {
-                logger.error(`Invalid store path supplied: ${storePathInput}`);
-                storePath = '';
+                if(!storePath || typeof storePath !== 'string' || !storePath.trim()) {
+                    logger.error(`Invalid store path supplied: ${ storePathInput }`);
+                    storePath = '';
+                }
             }
         }
-    }
 
-    while(!gameVersion || gameVersion === -1) {
-        const versionInput = await terminal.question(`Please supply the desired game version to unpack (default 435):`, '435');
+        while(!gameVersion || gameVersion === -1) {
+            const versionInput = await terminal.question(`Please supply the desired game version to unpack (default 435):`, '435');
 
-        if(versionInput) {
-            gameVersion = parseInt(versionInput, 10);
+            if(versionInput) {
+                gameVersion = parseInt(versionInput, 10);
 
-            if(isNaN(gameVersion)) {
-                gameVersion = -1;
-            }
+                if(isNaN(gameVersion)) {
+                    gameVersion = -1;
+                }
 
-            if(gameVersion < 400 || gameVersion > 459) {
-                logger.error(`File store unpacking currently only supports game versions 400-458.`);
-                gameVersion = -1;
-            }
-        }
-    }
-
-    const logDir = join(storePath, 'logs');
-
-    if(!existsSync(logDir)) {
-        mkdirSync(logDir, { recursive: true });
-    }
-
-    setLoggerDest(join(logDir, `unpack-${gameVersion}.log`));
-
-    const outputPath = join(storePath, 'output');
-    const store = new Store(gameVersion, storePath, outputPath);
-
-    while(!archive) {
-        const archiveNameInput = await terminal.question(
-            `Please supply the archive you wish to unpack (default 'main'):`, 'main')
-
-        if(archiveNameInput) {
-            archive = archiveNameInput.toLowerCase();
-
-            if(!store.archiveConfig[archive]) {
-                logger.error(`Archive ${archiveNameInput} was not found within the archive configuration file.`);
-                archive = '';
+                if(gameVersion < 400 || gameVersion > 459) {
+                    logger.error(`File store unpacking currently only supports game versions 400-458.`);
+                    gameVersion = -1;
+                }
             }
         }
-    }
 
-    terminal.close();
+        const logDir = join(storePath, 'logs');
 
-    const js5Dir = join(storePath, 'js5');
+        if(!existsSync(logDir)) {
+            mkdirSync(logDir, { recursive: true });
+        }
 
-    if(!existsSync(js5Dir)) {
-        mkdirSync(js5Dir,{ recursive: true });
-        logger.error(`JS5 file store not found at: ${js5Dir}`);
-        logger.error(`Please add the desired JS5 client file store to the ${js5Dir} directory to unpack it.`);
-    } else {
-        const stats = statSync(js5Dir);
-        if(!stats.isDirectory() || readdirSync(js5Dir).length === 0) {
-            logger.error(`JS5 file store not found at: ${js5Dir}`);
-            logger.error(`Please add the desired JS5 client file store to the ${js5Dir} directory to unpack it.`);
+        setLoggerDest(join(logDir, `unpack-${ gameVersion }.log`));
+
+        const outputPath = join(storePath, 'output');
+        const store = await Store.create(gameVersion, storePath, outputPath);
+
+        while(!archive) {
+            const archiveNameInput = await terminal.question(
+                `Please supply the archive you wish to unpack (default 'main'):`, 'main')
+
+            if(archiveNameInput) {
+                archive = archiveNameInput.toLowerCase();
+
+                if(!store.archiveConfig[archive]) {
+                    logger.error(`Archive ${ archiveNameInput } was not found within the archive configuration file.`);
+                    archive = '';
+                }
+            }
+        }
+
+        terminal.close();
+
+        const js5Dir = join(storePath, 'js5');
+
+        if(!existsSync(js5Dir)) {
+            mkdirSync(js5Dir, { recursive: true });
+            logger.error(`JS5 file store not found at: ${ js5Dir }`);
+            logger.error(`Please add the desired JS5 client file store to the ${ js5Dir } directory to unpack it.`);
         } else {
-            unpackFiles(store, archive, args, debug);
+            const stats = statSync(js5Dir);
+            if(!stats.isDirectory() || readdirSync(js5Dir).length === 0) {
+                logger.error(`JS5 file store not found at: ${ js5Dir }`);
+                logger.error(`Please add the desired JS5 client file store to the ${ js5Dir } directory to unpack it.`);
+            } else {
+                await unpackFiles(store, archive, args, debug);
+            }
         }
-    }
 
-    process.exit(0);
-});
+        process.exit(0);
+    });
+}());

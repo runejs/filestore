@@ -35,19 +35,19 @@ const indexFiles = async (store: Store, archiveName: string, compress: boolean, 
         }
 
         await store.read(compress);
-        Array.from(store.archives.values()).forEach(archive => archive.writeIndexFile());
+        await Array.from(store.archives.values()).forEachAsync(async archive => archive.saveIndexData());
     } else {
         logger.info(`Indexing flat file store archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
             logger.info(argDebugString);
         }
 
-        store.load();
+        await store.load();
 
         const archive = store.find(archiveName);
 
         await archive.read(compress);
-        archive.writeIndexFile();
+        await archive.saveIndexData();
     }
 };
 
@@ -107,7 +107,7 @@ run(async args => {
     setLoggerDest(join(logDir, `index-${gameVersion}.log`));
 
     const outputPath = join(storePath, 'output');
-    const store = new Store(gameVersion, storePath, outputPath);
+    const store = await Store.create(gameVersion, storePath, outputPath);
 
     while(!archive) {
         const archiveNameInput = await terminal.question(

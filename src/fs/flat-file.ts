@@ -6,6 +6,7 @@ import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Archive, FileError, FileIndex, FileProperties, Store } from './index';
 import { Crc32 } from '../util';
+import { FileIndexEntity } from '../db';
 
 
 export class FlatFile extends FileProperties {
@@ -180,7 +181,10 @@ export class FlatFile extends FileProperties {
             }
 
             if(!this.stripes) {
-                this.stripes = this.index.stripes;
+                const stripeStr = (this.index as FileIndexEntity).stripes;
+                if(stripeStr?.length) {
+                    this.stripes = stripeStr.split(',')?.map(s => Number(s)) ?? undefined;
+                }
             }
 
             if(!this.crc32) {
@@ -206,7 +210,7 @@ export class FlatFile extends FileProperties {
         return null;
     }
 
-    public write(): void {
+    public write(): void | Promise<void> {
         if(this.empty) {
             let name = (this.name || this.key);
 
@@ -455,7 +459,7 @@ export class FlatFile extends FileProperties {
         }
     }
 
-    public generateIndex(): FileIndex {
+    public verify(): void {
         const isNamed = !!this.name && this.name.length;
         let name = this.name;
         let nameHash: number | undefined = undefined;
@@ -486,20 +490,11 @@ export class FlatFile extends FileProperties {
 
             this.generateCrc32();
         }
+    }
 
-        this.index = {
-            key: this.numericKey,
-            name: name || this.key,
-            nameHash: nameHash || undefined,
-            size: this.size || 0,
-            crc32: this.crc32 || undefined,
-            sha256: this.sha256 || undefined,
-            version: this.version || undefined,
-            stripes: this.stripes?.length ? this.stripes : undefined,
-            errors: this.errors?.length ? this.errors : undefined
-        };
-
-        return this.index;
+    public async saveIndexData(): Promise<void> {
+        this.verify();
+        await this.store.indexRepo.saveFileIndex(this);
     }
 
     public setData(data: ByteBuffer, compressed: boolean): void {

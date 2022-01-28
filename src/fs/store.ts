@@ -6,14 +6,14 @@ import { ByteBuffer } from '@runejs/common/buffer';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
 import { ArchiveProperties, Archive } from './index';
-import { Indexer } from '../db/indexer';
+import { IndexRepository } from '../db';
 
 
 export class Store {
 
     public readonly archives: Map<string, Archive>;
     public readonly fileNameHashes: Map<number, string>;
-    public readonly indexer: Indexer;
+    public readonly indexRepo: IndexRepository;
 
     private _js5MainIndex: ByteBuffer;
     private _js5ArchiveIndexes: Map<string, ByteBuffer>;
@@ -28,17 +28,23 @@ export class Store {
     private _gameVersion: number | undefined;
     private _gameVersionMissing: boolean;
 
-    public constructor(gameVersion: number, storePath: string, outputPath: string) {
+    protected constructor(gameVersion: number, storePath: string, outputPath: string) {
         this._path = storePath;
         this._outputPath = outputPath;
         this._gameVersion = gameVersion;
-        this.indexer = new Indexer(this);
+        this.indexRepo = new IndexRepository(this);
         this.loadArchiveConfig();
         Crc32.init();
         this.archives = new Map<string, Archive>();
         this.fileNameHashes = new Map<number, string>();
 
-        this.load();
+        // this.load();
+    }
+
+    public static async create(gameVersion: number, storePath: string, outputPath: string): Promise<Store> {
+        const store = new Store(gameVersion, storePath, outputPath);
+        await store.load();
+        return store;
     }
 
     public js5Load(): void {
@@ -117,37 +123,29 @@ export class Store {
         return new ByteBuffer([]); // @TODO
     }
 
-    public compress(): ByteBuffer | null {
-        if(!this.archives?.size) {
-            this.load(true, true);
-        } else {
-            const archives = Array.from(this.archives.values());
-            archives.forEach(archive => archive.read());
-            archives.forEach(archive => archive.compress());
-        }
+    public async compress(): Promise<ByteBuffer | null> {
+        const archives = Array.from(this.archives.values());
+        await archives.forEachAsync(async archive => archive.read());
+        archives.forEach(archive => archive.compress());
 
         return null; // @TODO return main index file (crc table)
     }
 
     public async read(compress: boolean = false): Promise<ByteBuffer | null> {
-        if(!this.archives?.size) {
-            this.load(true, compress);
-        } else {
-            const archives = Array.from(this.archives.values());
+        const archives = Array.from(this.archives.values());
 
-            for(const archive of archives) {
-                await archive.read();
-            }
+        for(const archive of archives) {
+            await archive.read();
+        }
 
-            if(compress) {
-                archives.forEach(archive => archive.compress());
-            }
+        if(compress) {
+            archives.forEach(archive => archive.compress());
         }
 
         return null;
     }
 
-    public write(): void {
+    public async write(): Promise<void> {
         if(!this.archives.size) {
             throw new Error(`Archives not loaded, please load a flat file store or a JS5 store.`);
         }
@@ -161,13 +159,33 @@ export class Store {
 
         mkdirSync(this.outputPath, { recursive: true });
 
-        Array.from(this.archives.values()).forEach(archive => archive.write());
+        // await Promise.all(Array.from(this.archives.values()).map(async archive => archive.write()));
+
+        try {
+            logger.info(`Saving file store index...`);
+            await this.indexRepo.saveStoreIndex();
+            logger.info(`File store index saved.`);
+        } catch(error) {
+            logger.error(`Error indexing file store:`, error);
+            return;
+        }
+
+        try {
+            logger.info(`Writing file contents and generating indexes...`);
+            await Array.from(this.archives.values()).forEachAsync(async archive => archive.write());
+            logger.info(`File contents written and indexes generated.`);
+        } catch(error) {
+            logger.error(`Error indexing archives:`, error);
+            return;
+        }
 
         const end = Date.now();
-        logger.info(`Flat file store written in ${(end - start) / 1000} seconds.`);
+        logger.info(`Flat file store written and indexed in ${(end - start) / 1000} seconds.`);
     }
 
-    public load(readFiles: boolean = false, compress: boolean = false): void {
+    public async load(readFiles: boolean = false, compress: boolean = false): Promise<void> {
+        await this.indexRepo.load();
+
         this.loadEncryptionKeys();
         this.loadFileNames();
 
@@ -204,7 +222,7 @@ export class Store {
 
         if(readFiles) {
             const archives = Array.from(this.archives.values());
-            archives.forEach(archive => archive.read());
+            await archives.forEachAsync(async archive => archive.read());
 
             if(compress) {
                 archives.forEach(archive => archive.compress());

@@ -2,11 +2,12 @@ import { CompressionMethod } from '@runejs/common/compress';
 import { EncryptionMethod } from '@runejs/common/encrypt';
 import { Archive, FileIndex, Group, Store } from './index';
 import { setObjectProps } from '@runejs/common/util';
+import { IndexEntity } from '../db';
 
 
 export class FileProperties {
     key: string;
-    index: FileIndex;
+    index: IndexEntity;
 
     store: Store | null = null;
     archive: Archive | null = null;
@@ -24,6 +25,7 @@ export class FileProperties {
     crc32: number = -1;
     sha256: string = '';
     stripes: number[] = [];
+    stripeCount: number = 1;
 
     public constructor(properties?: Partial<FileProperties>) {
         setObjectProps<FileProperties>(this, properties);

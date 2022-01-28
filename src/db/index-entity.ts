@@ -1,10 +1,14 @@
-import { Column, PrimaryColumn } from 'typeorm';
+import { Column, CreateDateColumn, JoinColumn, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { StoreIndexEntity } from './store-index.entity';
 
 
 export abstract class IndexEntity {
 
-    @PrimaryColumn('integer', { nullable: false, unique: true })
+    @PrimaryColumn('integer', { nullable: false })
     key: number;
+
+    @PrimaryColumn('integer', { name: 'game_version', nullable: false })
+    gameVersion: number;
 
     @Column('text', { nullable: true })
     name: string | null = null;
@@ -23,5 +27,11 @@ export abstract class IndexEntity {
 
     @Column('text', { nullable: true })
     sha256: string | null = null;
+
+    @CreateDateColumn()
+    created: Date;
+
+    @UpdateDateColumn()
+    updated: Date;
 
 }

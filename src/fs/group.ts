@@ -5,6 +5,7 @@ import { logger } from '@runejs/common';
 import { FileProperties } from './file-properties';
 import { FlatFile } from './flat-file';
 import { FileIndex } from './file-index';
+import { GroupIndexEntity } from '../db';
 
 
 export class Group extends FlatFile {
@@ -56,23 +57,23 @@ export class Group extends FlatFile {
 
             this._data.readerIndex = (dataLength - 1); // EOF
 
-            const stripeCount = this._data.get('byte', 'unsigned');
+            this.stripeCount = this._data.get('byte', 'unsigned');
 
-            this._data.readerIndex = (dataLength - 1 - stripeCount * this.files.size * 4); // Stripe data footer
+            this._data.readerIndex = (dataLength - 1 - this.stripeCount * this.files.size * 4); // Stripe data footer
 
             if(this._data.readerIndex < 0) {
                 logger.error(`Invalid reader index of ${this._data.readerIndex} for group ${this.archive.name}:${this.key}.`);
                 return null;
             }
 
-            for(let stripe = 0; stripe < stripeCount; stripe++) {
+            for(let stripe = 0; stripe < this.stripeCount; stripe++) {
                 let currentLength = 0;
                 for(const [ fileIndex, file ] of this.files) {
                     const delta = this._data.get('int');
                     currentLength += delta;
 
                     if(!file.stripes?.length) {
-                        file.stripes = new Array(stripeCount);
+                        file.stripes = new Array(this.stripeCount);
                     }
 
                     let size = 0;
@@ -95,7 +96,7 @@ export class Group extends FlatFile {
 
             this._data.readerIndex = 0;
 
-            for(let stripe = 0; stripe < stripeCount; stripe++) {
+            for(let stripe = 0; stripe < this.stripeCount; stripe++) {
                 for(const [ , file ] of this.files) {
                     if(file.empty) {
                         continue;
@@ -205,16 +206,16 @@ export class Group extends FlatFile {
                 `${this.archive.name} archive.`);
         }
 
-        let children = this.index.children;
+        const children = (this.index as GroupIndexEntity).files;
 
-        if(!children?.size) {
+        /*if(!children?.length) {
             // Set default single child file (which is excluded from the .index file to save on disk space)
             children = new Map<string, FileIndex>();
             const { name, nameHash, size, version, crc32, sha256, stripes } = this.index;
             children.set('0', {
                 key: 0, name, nameHash, size, version, crc32, sha256, stripes
             });
-        }
+        }*/
 
         let isDirectory = false;
         let childFileCount = 1;
@@ -231,7 +232,7 @@ export class Group extends FlatFile {
             isDirectory = true;
         }
 
-        if(children.size !== childFileCount) {
+        if(children.length !== childFileCount) {
             this._modified = true;
         }
 
@@ -239,20 +240,24 @@ export class Group extends FlatFile {
         this.fileSizes.clear();
 
         // Load the group's files
-        for(const [ fileIndex, fileIndexData ] of children) {
-            const { name, nameHash, size, stripes, crc32, sha256 } = fileIndexData;
-            const file = new FlatFile(fileIndex, {
+        for(const fileIndexData of children) {
+            const { name, nameHash, size, crc32, sha256 } = fileIndexData;
+
+            const stripes: number[] = (fileIndexData.stripes ?? '').split(',').map(n => Number(n));
+
+            const file = new FlatFile(fileIndexData.key, {
                 name, nameHash,
                 group: this, archive: this.archive,
                 size, stripes, crc32, sha256,
                 index: fileIndexData
             });
 
-            this.files.set(fileIndex, file);
-            this.fileSizes.set(fileIndex, size);
+            this.files.set(file.key, file);
+            this.fileSizes.set(file.key, size);
         }
 
         this._fileCount = this.files.size;
+        this.stripeCount = (this.index as GroupIndexEntity).stripeCount || 1;
 
         // Read the content of each file within the group
         Array.from(this.files.values()).forEach(file => file.read(compress));
@@ -311,24 +316,16 @@ export class Group extends FlatFile {
         Array.from(this.files.values()).forEach(file => file.write());
     }
 
-    public override generateIndex(): FileIndex {
-        const fileIndex = super.generateIndex();
+    public override verify(): void {
+        super.verify();
+        this.files.forEach(file => file.verify());
+    }
 
-        if(this._fileCount <= 1) {
-            // Single file group
-            return this.index;
-        } else {
-            // Multi file group
-            const children = new Map<string, FileIndex>();
+    public override async saveIndexData(): Promise<void> {
+        this.verify();
+        await this.store.indexRepo.saveGroupIndex(this);
 
-            for(const [ fileKey, file ] of this.files) {
-                children.set(fileKey, file.generateIndex());
-            }
-
-            this.index = { ...fileIndex, children };
-
-            return this.index;
-        }
+        await Array.from(this.files.values()).forEachAsync(async file => file.saveIndexData());
     }
 
     public has(fileIndex: string | number): boolean {

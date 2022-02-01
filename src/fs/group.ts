@@ -325,7 +325,13 @@ export class Group extends FlatFile {
         this.verify();
         await this.store.indexRepo.saveGroupIndex(this);
 
-        await Array.from(this.files.values()).forEachAsync(async file => file.saveIndexData());
+        await Array.from(this.files.values()).forEachAsync(async file => {
+            try {
+                await file.saveIndexData();
+            } catch(error) {
+                logger.error(error);
+            }
+        });
     }
 
     public has(fileIndex: string | number): boolean {

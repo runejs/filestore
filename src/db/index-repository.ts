@@ -22,7 +22,7 @@ export class IndexRepository {
             database: path.join(this.store.path, 'archives', 'index.sqlite3'),
             entities: [ StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity ],
             synchronize: true,
-            logging: 'all'
+            logging: [ 'error' ]
         });
     }
 
@@ -69,13 +69,10 @@ export class IndexRepository {
     public async saveArchiveIndex(archive: Archive): Promise<ArchiveIndexEntity | null> {
         const { numericKey, name, nameHash, version, size, crc32, sha256 } = archive;
 
-        let archiveIndex = await this.getArchiveIndex(archive);
-        if(!archiveIndex) {
-            archiveIndex = new ArchiveIndexEntity();
-            archiveIndex.key = numericKey;
-            archiveIndex.gameVersion = this.store.gameVersion;
-        }
-
+        const archiveIndex = new ArchiveIndexEntity();
+        archiveIndex.key = numericKey;
+        archiveIndex.store = Promise.resolve(this.getStoreIndex());
+        archiveIndex.gameVersion = this.store.gameVersion;
         archiveIndex.name = name;
         archiveIndex.nameHash = nameHash;
         archiveIndex.version = version;
@@ -83,18 +80,7 @@ export class IndexRepository {
         archiveIndex.crc32 = crc32;
         archiveIndex.sha256 = sha256;
 
-        let savedIndex: ArchiveIndexEntity;
-
-        if(!archiveIndex.created) {
-            savedIndex = await this.archiveRepo.save(archiveIndex);
-        } else {
-            await this.archiveRepo.update({
-                key: archive.numericKey,
-                gameVersion: this.store.gameVersion
-            }, archiveIndex);
-
-            savedIndex = await this.getArchiveIndex(archive);
-        }
+        const savedIndex = await this.archiveRepo.save(archiveIndex);
 
         if(savedIndex?.key !== numericKey) {
             logger.error(`Error saving archive index ${ numericKey }.`);
@@ -119,6 +105,10 @@ export class IndexRepository {
 
         const groupIndex = new GroupIndexEntity();
         groupIndex.key = numericKey;
+        groupIndex.store = Promise.resolve(this.getStoreIndex());
+        groupIndex.archive = Promise.resolve(this.getArchiveIndex(archive));
+        groupIndex.gameVersion = this.store.gameVersion;
+        groupIndex.archiveKey = archive.numericKey;
         groupIndex.name = name;
         groupIndex.nameHash = nameHash;
         groupIndex.version = version;
@@ -126,8 +116,6 @@ export class IndexRepository {
         groupIndex.crc32 = crc32;
         groupIndex.sha256 = sha256;
         groupIndex.stripeCount = stripeCount;
-        groupIndex.archiveKey = archive.numericKey;
-        groupIndex.gameVersion = this.store.gameVersion;
 
         const savedIndex = await this.groupRepo.save(groupIndex);
         if(savedIndex?.key !== numericKey) {
@@ -150,9 +138,15 @@ export class IndexRepository {
     }
 
     public async saveFileIndex(file: FlatFile): Promise<FileIndexEntity | null> {
-        const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, group } = file;
+        const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, group, archive } = file;
 
         const fileIndex = new FileIndexEntity();
+        fileIndex.store = Promise.resolve(this.getStoreIndex());
+        fileIndex.archive = Promise.resolve(this.getArchiveIndex(archive));
+        fileIndex.group = Promise.resolve(this.getGroupIndex(group));
+        fileIndex.gameVersion = this.store.gameVersion;
+        fileIndex.archiveKey = archive.numericKey;
+        fileIndex.groupKey = group.numericKey;
         fileIndex.key = numericKey;
         fileIndex.name = name;
         fileIndex.nameHash = nameHash;
@@ -161,8 +155,6 @@ export class IndexRepository {
         fileIndex.crc32 = crc32;
         fileIndex.sha256 = sha256;
         fileIndex.stripes = stripes.join(',');
-        fileIndex.groupKey = group.numericKey;
-        fileIndex.gameVersion = this.store.gameVersion;
 
         const savedIndex = await this.fileRepo.save(fileIndex);
         if(savedIndex?.key !== numericKey) {

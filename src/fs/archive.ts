@@ -381,7 +381,13 @@ export class Archive extends FlatFile {
         this.verify();
         await this.store.indexRepo.saveArchiveIndex(this);
 
-        await Array.from(this.children.values()).forEachAsync(async group => (group as Group).saveIndexData());
+        await Array.from(this.children.values()).forEachAsync(async group => {
+            try {
+                await (group as Group).saveIndexData();
+            } catch(error) {
+                logger.error(error);
+            }
+        });
     }
 
     public has(childIndex: string | number): boolean {

@@ -1,13 +1,12 @@
-import { Column, CreateDateColumn, JoinColumn, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
-import { StoreIndexEntity } from './store-index.entity';
+import { Column, CreateDateColumn, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 
 
 export abstract class IndexEntity {
 
-    @PrimaryColumn('integer', { nullable: false })
+    @PrimaryColumn('integer', { nullable: false, unique: false })
     key: number;
 
-    @PrimaryColumn('integer', { name: 'game_version', nullable: false })
+    @PrimaryColumn('integer', { name: 'game_version', nullable: false, unique: false })
     gameVersion: number;
 
     @Column('text', { nullable: true })

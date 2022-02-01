@@ -4,19 +4,20 @@ import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { ArchiveProperties, FileProperties, Group, FlatFile, FileIndex, FileError } from './index';
 import { ArchiveIndexEntity } from '../db';
+import { IndexedFile } from './indexed-file';
 
 
-export class Archive extends FlatFile {
+export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
     public readonly config: ArchiveProperties;
-    public readonly children: Map<string, Archive | Group | FlatFile>;
+    public readonly groups: Map<string, Group>;
 
     private _missingEncryptionKeys: number;
 
     public constructor(index: string | number, config: ArchiveProperties, properties?: Partial<FileProperties>) {
         super(index, properties);
 
-        this.children = new Map<string, Archive | Group | FlatFile>();
+        this.groups = new Map<string, Group>();
 
         config.filesNamed = config.filesNamed || false;
         config.versioned = config.versioned || false;
@@ -149,7 +150,7 @@ export class Archive extends FlatFile {
             let successes = 0;
             let failures = 0;
 
-            for(const [ , group ] of this.children) {
+            for(const [ , group ] of this.groups) {
                 try {
                     (group as Group).js5Decode();
 
@@ -194,11 +195,11 @@ export class Archive extends FlatFile {
             return this.store.js5Encode();
         }
 
-        if(!this.children.size) {
+        if(!this.groups.size) {
             this.read(true);
         }
 
-        const groups = this.children;
+        const groups = this.groups;
         const groupCount = groups.size;
 
         // @TODO add sizes of all files instead of using a set amount here
@@ -298,20 +299,20 @@ export class Archive extends FlatFile {
     }
 
     public override async read(compress: boolean = false): Promise<ByteBuffer | null> {
-        if(this.children.size > 0) {
+        if(this.groups.size > 0) {
             logger.warn(`Archive ${this.name} has already been read, please use reload() to re-read the archive's contents.`);
             return null;
         }
 
         logger.info(`Reading archive ${this.name}...`);
 
-        this.index = await this.store.indexRepo.getArchiveIndex(this);
+        this._index = await this.store.indexRepo.getArchiveIndex(this);
 
         this.crc32 = this.index.crc32;
         this.sha256 = this.index.sha256;
 
         // Read in all groups within the archive
-        const groups = (this.index as ArchiveIndexEntity).groups;
+        const groups = this.index.groups;
         for(const groupIndex of groups) {
             const { name, nameHash, version, size, stripeCount, crc32, sha256 } = groupIndex;
             const group = new Group(groupIndex.key, {
@@ -320,29 +321,28 @@ export class Archive extends FlatFile {
                 compression: this.config.compression,
                 compressed: false,
                 encryption: this.config.encryption,
-                encrypted: false,
-                index: groupIndex
+                encrypted: false
             });
 
-            this.children.set(group.key, group);
+            this.groups.set(group.key, group);
             group.read(false);
         }
 
         if(compress) {
             // Then compress them, if needed
-            for(const [ , group ] of this.children) {
+            for(const [ , group ] of this.groups) {
                 group.compress();
             }
         }
 
         this.js5Encode(compress);
 
-        logger.info(`${this.children.size} file(s) were loaded from the ${this.name} archive.`);
+        logger.info(`${this.groups.size} file(s) were loaded from the ${this.name} archive.`);
         this._loaded = true;
     }
 
     public override async write(): Promise<void> {
-        if(!this.children.size) {
+        if(!this.groups.size) {
             logger.error(`Error writing archive ${this.name || this.key}: Archive is empty.`);
             return;
         }
@@ -358,7 +358,7 @@ export class Archive extends FlatFile {
 
         mkdirSync(archivePath, { recursive: true });
 
-        Array.from(this.children.values()).forEach(group => group.write());
+        Array.from(this.groups.values()).forEach(group => group.write());
 
         await this.saveIndexData();
 
@@ -367,47 +367,46 @@ export class Archive extends FlatFile {
     }
 
     public async reload(compress: boolean = false): Promise<void> {
-        this.children.clear();
+        this.groups.clear();
         await this.read(compress);
     }
 
     public override verify(): void {
         super.verify();
-
-        this.children.forEach(group => group.verify());
+        this._index = this.store.indexRepo.createArchiveIndex(this);
+        this.groups.forEach(group => group.verify());
+        // this._index.groups = Array.from(this.groups.values()).map(group => group.index);
     }
 
-    public override async saveIndexData(): Promise<void> {
+    public async saveIndexData(): Promise<void> {
         this.verify();
-        await this.store.indexRepo.saveArchiveIndex(this);
 
-        await Array.from(this.children.values()).forEachAsync(async group => {
-            try {
-                await (group as Group).saveIndexData();
-            } catch(error) {
-                logger.error(error);
-            }
-        });
+        await this.store.indexRepo.saveArchiveIndex(this.index);
+
+        const groups = Array.from(this.groups.values());
+
+        const groupIndexes = groups.map(group => group.index);
+        await this.store.indexRepo.saveGroupIndexes(groupIndexes);
+
+        for(const group of groups) {
+            await this.store.indexRepo.saveFileIndexes(Array.from(group.files.values()).map(file => file.index));
+        }
     }
 
     public has(childIndex: string | number): boolean {
-        return this.children.has(String(childIndex));
+        return this.groups.has(String(childIndex));
     }
 
     public get(childIndex: string | number): Archive | Group | FlatFile | null {
-        return this.children.get(String(childIndex)) ?? null;
+        return this.groups.get(String(childIndex)) ?? null;
     }
 
-    public set(archiveIndex: string | number, archive: Archive): void;
-    public set(groupIndex: string | number, group: Group): void;
-    public set(fileIndex: string | number, file: FlatFile): void;
-    public set(childIndex: string | number, child: Archive | Group | FlatFile): void;
-    public set(childIndex: string | number, child: Archive | Group | FlatFile): void {
-        this.children.set(String(childIndex), child);
+    public set(childIndex: string | number, group: Group): void {
+        this.groups.set(String(childIndex), group);
     }
 
     public find(fileName: string): Archive | Group | FlatFile | null {
-        const children = Array.from(this.children.values());
+        const children = Array.from(this.groups.values());
         return children.find(child => child?.name === fileName) ?? null;
     }
 

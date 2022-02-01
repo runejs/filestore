@@ -6,9 +6,10 @@ import { FileProperties } from './file-properties';
 import { FlatFile } from './flat-file';
 import { FileIndex } from './file-index';
 import { GroupIndexEntity } from '../db';
+import { IndexedFile } from './indexed-file';
 
 
-export class Group extends FlatFile {
+export class Group extends IndexedFile<GroupIndexEntity> {
 
     public files: Map<string, FlatFile>;
     public fileSizes: Map<string, number>;
@@ -248,8 +249,7 @@ export class Group extends FlatFile {
             const file = new FlatFile(fileIndexData.key, {
                 name, nameHash,
                 group: this, archive: this.archive,
-                size, stripes, crc32, sha256,
-                index: fileIndexData
+                size, stripes, crc32, sha256
             });
 
             this.files.set(file.key, file);
@@ -318,21 +318,18 @@ export class Group extends FlatFile {
 
     public override verify(): void {
         super.verify();
+        this._index = this.store.indexRepo.createGroupIndex(this);
         this.files.forEach(file => file.verify());
+        this._index.files = Array.from(this.files.values()).map(file => file.index);
     }
 
-    public override async saveIndexData(): Promise<void> {
+    /*public async saveIndexData(): Promise<void> {
         this.verify();
-        await this.store.indexRepo.saveGroupIndex(this);
 
-        await Array.from(this.files.values()).forEachAsync(async file => {
-            try {
-                await file.saveIndexData();
-            } catch(error) {
-                logger.error(error);
-            }
-        });
-    }
+        await this.store.indexRepo.saveGroupIndex(this.index);
+
+        const fileIndexes = Array.from(this.files.values()).map(file => file.index);
+    }*/
 
     public has(fileIndex: string | number): boolean {
         return this.files.has(String(fileIndex));

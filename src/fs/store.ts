@@ -6,14 +6,14 @@ import { ByteBuffer } from '@runejs/common/buffer';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
 import { ArchiveProperties, Archive } from './index';
-import { IndexRepository } from '../db';
+import { IndexService } from '../db';
 
 
 export class Store {
 
     public readonly archives: Map<string, Archive>;
     public readonly fileNameHashes: Map<number, string>;
-    public readonly indexRepo: IndexRepository;
+    public readonly indexService: IndexService;
 
     private _js5MainIndex: ByteBuffer;
     private _js5ArchiveIndexes: Map<string, ByteBuffer>;
@@ -32,18 +32,27 @@ export class Store {
         this._path = storePath;
         this._outputPath = outputPath;
         this._gameVersion = gameVersion;
-        this.indexRepo = new IndexRepository(this);
+        this.indexService = new IndexService(this);
         this.loadArchiveConfig();
         Crc32.init();
         this.archives = new Map<string, Archive>();
         this.fileNameHashes = new Map<number, string>();
-
-        // this.load();
     }
 
-    public static async create(gameVersion: number, storePath: string, outputPath: string): Promise<Store> {
+    public static async create(gameVersion: number, storePath: string, outputPath: string, options: {
+        readFiles: boolean;
+        compress: boolean;
+    } = { readFiles: false, compress: false }): Promise<Store> {
+        let { readFiles, compress } = options;
+        if(readFiles === undefined) {
+            readFiles = false;
+        }
+        if(compress === undefined) {
+            compress = false;
+        }
+
         const store = new Store(gameVersion, storePath, outputPath);
-        await store.load();
+        await store.load(readFiles, compress);
         return store;
     }
 
@@ -163,7 +172,7 @@ export class Store {
 
         try {
             logger.info(`Saving file store index...`);
-            await this.indexRepo.saveStoreIndex();
+            await this.indexService.saveStoreIndex();
             logger.info(`File store index saved.`);
         } catch(error) {
             logger.error(`Error indexing file store:`, error);
@@ -171,9 +180,22 @@ export class Store {
         }
 
         try {
-            logger.info(`Writing file contents and generating indexes...`);
-            await Array.from(this.archives.values()).forEachAsync(async archive => archive.write());
-            logger.info(`File contents written and indexes generated.`);
+            logger.info(`Writing archive contents to disk...`);
+            for(const [ , archive ] of this.archives) {
+                await archive.write();
+            }
+            logger.info(`Archives written.`);
+        } catch(error) {
+            logger.error(`Error writing archives:`, error);
+            return;
+        }
+
+        try {
+            logger.info(`Indexing archive contents...`);
+            for(const [ , archive ] of this.archives) {
+                await archive.saveIndexData();
+            }
+            logger.info(`Archives indexed.`);
         } catch(error) {
             logger.error(`Error indexing archives:`, error);
             return;
@@ -184,7 +206,7 @@ export class Store {
     }
 
     public async load(readFiles: boolean = false, compress: boolean = false): Promise<void> {
-        await this.indexRepo.load();
+        await this.indexService.load();
 
         this.loadEncryptionKeys();
         this.loadFileNames();
@@ -201,7 +223,7 @@ export class Store {
 
         this._mainArchive = new Archive(255, mainArchiveConfig, {
             store: this,
-            name: 'main'
+            name: 'main', nameHash: this.hashFileName('main')
         });
 
         for(const [ name, config ] of archiveConfigs) {
@@ -214,7 +236,7 @@ export class Store {
                 archive: this._mainArchive,
                 encryption: config.encryption ?? 'none',
                 compression: config.compression ?? 'none',
-                name
+                name, nameHash: this.hashFileName(name)
             });
 
             this.archives.set(archive.key, archive);

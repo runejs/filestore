@@ -381,7 +381,7 @@ export abstract class IndexedFile<T extends IndexEntity> extends FileProperties 
         return this._data;
     }
 
-    public verify(): void {
+    public verify(): void | Promise<void> {
         const isNamed = !!this.name && this.name.length;
         let name = this.name;
         let nameHash: number | undefined = undefined;

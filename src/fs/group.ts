@@ -316,20 +316,14 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         Array.from(this.files.values()).forEach(file => file.write());
     }
 
-    public override verify(): void {
+    public override async verify(): Promise<void> {
         super.verify();
-        this._index = this.store.indexRepo.createGroupIndex(this);
-        this.files.forEach(file => file.verify());
-        this._index.files = Array.from(this.files.values()).map(file => file.index);
+        this._index = await this.store.indexService.createGroupIndex(this);
+
+        for(const [ , file ] of this.files) {
+            await file.verify();
+        }
     }
-
-    /*public async saveIndexData(): Promise<void> {
-        this.verify();
-
-        await this.store.indexRepo.saveGroupIndex(this.index);
-
-        const fileIndexes = Array.from(this.files.values()).map(file => file.index);
-    }*/
 
     public has(fileIndex: string | number): boolean {
         return this.files.has(String(fileIndex));

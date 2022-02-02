@@ -1,12 +1,13 @@
-import { Connection, ConnectionOptions, createConnection, Repository } from 'typeorm';
 import path from 'path';
-import { Archive, FlatFile, Group, Store } from '../fs';
+import { Connection, ConnectionOptions, createConnection, Repository } from 'typeorm';
+
 import { logger } from '@runejs/common';
-import { ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity, IndexEntity } from './index';
-import { StoreIndexEntity } from './store-index.entity';
+
+import { Archive, FlatFile, Group, Store } from '../fs';
+import { StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity } from './index';
 
 
-export class IndexRepository {
+export class IndexService {
 
     public readonly store: Store;
 
@@ -22,7 +23,8 @@ export class IndexRepository {
             database: path.join(this.store.path, 'archives', 'index.sqlite3'),
             entities: [ StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity ],
             synchronize: true,
-            logging: [ 'error' ]
+            logging: [ 'error' ],
+            name: 'filestore-cli'
         });
     }
 
@@ -66,12 +68,12 @@ export class IndexRepository {
         }) || null;
     }
 
-    public createArchiveIndex(archive: Archive): ArchiveIndexEntity {
+    public async createArchiveIndex(archive: Archive): Promise<ArchiveIndexEntity> {
         const { numericKey, name, nameHash, version, size, crc32, sha256 } = archive;
 
         const archiveIndex = new ArchiveIndexEntity();
         archiveIndex.key = numericKey;
-        archiveIndex.store = Promise.resolve(this.getStoreIndex());
+        archiveIndex.store = await this.getStoreIndex();
         archiveIndex.gameVersion = this.store.gameVersion;
         archiveIndex.name = name;
         archiveIndex.nameHash = nameHash;
@@ -81,19 +83,26 @@ export class IndexRepository {
         archiveIndex.sha256 = sha256;
 
         return archiveIndex;
-
-        /*const savedIndex = await this.archiveRepo.save(archiveIndex);
-
-        if(savedIndex?.key !== numericKey) {
-            logger.error(`Error saving archive index ${ numericKey }.`);
-            return null;
-        }
-
-        return savedIndex;*/
     }
 
     public async saveArchiveIndex(archiveIndex: ArchiveIndexEntity): Promise<ArchiveIndexEntity> {
-        return await this.archiveRepo.save(archiveIndex);
+        const existingIndex = await this.archiveRepo.findOne({
+            where: {
+                key: archiveIndex.key,
+                gameVersion: archiveIndex.gameVersion
+            }
+        });
+
+        if(existingIndex) {
+            const result = await this.archiveRepo.update({
+                key: archiveIndex.key,
+                gameVersion: archiveIndex.gameVersion
+            }, archiveIndex);
+
+            return archiveIndex;
+        } else {
+            return await this.archiveRepo.save(archiveIndex);
+        }
     }
 
     public async getGroupIndex(group: Group): Promise<GroupIndexEntity | null> {
@@ -106,13 +115,13 @@ export class IndexRepository {
         }) || null;
     }
 
-    public createGroupIndex(group: Group): GroupIndexEntity {
+    public async createGroupIndex(group: Group): Promise<GroupIndexEntity> {
         const { numericKey, name, nameHash, version, size, crc32, sha256, stripeCount, archive } = group;
 
         const groupIndex = new GroupIndexEntity();
         groupIndex.key = numericKey;
-        groupIndex.store = Promise.resolve(this.getStoreIndex());
-        groupIndex.archive = Promise.resolve(this.getArchiveIndex(archive));
+        groupIndex.store = await this.getStoreIndex();
+        groupIndex.archive = await this.getArchiveIndex(archive);
         groupIndex.gameVersion = this.store.gameVersion;
         groupIndex.archiveKey = archive.numericKey;
         groupIndex.name = name;
@@ -121,17 +130,19 @@ export class IndexRepository {
         groupIndex.size = size;
         groupIndex.crc32 = crc32;
         groupIndex.sha256 = sha256;
-        groupIndex.stripeCount = stripeCount;
 
-        return groupIndex;
-
-        /*const savedIndex = await this.groupRepo.save(groupIndex);
-        if(savedIndex?.key !== numericKey) {
-            logger.error(`Error saving file group index ${numericKey}.`);
-            return null;
+        if(group.files.size === 1) {
+            const file = group.get(0);
+            groupIndex.flatFile = true;
+            groupIndex.stripes = file.stripes?.join(',') || String(file.size || size);
+            groupIndex.stripeCount = groupIndex.stripes?.length || 1;
+        } else {
+            groupIndex.flatFile = false;
+            groupIndex.stripes = null;
+            groupIndex.stripeCount = stripeCount;
         }
 
-        return savedIndex;*/
+        return groupIndex;
     }
 
     public async saveGroupIndex(groupIndex: GroupIndexEntity): Promise<GroupIndexEntity> {
@@ -139,7 +150,7 @@ export class IndexRepository {
     }
 
     public async saveGroupIndexes(groupIndexes: GroupIndexEntity[]): Promise<GroupIndexEntity[]> {
-        return await this.groupRepo.save(groupIndexes);
+        return await this.groupRepo.save(groupIndexes, { chunk: 100 });
     }
 
     public async getFileIndex(file: FlatFile): Promise<FileIndexEntity | null> {
@@ -153,13 +164,13 @@ export class IndexRepository {
         }) || null;
     }
 
-    public createFileIndex(file: FlatFile): FileIndexEntity {
+    public async createFileIndex(file: FlatFile): Promise<FileIndexEntity> {
         const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, group, archive } = file;
 
         const fileIndex = new FileIndexEntity();
-        fileIndex.store = Promise.resolve(this.getStoreIndex());
-        fileIndex.archive = Promise.resolve(this.getArchiveIndex(archive));
-        fileIndex.group = Promise.resolve(this.getGroupIndex(group));
+        fileIndex.store = await this.getStoreIndex();
+        fileIndex.archive = await this.getArchiveIndex(archive);
+        fileIndex.group = await this.getGroupIndex(group);
         fileIndex.gameVersion = this.store.gameVersion;
         fileIndex.archiveKey = archive.numericKey;
         fileIndex.groupKey = group.numericKey;
@@ -170,17 +181,10 @@ export class IndexRepository {
         fileIndex.size = size;
         fileIndex.crc32 = crc32;
         fileIndex.sha256 = sha256;
-        fileIndex.stripes = stripes.join(',');
+        fileIndex.stripes = stripes?.join(',') || String(size);
+        fileIndex.stripeCount = fileIndex.stripes?.length || 1;
 
         return fileIndex;
-
-        /*const savedIndex = await this.fileRepo.save(fileIndex);
-        if(savedIndex?.key !== numericKey) {
-            logger.error(`Error saving flat file index ${numericKey}.`);
-            return null;
-        }
-
-        return savedIndex;*/
     }
 
     public async saveFileIndex(fileIndex: FileIndexEntity): Promise<FileIndexEntity> {
@@ -188,7 +192,7 @@ export class IndexRepository {
     }
 
     public async saveFileIndexes(fileIndexes: FileIndexEntity[]): Promise<FileIndexEntity[]> {
-        return await this.fileRepo.save(fileIndexes);
+        return await this.fileRepo.save(fileIndexes, { chunk: 100 });
     }
 
     public get loaded(): boolean {

@@ -9,22 +9,22 @@ export abstract class IndexEntity {
     @PrimaryColumn('integer', { name: 'game_version', nullable: false, unique: false })
     gameVersion: number;
 
-    @Column('text', { nullable: true })
+    @Column('text', { nullable: true, default: null })
     name: string | null = null;
 
-    @Column('integer', { nullable: true, name: 'name_hash' })
-    nameHash: number | null = null;
+    @Column('integer', { nullable: true, name: 'name_hash', default: 0 })
+    nameHash: number = 0;
 
-    @Column('integer', { nullable: false })
+    @Column('integer', { nullable: false, default: 0 })
     version: number = 0;
 
-    @Column('integer', { nullable: false })
+    @Column('integer', { nullable: false, default: 0 })
     size: number = 0;
 
-    @Column('integer', { nullable: true })
+    @Column('integer', { nullable: true, default: null })
     crc32: number | null = null;
 
-    @Column('text', { nullable: true })
+    @Column('text', { nullable: true, default: null })
     sha256: string | null = null;
 
     @CreateDateColumn()

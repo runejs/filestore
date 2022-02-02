@@ -1,12 +1,7 @@
-import {
-    CreateDateColumn,
-    Entity,
-    OneToMany,
-    PrimaryColumn,
-    UpdateDateColumn
-} from 'typeorm';
-import { GroupIndexEntity } from './group-index.entity';
+import { CreateDateColumn, Entity, OneToMany, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+
 import { ArchiveIndexEntity } from './archive-index.entity';
+import { GroupIndexEntity } from './group-index.entity';
 import { FileIndexEntity } from './file-index.entity';
 
 
@@ -16,13 +11,13 @@ export class StoreIndexEntity {
     @PrimaryColumn('integer', { name: 'game_version', nullable: false, unique: true })
     gameVersion: number;
 
-    @OneToMany(() => ArchiveIndexEntity, async archive => archive.store)
+    @OneToMany(() => ArchiveIndexEntity, archive => archive.store, { eager: true })
     archives: ArchiveIndexEntity[];
 
-    @OneToMany(() => GroupIndexEntity, async group => group.store, { lazy: true })
+    @OneToMany(() => GroupIndexEntity, group => group.store, { lazy: true })
     groups: Promise<GroupIndexEntity[]>;
 
-    @OneToMany(() => FileIndexEntity, async file => file.store, { lazy: true })
+    @OneToMany(() => FileIndexEntity, file => file.store, { lazy: true })
     files: Promise<FileIndexEntity[]>;
 
     @CreateDateColumn()

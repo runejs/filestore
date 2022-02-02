@@ -35,14 +35,12 @@ const indexFiles = async (store: Store, archiveName: string, compress: boolean, 
         }
 
         await store.read(compress);
-        await Array.from(store.archives.values()).forEachAsync(async archive => archive.saveIndexData());
+        await Array.from(store.archives.values()).forEachAsync(async archive => await archive.saveIndexData());
     } else {
         logger.info(`Indexing flat file store archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
             logger.info(argDebugString);
         }
-
-        await store.load();
 
         const archive = store.find(archiveName);
 
@@ -52,97 +50,99 @@ const indexFiles = async (store: Store, archiveName: string, compress: boolean, 
 };
 
 
-run(async args => {
-    const options = IndexerOptions.create(args as any);
-    const {
-        debug
-    } = options;
+(async function() {
+    await run(async args => {
+        const options = IndexerOptions.create(args as any);
+        const {
+            debug
+        } = options;
 
-    let {
-        version: gameVersion,
-        archive,
-        store: storePath,
-        compress
-    } = options;
+        let {
+            version: gameVersion,
+            archive,
+            store: storePath,
+            compress
+        } = options;
 
-    const terminal: TerminalInterface = new TerminalInterface();
-    const defaultStorePath = join('..', 'store');
+        const terminal: TerminalInterface = new TerminalInterface();
+        const defaultStorePath = join('..', 'store');
 
-    while(!storePath) {
-        const storePathInput = await terminal.question(`Store path (default ${defaultStorePath}):`, defaultStorePath);
+        while(!storePath) {
+            const storePathInput = await terminal.question(`Store path (default ${defaultStorePath}):`, defaultStorePath);
 
-        if(storePathInput) {
-            storePath = storePathInput;
+            if(storePathInput) {
+                storePath = storePathInput;
 
-            if(!storePath || typeof storePath !== 'string' || !storePath.trim()) {
-                logger.error(`Invalid store path supplied: ${storePathInput}`);
-                storePath = '';
+                if(!storePath || typeof storePath !== 'string' || !storePath.trim()) {
+                    logger.error(`Invalid store path supplied: ${storePathInput}`);
+                    storePath = '';
+                }
             }
         }
-    }
 
-    while(!gameVersion || gameVersion === -1) {
-        const versionInput = await terminal.question(`Please supply the desired game version to index (default 435):`, '435');
+        while(!gameVersion || gameVersion === -1) {
+            const versionInput = await terminal.question(`Please supply the desired game version to index (default 435):`, '435');
 
-        if(versionInput) {
-            gameVersion = parseInt(versionInput, 10);
+            if(versionInput) {
+                gameVersion = parseInt(versionInput, 10);
 
-            if(isNaN(gameVersion)) {
-                gameVersion = -1;
-            }
+                if(isNaN(gameVersion)) {
+                    gameVersion = -1;
+                }
 
-            if(gameVersion < 400 || gameVersion > 459) {
-                logger.error(`File store indexing currently only supports game versions 400-458.`);
-                gameVersion = -1;
-            }
-        }
-    }
-
-    const logDir = join(storePath, 'logs');
-
-    if(!existsSync(logDir)) {
-        mkdirSync(logDir, { recursive: true });
-    }
-
-    setLoggerDest(join(logDir, `index-${gameVersion}.log`));
-
-    const outputPath = join(storePath, 'output');
-    const store = await Store.create(gameVersion, storePath, outputPath);
-
-    while(!archive) {
-        const archiveNameInput = await terminal.question(
-            `Please supply the archive you wish to index (default 'main'):`, 'main')
-
-        if(archiveNameInput) {
-            archive = archiveNameInput.toLowerCase();
-
-            if(!store.archiveConfig[archive]) {
-                logger.error(`Archive ${archiveNameInput} was not found within the archive configuration file.`);
-                archive = '';
+                if(gameVersion < 400 || gameVersion > 459) {
+                    logger.error(`File store indexing currently only supports game versions 400-458.`);
+                    gameVersion = -1;
+                }
             }
         }
-    }
 
+        const logDir = join(storePath, 'logs');
 
-    while(compress === null) {
-        let compressInput = await terminal.question(
-            `Compress files for indexing? (default 'false'):`, 'false')
+        if(!existsSync(logDir)) {
+            mkdirSync(logDir, { recursive: true });
+        }
 
-        if(compressInput) {
-            compressInput = compressInput.toLowerCase();
+        setLoggerDest(join(logDir, `index-${gameVersion}.log`));
 
-            if(compressInput === 'true') {
-                compress = true;
-            } else if(compressInput === 'false') {
-                compress = false;
-            } else {
-                logger.error(`Compression response invalid, defaulting to 'false'.`);
-                compress = false;
+        const outputPath = join(storePath, 'output');
+        const store = await Store.create(gameVersion, storePath, outputPath);
+
+        while(!archive) {
+            const archiveNameInput = await terminal.question(
+                `Please supply the archive you wish to index (default 'main'):`, 'main')
+
+            if(archiveNameInput) {
+                archive = archiveNameInput.toLowerCase();
+
+                if(!store.archiveConfig[archive]) {
+                    logger.error(`Archive ${archiveNameInput} was not found within the archive configuration file.`);
+                    archive = '';
+                }
             }
         }
-    }
 
-    terminal.close();
 
-    await indexFiles(store, archive, compress, args, debug);
-});
+        while(compress === null) {
+            let compressInput = await terminal.question(
+                `Compress files for indexing? (default 'false'):`, 'false')
+
+            if(compressInput) {
+                compressInput = compressInput.toLowerCase();
+
+                if(compressInput === 'true') {
+                    compress = true;
+                } else if(compressInput === 'false') {
+                    compress = false;
+                } else {
+                    logger.error(`Compression response invalid, defaulting to 'false'.`);
+                    compress = false;
+                }
+            }
+        }
+
+        terminal.close();
+
+        await indexFiles(store, archive, compress, args, debug);
+    });
+}());

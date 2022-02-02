@@ -1,11 +1,7 @@
-import { createHash } from 'crypto';
 import { join } from 'path';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'graceful-fs';
+import { existsSync, readFileSync, writeFileSync, rmSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
-import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
-import { Xtea, XteaKeys } from '@runejs/common/encrypt';
-import { Archive, FileError, FileIndex, FileProperties, Store } from './index';
-import { Crc32 } from '../util';
+import { FileProperties } from './index';
 import { FileIndexEntity } from '../db';
 import { IndexedFile } from './indexed-file';
 
@@ -108,9 +104,9 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
         }
     }
 
-    public override verify(): void {
+    public override async verify(): Promise<void> {
         super.verify();
-        this._index = this.store.indexRepo.createFileIndex(this);
+        this._index = await this.store.indexService.createFileIndex(this);
     }
 
     public override get path(): string {

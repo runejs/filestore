@@ -299,14 +299,16 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
     }
 
     public override async read(compress: boolean = false): Promise<ByteBuffer | null> {
-        if(this.groups.size > 0) {
-            logger.warn(`Archive ${this.name} has already been read, please use reload() to re-read the archive's contents.`);
-            return null;
+        if(this._loaded) {
+            return this._data;
         }
 
         logger.info(`Reading archive ${this.name}...`);
 
-        this._index = await this.store.indexRepo.getArchiveIndex(this);
+        this._loaded = true;
+        this._index = await this.store.indexService.getArchiveIndex(this);
+
+        console.log(JSON.stringify(this._index, null, 2));
 
         this.crc32 = this.index.crc32;
         this.sha256 = this.index.sha256;
@@ -338,10 +340,11 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         this.js5Encode(compress);
 
         logger.info(`${this.groups.size} file(s) were loaded from the ${this.name} archive.`);
-        this._loaded = true;
+
+        return new ByteBuffer([]); // @TODO
     }
 
-    public override async write(): Promise<void> {
+    public override write(): void {
         if(!this.groups.size) {
             logger.error(`Error writing archive ${this.name || this.key}: Archive is empty.`);
             return;
@@ -360,37 +363,32 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
         Array.from(this.groups.values()).forEach(group => group.write());
 
-        await this.saveIndexData();
-
         const end = Date.now();
         logger.info(`Archive ${this.name || this.key} written in ${(end - start) / 1000} seconds.`)
     }
 
-    public async reload(compress: boolean = false): Promise<void> {
-        this.groups.clear();
-        await this.read(compress);
-    }
-
-    public override verify(): void {
+    public override async verify(): Promise<void> {
         super.verify();
-        this._index = this.store.indexRepo.createArchiveIndex(this);
-        this.groups.forEach(group => group.verify());
-        // this._index.groups = Array.from(this.groups.values()).map(group => group.index);
+        this._index = await this.store.indexService.createArchiveIndex(this);
+
+        for(const [ , group ] of this.groups) {
+            await group.verify();
+        }
     }
 
     public async saveIndexData(): Promise<void> {
-        this.verify();
+        await this.verify();
 
-        await this.store.indexRepo.saveArchiveIndex(this.index);
+        await this.store.indexService.saveArchiveIndex(this.index);
 
         const groups = Array.from(this.groups.values());
 
         const groupIndexes = groups.map(group => group.index);
-        await this.store.indexRepo.saveGroupIndexes(groupIndexes);
+        await this.store.indexService.saveGroupIndexes(groupIndexes);
 
-        for(const group of groups) {
-            await this.store.indexRepo.saveFileIndexes(Array.from(group.files.values()).map(file => file.index));
-        }
+        const flatFiles = groups.filter(group => group.files.size > 1).map(group => Array.from(group.files.values())
+            .map(file => file.index)).reduce((a, v) => a.concat(v), []);
+        await this.store.indexService.saveFileIndexes(flatFiles);
     }
 
     public has(childIndex: string | number): boolean {

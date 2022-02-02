@@ -9,24 +9,32 @@ import { StoreIndexEntity } from './store-index.entity';
 @Index('group_identifier', [ 'key', 'gameVersion', 'archiveKey' ], { unique: true })
 export class GroupIndexEntity extends IndexEntity {
 
-    @ManyToOne(() => StoreIndexEntity, async store => store.groups, { lazy: true, primary: true })
+    @ManyToOne(() => StoreIndexEntity, async store => store.groups,
+        { primary: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'game_version', referencedColumnName: 'gameVersion' })
-    store: Promise<StoreIndexEntity>;
+    store: StoreIndexEntity;
 
-    @ManyToOne(() => ArchiveIndexEntity, archive => archive.groups, { lazy: true, primary: true })
+    @ManyToOne(() => ArchiveIndexEntity, archive => archive.groups,
+        { primary: true, onDelete: 'CASCADE' })
     @JoinColumn([
         { name: 'archive_key', referencedColumnName: 'key' },
         { name: 'game_version', referencedColumnName: 'gameVersion' }
     ])
-    archive: Promise<ArchiveIndexEntity>;
+    archive: ArchiveIndexEntity;
 
     @PrimaryColumn('integer', { name: 'archive_key', unique: false, nullable: false })
     archiveKey: number;
 
-    @OneToMany(() => FileIndexEntity, async fileIndex => fileIndex.group)
+    @OneToMany(() => FileIndexEntity, fileIndex => fileIndex.group, { eager: true })
     files: FileIndexEntity[];
 
-    @Column('integer', { nullable: false, name: 'stripe_count' })
+    @Column('boolean', { nullable: false, name: 'flat', default: false })
+    flatFile: boolean = false;
+
+    @Column('integer', { nullable: false, name: 'stripe_count', default: 1 })
     stripeCount: number = 1;
+
+    @Column('text', { nullable: true, default: null })
+    stripes: string | null = null;
 
 }

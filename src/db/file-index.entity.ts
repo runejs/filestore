@@ -11,26 +11,26 @@ import { GroupIndexEntity } from './group-index.entity';
 export class FileIndexEntity extends IndexEntity {
 
     @ManyToOne(() => StoreIndexEntity, async store => store.files,
-        { primary: true, onDelete: 'CASCADE' })
+        { lazy: true, primary: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'game_version', referencedColumnName: 'gameVersion' })
-    store: StoreIndexEntity;
+    store: Promise<StoreIndexEntity>;
 
     @ManyToOne(() => ArchiveIndexEntity, archive => archive.groups,
-        { primary: true, onDelete: 'CASCADE' })
+        { lazy: true, primary: true, onDelete: 'CASCADE' })
     @JoinColumn([
         { name: 'archive_key', referencedColumnName: 'key' },
         { name: 'game_version', referencedColumnName: 'gameVersion' }
     ])
-    archive: ArchiveIndexEntity;
+    archive: Promise<ArchiveIndexEntity>;
 
     @ManyToOne(() => GroupIndexEntity, group => group.files,
-        { primary: true, onDelete: 'CASCADE' })
+        { lazy: true, primary: true, onDelete: 'CASCADE' })
     @JoinColumn([
         { name: 'archive_key', referencedColumnName: 'archiveKey' },
         { name: 'group_key', referencedColumnName: 'key' },
         { name: 'game_version', referencedColumnName: 'gameVersion' }
     ])
-    group: GroupIndexEntity;
+    group: Promise<GroupIndexEntity>;
 
     @PrimaryColumn('integer', { name: 'archive_key', unique: false, nullable: false })
     archiveKey: number;

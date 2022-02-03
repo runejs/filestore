@@ -306,7 +306,23 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         logger.info(`Reading archive ${this.name}...`);
 
         this._loaded = true;
-        this._index = await this.store.indexService.getArchiveIndex(this);
+        this._index = await this.indexService.getArchiveIndex(this);
+        this._index.groups = await this.indexService.getGroupIndexes(this);
+
+        // Bulk-fetch the archive's files and sort them into the appropriate groups
+        const archiveFileIndexes = await this.indexService.getFileIndexes(this);
+        for(const fileIndex of archiveFileIndexes) {
+            const group = this.index.groups.find(group => group.key === fileIndex.groupKey);
+            if(!group) {
+                continue;
+            }
+
+            if(!group.files?.length) {
+                group.files = [ fileIndex ];
+            } else {
+                group.files.push(fileIndex);
+            }
+        }
 
         console.log(JSON.stringify(this._index, null, 2));
 
@@ -369,7 +385,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
     public override async verify(): Promise<void> {
         super.verify();
-        this._index = await this.store.indexService.createArchiveIndex(this);
+        this._index = await this.indexService.createArchiveIndex(this);
 
         for(const [ , group ] of this.groups) {
             await group.verify();
@@ -379,16 +395,16 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
     public async saveIndexData(): Promise<void> {
         await this.verify();
 
-        await this.store.indexService.saveArchiveIndex(this.index);
+        await this.indexService.saveArchiveIndex(this.index);
 
         const groups = Array.from(this.groups.values());
 
         const groupIndexes = groups.map(group => group.index);
-        await this.store.indexService.saveGroupIndexes(groupIndexes);
+        await this.indexService.saveGroupIndexes(groupIndexes);
 
         const flatFiles = groups.filter(group => group.files.size > 1).map(group => Array.from(group.files.values())
             .map(file => file.index)).reduce((a, v) => a.concat(v), []);
-        await this.store.indexService.saveFileIndexes(flatFiles);
+        await this.indexService.saveFileIndexes(flatFiles);
     }
 
     public has(childIndex: string | number): boolean {

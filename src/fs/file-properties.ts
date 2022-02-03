@@ -2,6 +2,7 @@ import { CompressionMethod } from '@runejs/common/compress';
 import { EncryptionMethod } from '@runejs/common/encrypt';
 import { Archive, FileIndex, Group, Store } from './index';
 import { setObjectProps } from '@runejs/common/util';
+import { IndexService } from '../db';
 
 
 export class FileProperties {
@@ -35,6 +36,10 @@ export class FileProperties {
 
     public get hasNameHash(): boolean {
         return this.nameHash !== undefined && this.nameHash !== null && this.nameHash !== -1 && !isNaN(this.nameHash);
+    }
+
+    public get indexService(): IndexService {
+        return this.store.indexService;
     }
 }
 

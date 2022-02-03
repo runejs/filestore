@@ -35,7 +35,7 @@ const indexFiles = async (store: Store, archiveName: string, compress: boolean, 
         }
 
         await store.read(compress);
-        await Array.from(store.archives.values()).forEachAsync(async archive => await archive.saveIndexData());
+        // await Array.from(store.archives.values()).forEachAsync(async archive => await archive.saveIndexData());
     } else {
         logger.info(`Indexing flat file store archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
@@ -45,7 +45,7 @@ const indexFiles = async (store: Store, archiveName: string, compress: boolean, 
         const archive = store.find(archiveName);
 
         await archive.read(compress);
-        await archive.saveIndexData();
+        // await archive.saveIndexData();
     }
 };
 

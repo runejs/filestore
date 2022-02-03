@@ -10,22 +10,22 @@ import { StoreIndexEntity } from './store-index.entity';
 export class GroupIndexEntity extends IndexEntity {
 
     @ManyToOne(() => StoreIndexEntity, async store => store.groups,
-        { primary: true, onDelete: 'CASCADE' })
+        { lazy: true, primary: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'game_version', referencedColumnName: 'gameVersion' })
-    store: StoreIndexEntity;
+    store: Promise<StoreIndexEntity>;
 
     @ManyToOne(() => ArchiveIndexEntity, archive => archive.groups,
-        { primary: true, onDelete: 'CASCADE' })
+        { lazy: true, primary: true, onDelete: 'CASCADE' })
     @JoinColumn([
         { name: 'archive_key', referencedColumnName: 'key' },
         { name: 'game_version', referencedColumnName: 'gameVersion' }
     ])
-    archive: ArchiveIndexEntity;
+    archive: Promise<ArchiveIndexEntity>;
 
     @PrimaryColumn('integer', { name: 'archive_key', unique: false, nullable: false })
     archiveKey: number;
 
-    @OneToMany(() => FileIndexEntity, fileIndex => fileIndex.group, { eager: true })
+    @OneToMany(() => FileIndexEntity, async fileIndex => fileIndex.group)
     files: FileIndexEntity[];
 
     @Column('boolean', { nullable: false, name: 'flat', default: false })

@@ -9,12 +9,12 @@ import { GroupIndexEntity } from './group-index.entity';
 @Index('archive_identifier', [ 'key', 'gameVersion' ], { unique: true })
 export class ArchiveIndexEntity extends IndexEntity {
 
-    @ManyToOne(() => StoreIndexEntity, store => store.archives,
-        { primary: true, onDelete: 'CASCADE' })
+    @ManyToOne(() => StoreIndexEntity, async store => store.archives,
+        { lazy: true, primary: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'game_version', referencedColumnName: 'gameVersion' })
-    store: StoreIndexEntity;
+    store: Promise<StoreIndexEntity>;
 
-    @OneToMany(() => GroupIndexEntity, group => group.archive, { eager: true })
+    @OneToMany(() => GroupIndexEntity, async group => group.archive)
     groups: GroupIndexEntity[];
 
 }

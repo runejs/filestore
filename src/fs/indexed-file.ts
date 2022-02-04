@@ -1,25 +1,97 @@
-import { IndexEntity } from '../db';
-import { FileProperties } from './file-properties';
+import { IndexEntity, IndexService } from '../db';
 import { ByteBuffer, logger } from '@runejs/common';
-import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
-import { Xtea, XteaKeys } from '@runejs/common/encrypt';
+import { Bzip2, CompressionMethod, getCompressionMethod, Gzip } from '@runejs/common/compress';
+import { EncryptionMethod, Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
 import { createHash } from 'crypto';
 import { FileError } from './file-error';
+import { Store } from './store';
+import { Archive } from './archive';
+import { Group } from './group';
 
 
-export abstract class IndexedFile<T extends IndexEntity> extends FileProperties {
+export interface AdditionalFileProperties {
+    store: Store;
+    archive: Archive;
+    group: Group;
+    encryption: EncryptionMethod | [ EncryptionMethod, string ];
+    encrypted: boolean;
+    compression: CompressionMethod;
+    compressed: boolean;
+}
 
-    protected _index: T;
-    protected _data: ByteBuffer | null;
-    protected _js5Encoded: boolean;
-    protected _loaded: boolean;
-    protected _modified: boolean;
-    protected _errors: FileError[];
 
-    protected constructor(index: string | number, properties?: Partial<FileProperties>) {
-        super(properties);
-        this.key = typeof index === 'number' ? String(index) : index;
+export abstract class IndexedFile<T extends IndexEntity> {
+
+    public readonly key: string;
+    public readonly index: T;
+    public readonly store: Store;
+    public readonly archive: Archive;
+    public readonly group: Group;
+
+    public name: string = '';
+    public nameHash: number = -1;
+    public version: number = 0;
+    public size: number = 0;
+    public crc32: number = -1;
+    public sha256: string = '';
+    public stripes: number[] = [];
+    public stripeCount: number = 1;
+    public encryption: EncryptionMethod | [ EncryptionMethod, string ] = 'none';
+    public encrypted: boolean = false;
+    public compression: CompressionMethod = 'none';
+    public compressed: boolean = false;
+
+    protected _data: ByteBuffer | null = null;
+    protected _js5Encoded: boolean = false;
+    protected _loaded: boolean = false;
+    protected _modified: boolean = false;
+    protected _errors: FileError[] = [];
+
+    protected constructor(index: T, properties?: Partial<AdditionalFileProperties>) {
+        this.index = index;
+        this.key = String(index.key);
+
+        if(this.isSet(index.name)) {
+            this.name = index.name;
+        }
+        if(this.isSet(index.nameHash)) {
+            this.nameHash = index.nameHash;
+        }
+        if(this.isSet(index.version)) {
+            this.version = index.version;
+        }
+        if(this.isSet(index.size)) {
+            this.size = index.size;
+        }
+        if(this.isSet(index.crc32)) {
+            this.crc32 = index.crc32;
+        }
+        if(this.isSet(index.sha256)) {
+            this.sha256 = index.sha256;
+        }
+
+        if(this.isSet(properties?.store)) {
+            this.store = properties.store;
+        }
+        if(this.isSet(properties?.archive)) {
+            this.archive = properties.archive;
+        }
+        if(this.isSet(properties?.group)) {
+            this.group = properties.group;
+        }
+        if(this.isSet(properties?.encryption)) {
+            this.encryption = properties.encryption;
+        }
+        if(this.isSet(properties?.encrypted)) {
+            this.encrypted = properties.encrypted;
+        }
+        if(this.isSet(properties?.compression)) {
+            this.compression = properties.compression;
+        }
+        if(this.isSet(properties?.compressed)) {
+            this.compressed = properties.compressed;
+        }
 
         this._errors = [];
         this._js5Encoded = false;
@@ -381,7 +453,7 @@ export abstract class IndexedFile<T extends IndexEntity> extends FileProperties 
         return this._data;
     }
 
-    public verify(): void | Promise<void> {
+    public validate(): void | Promise<void> {
         const isNamed = !!this.name && this.name.length;
         let name = this.name;
         let nameHash: number | undefined = undefined;
@@ -437,12 +509,20 @@ export abstract class IndexedFile<T extends IndexEntity> extends FileProperties 
         }
     }
 
+    protected isSet(variable: any): boolean {
+        return variable !== undefined && variable !== null;
+    }
+
     public abstract read(compress?: boolean): ByteBuffer | null | Promise<ByteBuffer | null>;
 
     public abstract write(): void | Promise<void>;
 
-    public get index(): T {
-        return this._index;
+    public get numericKey(): number {
+        return Number(this.key);
+    }
+
+    public get hasNameHash(): boolean {
+        return this.nameHash !== undefined && this.nameHash !== null && this.nameHash !== -1 && !isNaN(this.nameHash);
     }
 
     public get data(): ByteBuffer {
@@ -475,6 +555,10 @@ export abstract class IndexedFile<T extends IndexEntity> extends FileProperties 
 
     public get hasErrors(): boolean {
         return (this._errors?.length ?? 0) !== 0;
+    }
+
+    public get indexService(): IndexService {
+        return this.store.indexService;
     }
 
     public abstract get path(): string;

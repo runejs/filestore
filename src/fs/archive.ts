@@ -2,19 +2,20 @@ import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
-import { ArchiveProperties, FileProperties, Group, FlatFile, FileIndex, FileError } from './index';
+import { Group, FlatFile } from './index';
 import { ArchiveIndexEntity } from '../db';
-import { IndexedFile } from './indexed-file';
+import { AdditionalFileProperties, IndexedFile } from './indexed-file';
+import { ArchiveConfig } from '../config';
 
 
 export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
-    public readonly config: ArchiveProperties;
+    public readonly config: ArchiveConfig;
     public readonly groups: Map<string, Group>;
 
     private _missingEncryptionKeys: number;
 
-    public constructor(index: string | number, config: ArchiveProperties, properties?: Partial<FileProperties>) {
+    public constructor(index: ArchiveIndexEntity, config: ArchiveConfig, properties?: Partial<AdditionalFileProperties>) {
         super(index, properties);
 
         this.groups = new Map<string, Group>();
@@ -74,8 +75,11 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         for(let i = 0; i < fileCount; i++) {
             const delta = archiveData.get('short', 'unsigned');
             groupIndices[i] = accumulator += delta;
-            const group = new Group(groupIndices[i], {
+            const group = new Group(this.indexService.verifyGroupIndex({
+                numericKey: groupIndices[i],
                 name: String(groupIndices[i]),
+                archive: this
+            }), {
                 archive: this,
                 encryption: this.encryption,
                 encrypted,
@@ -91,19 +95,21 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         if(filesNamed) {
             for(const groupIndex of groupIndices) {
                 const group = this.get(groupIndex);
-                group.nameHash = archiveData.get('int');
-                group.name = this.store.findFileName(group.nameHash, String(group.nameHash));
+                group.nameHash = group.index.nameHash = archiveData.get('int');
+                group.name = group.index.name = this.store.findFileName(group.nameHash, String(group.nameHash));
             }
         }
 
         /* read the crc values */
         for(const groupIndex of groupIndices) {
-            this.get(groupIndex).crc32 = archiveData.get('int');
+            const group = this.get(groupIndex);
+            group.crc32 = group.index.crc32 = archiveData.get('int');
         }
 
         /* read the version numbers */
         for(const groupIndex of groupIndices) {
-            this.get(groupIndex).version = archiveData.get('int');
+            const group = this.get(groupIndex);
+            group.version = group.index.version = archiveData.get('int');
         }
 
         /* read the child count */
@@ -123,10 +129,13 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             for(let i = 0; i < fileCount; i++) {
                 const delta = archiveData.get('short', 'unsigned');
                 const childFileIndex = accumulator += delta;
-                group.set(childFileIndex, new FlatFile(childFileIndex, {
+                group.set(childFileIndex, new FlatFile(this.indexService.verifyFileIndex({
+                    numericKey: childFileIndex,
+                    name: String(childFileIndex),
+                    group, archive: this
+                }), {
                     archive: this,
-                    group: group,
-                    name: String(childFileIndex)
+                    group: group
                 }));
             }
         }
@@ -139,8 +148,9 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
                 for(const [ , childFile ] of fileGroup.files) {
                     const nameHash = archiveData.get('int');
                     if(childFile) {
-                        childFile.nameHash = nameHash;
-                        childFile.name = this.store.findFileName(childFile.nameHash, String(childFile.nameHash));
+                        childFile.nameHash = childFile.index.nameHash = nameHash;
+                        childFile.name = childFile.index.name =
+                            this.store.findFileName(childFile.nameHash, String(childFile.nameHash));
                     }
                 }
             }
@@ -152,7 +162,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
             for(const [ , group ] of this.groups) {
                 try {
-                    (group as Group).js5Decode();
+                    group.js5Decode();
 
                     if(group.data?.length && !group.compressed) {
                         successes++;
@@ -306,36 +316,11 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         logger.info(`Reading archive ${this.name}...`);
 
         this._loaded = true;
-        this._index = await this.indexService.getArchiveIndex(this);
-        this._index.groups = await this.indexService.getGroupIndexes(this);
-
-        // Bulk-fetch the archive's files and sort them into the appropriate groups
-        const archiveFileIndexes = await this.indexService.getFileIndexes(this);
-        for(const fileIndex of archiveFileIndexes) {
-            const group = this.index.groups.find(group => group.key === fileIndex.groupKey);
-            if(!group) {
-                continue;
-            }
-
-            if(!group.files?.length) {
-                group.files = [ fileIndex ];
-            } else {
-                group.files.push(fileIndex);
-            }
-        }
-
-        console.log(JSON.stringify(this._index, null, 2));
-
-        this.crc32 = this.index.crc32;
-        this.sha256 = this.index.sha256;
 
         // Read in all groups within the archive
-        const groups = this.index.groups;
-        for(const groupIndex of groups) {
-            const { name, nameHash, version, size, stripeCount, crc32, sha256 } = groupIndex;
-            const group = new Group(groupIndex.key, {
+        for(const groupIndex of this.index.groups) {
+            const group = new Group(groupIndex, {
                 archive: this,
-                name, nameHash, version, size, stripeCount, crc32, sha256,
                 compression: this.config.compression,
                 compressed: false,
                 encryption: this.config.encryption,
@@ -383,17 +368,17 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         logger.info(`Archive ${this.name || this.key} written in ${(end - start) / 1000} seconds.`)
     }
 
-    public override async verify(): Promise<void> {
-        super.verify();
-        this._index = await this.indexService.createArchiveIndex(this);
+    public override async validate(): Promise<void> {
+        super.validate();
+        await this.indexService.verifyArchiveIndex(this);
 
         for(const [ , group ] of this.groups) {
-            await group.verify();
+            await group.validate();
         }
     }
 
     public async saveIndexData(): Promise<void> {
-        await this.verify();
+        await this.validate();
 
         await this.indexService.saveArchiveIndex(this.index);
 

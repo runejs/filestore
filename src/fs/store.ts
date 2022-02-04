@@ -5,8 +5,9 @@ import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
-import { ArchiveProperties, Archive } from './index';
-import { IndexService } from '../db';
+import { Archive } from './index';
+import { ArchiveIndexEntity, IndexService } from '../db';
+import { ArchiveConfig } from '../config';
 
 
 export class Store {
@@ -23,7 +24,7 @@ export class Store {
     private _data: ByteBuffer;
     private _path: string;
     private _outputPath: string;
-    private _archiveConfig: { [key: string]: ArchiveProperties };
+    private _archiveConfig: { [key: string]: ArchiveConfig };
     private _encryptionKeys: Map<string, XteaKeys[]>;
     private _gameVersion: number | undefined;
     private _gameVersionMissing: boolean;
@@ -221,22 +222,57 @@ export class Store {
                 `Please configure the main archive using the archives.json5 file within the store config directory.`)
         }
 
-        this._mainArchive = new Archive(255, mainArchiveConfig, {
-            store: this,
-            name: 'main', nameHash: this.hashFileName('main')
+        const mainArchiveIndex = new ArchiveIndexEntity();
+        mainArchiveIndex.key = 255;
+        mainArchiveIndex.gameVersion = this.gameVersion;
+        mainArchiveIndex.name = 'main';
+        mainArchiveIndex.nameHash = this.hashFileName('main');
+        this._mainArchive = new Archive(mainArchiveIndex, mainArchiveConfig, {
+            store: this
         });
+
+        let archiveIndexes = await this.indexService.getArchiveIndexes();
+
+        if(!archiveIndexes?.length) {
+            archiveIndexes = new Array(archiveConfigs.length);
+        }
 
         for(const [ name, config ] of archiveConfigs) {
             if(config.index === 255) {
                 continue;
             }
 
-            const archive = new Archive(config.index, config, {
+            let archiveIndex = archiveIndexes.find(a => a?.key === config.index);
+            if(!archiveIndex) {
+                archiveIndex = this.indexService.verifyArchiveIndex({
+                    numericKey: config.index,
+                    name,
+                    nameHash: this.hashFileName(name)
+                });
+            }
+
+            archiveIndex.groups = await this.indexService.getGroupIndexes(archiveIndex);
+
+            // Bulk-fetch the archive's files and sort them into the appropriate groups
+            const archiveFileIndexes = await this.indexService.getFileIndexes(archiveIndex);
+            for(const fileIndex of archiveFileIndexes) {
+                const group = archiveIndex.groups.find(group => group.key === fileIndex.groupKey);
+                if(!group) {
+                    continue;
+                }
+
+                if(!group.files?.length) {
+                    group.files = [ fileIndex ];
+                } else {
+                    group.files.push(fileIndex);
+                }
+            }
+
+            const archive = new Archive(archiveIndex, config, {
                 store: this,
                 archive: this._mainArchive,
                 encryption: config.encryption ?? 'none',
-                compression: config.compression ?? 'none',
-                name, nameHash: this.hashFileName(name)
+                compression: config.compression ?? 'none'
             });
 
             this.archives.set(archive.key, archive);
@@ -268,7 +304,7 @@ export class Store {
             return;
         }
 
-        this._archiveConfig = JSON5.parse(readFileSync(configPath, 'utf-8')) as { [key: string]: ArchiveProperties };
+        this._archiveConfig = JSON5.parse(readFileSync(configPath, 'utf-8')) as { [key: string]: ArchiveConfig };
 
         if(!Object.values(this._archiveConfig)?.length) {
             throw new Error(`Error reading archive configuration file. ` +
@@ -396,7 +432,7 @@ export class Store {
         return this._gameVersion;
     }
 
-    public get archiveConfig(): { [p: string]: ArchiveProperties } {
+    public get archiveConfig(): { [p: string]: ArchiveConfig } {
         return this._archiveConfig;
     }
 

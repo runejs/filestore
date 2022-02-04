@@ -2,11 +2,9 @@ import { join } from 'path';
 import { existsSync, readdirSync, statSync, mkdirSync, rmSync } from 'graceful-fs';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { logger } from '@runejs/common';
-import { FileProperties } from './file-properties';
 import { FlatFile } from './flat-file';
-import { FileIndex } from './file-index';
 import { GroupIndexEntity } from '../db';
-import { IndexedFile } from './indexed-file';
+import { AdditionalFileProperties, IndexedFile } from './indexed-file';
 
 
 export class Group extends IndexedFile<GroupIndexEntity> {
@@ -16,8 +14,17 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
     private _fileCount: number;
 
-    public constructor(index: string | number, properties?: Partial<FileProperties>) {
+    public constructor(index: GroupIndexEntity, properties?: Partial<AdditionalFileProperties>) {
         super(index, properties);
+
+        if(this.isSet(index.stripes)) {
+            this.stripes = index.stripes.split(',').map(n => Number(n));
+        }
+
+        if(this.isSet(index.stripeCount)) {
+            this.stripeCount = index.stripeCount;
+        }
+
         this.files = new Map<string, FlatFile>();
         this.fileSizes = new Map<string, number>();
         this._fileCount = 0;
@@ -40,7 +47,6 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
         if(this._fileCount === 1) {
             const flatFile: FlatFile = Array.from(this.files.values())[0];
-            flatFile.key = '0';
             flatFile.name = this.name;
             flatFile.nameHash = this.nameHash;
             flatFile.sha256 = this.sha256;
@@ -200,14 +206,22 @@ export class Group extends IndexedFile<GroupIndexEntity> {
     }
 
     public override read(compress: boolean = false): ByteBuffer | null {
-        // @TODO re-index this automatically
-
         if(!this.index) {
-            throw new Error(`Error reading group ${this.name} files: Group is not indexed, please re-index the ` +
+            logger.error(`Error reading group ${this.name} files: Group is not indexed, please re-index the ` +
                 `${this.archive.name} archive.`);
+            return null;
         }
 
-        const children = (this.index as GroupIndexEntity).files;
+        if(!this.index.files?.length) {
+            // Single file indexes are not stored to save on DB space and read/write times
+            // So if a group has no children, assume it is a single-file group and create a single index for it
+            const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, stripeCount, archive } = this;
+            this.index.files = [ this.indexService.verifyFileIndex({
+                numericKey: 0, name, nameHash, version, size, crc32, sha256, stripes, stripeCount, group: this, archive
+            }) ];
+        }
+
+        const files = this.index.files;
 
         /*if(!children?.length) {
             // Set default single child file (which is excluded from the .index file to save on disk space)
@@ -233,7 +247,7 @@ export class Group extends IndexedFile<GroupIndexEntity> {
             isDirectory = true;
         }
 
-        if(children.length !== childFileCount) {
+        if(files.length !== childFileCount) {
             this._modified = true;
         }
 
@@ -241,19 +255,13 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         this.fileSizes.clear();
 
         // Load the group's files
-        for(const fileIndexData of children) {
-            const { name, nameHash, size, crc32, sha256 } = fileIndexData;
-
-            const stripes: number[] = (fileIndexData.stripes ?? '').split(',').map(n => Number(n));
-
-            const file = new FlatFile(fileIndexData.key, {
-                name, nameHash,
-                group: this, archive: this.archive,
-                size, stripes, crc32, sha256
+        for(const fileIndexData of files) {
+            const file = new FlatFile(fileIndexData, {
+                group: this, archive: this.archive, store: this.store
             });
 
             this.files.set(file.key, file);
-            this.fileSizes.set(file.key, size);
+            this.fileSizes.set(file.key, fileIndexData.size);
         }
 
         this._fileCount = this.files.size;
@@ -316,12 +324,12 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         Array.from(this.files.values()).forEach(file => file.write());
     }
 
-    public override async verify(): Promise<void> {
-        super.verify();
-        this._index = await this.store.indexService.createGroupIndex(this);
+    public override async validate(): Promise<void> {
+        super.validate();
+        await this.store.indexService.verifyGroupIndex(this);
 
         for(const [ , file ] of this.files) {
-            await file.verify();
+            await file.validate();
         }
     }
 

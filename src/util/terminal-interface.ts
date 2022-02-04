@@ -2,6 +2,9 @@ import { createInterface, Interface } from 'readline';
 import { ReadStream, WriteStream } from 'tty';
 
 
+export type ArgumentMap = Map<string, unknown>;
+
+
 export class TerminalInterface {
 
     public readonly input: ReadStream;
@@ -30,8 +33,49 @@ export class TerminalInterface {
         });
     }
 
+    public getScriptArguments(): ArgumentMap {
+        const args = process.argv.slice(2);
+        const argMap: ArgumentMap = new Map<string, unknown>();
+
+        for(let i = 0; i < args.length; i++) {
+            const str = args[i];
+            if(str?.startsWith('-')) {
+                const key: string = str.substring(1);
+                let next: string;
+                if(i < args.length - 1) {
+                    next = args[i + 1];
+                    if(!next?.startsWith('-')) {
+                        let val: string | boolean = next;
+                        if(val === 'true') {
+                            val = true;
+                        } else if(val === 'false') {
+                            val = false;
+                        }
+                        argMap.set(key, val);
+                    } else {
+                        argMap.set(key, true);
+                    }
+                } else {
+                    argMap.set(key, true);
+                }
+            }
+        }
+
+        return argMap;
+    }
+
     public close(): void {
         this.instance.close();
+    }
+
+    public executeScript(executor: (terminalInterface: TerminalInterface, args: ArgumentMap) => Promise<void>): void {
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const terminal = this;
+        const scriptArguments = this.getScriptArguments();
+
+        (async function() {
+            await executor(terminal, scriptArguments);
+        }());
     }
 
 }

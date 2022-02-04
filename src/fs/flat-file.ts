@@ -1,15 +1,22 @@
 import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync, rmSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
-import { FileProperties } from './index';
 import { FileIndexEntity } from '../db';
-import { IndexedFile } from './indexed-file';
+import { AdditionalFileProperties, IndexedFile } from './indexed-file';
 
 
 export class FlatFile extends IndexedFile<FileIndexEntity> {
 
-    public constructor(index: string | number, properties?: Partial<FileProperties>) {
+    public constructor(index: FileIndexEntity, properties?: Partial<AdditionalFileProperties>) {
         super(index, properties);
+
+        if(this.isSet(index.stripes)) {
+            this.stripes = index.stripes.split(',').map(n => Number(n));
+        }
+
+        if(this.isSet(index.stripeCount)) {
+            this.stripeCount = index.stripeCount;
+        }
     }
 
     public override read(compress: boolean = false): ByteBuffer | null | Promise<ByteBuffer | null> {
@@ -104,9 +111,9 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
         }
     }
 
-    public override async verify(): Promise<void> {
-        super.verify();
-        this._index = await this.store.indexService.createFileIndex(this);
+    public override async validate(): Promise<void> {
+        super.validate();
+        await this.store.indexService.verifyFileIndex(this);
     }
 
     public override get path(): string {

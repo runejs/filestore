@@ -1,4 +1,3 @@
-export * from './file-properties';
 export * from './flat-file';
 export * from './group';
 export * from './archive';

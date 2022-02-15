@@ -1,4 +1,5 @@
-import path from 'path';
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'graceful-fs';
 import { Connection, ConnectionOptions, createConnection, Repository } from 'typeorm';
 
 import { logger } from '@runejs/common';
@@ -18,13 +19,19 @@ export class IndexService {
     }
 
     public async load(): Promise<void> {
+        const indexPath = join(this.store.path, 'indexes');
+
+        if(!existsSync(indexPath)) {
+            mkdirSync(indexPath, { recursive: true });
+        }
+
         this.connection = await createConnection({
             type: 'sqlite',
-            database: path.join(this.store.path, 'archives', 'index.sqlite3'),
+            database: join(indexPath, `index${this.store.gameVersion}.sqlite3`),
             entities: [ StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity ],
             synchronize: true,
             logging: [ 'error' ],
-            name: 'filestore-cli'
+            name: 'index-service'
         });
     }
 
@@ -37,8 +44,11 @@ export class IndexService {
     }
 
     public async saveStoreIndex(): Promise<StoreIndexEntity | null> {
-        const storeIndex = new StoreIndexEntity();
-        storeIndex.gameVersion = this.store.gameVersion;
+        const storeIndex = (await this.getStoreIndex()) ?? new StoreIndexEntity();
+
+        if(!storeIndex.gameVersion) {
+            storeIndex.gameVersion = this.store.gameVersion;
+        }
 
         logger.info(`Saving store index ${this.store.gameVersion}...`);
 
@@ -59,11 +69,13 @@ export class IndexService {
         return savedIndex;
     }
 
-    public async getArchiveIndex(archive: Archive): Promise<ArchiveIndexEntity | null> {
+    public async getArchiveIndex(archive: Archive): Promise<ArchiveIndexEntity | null>;
+    public async getArchiveIndex(archiveKey: number): Promise<ArchiveIndexEntity | null>;
+    public async getArchiveIndex(archive: Archive | number): Promise<ArchiveIndexEntity | null> {
+        const key = typeof archive === 'number' ? archive : archive.numericKey;
         return await this.archiveRepo.findOne({
             where: {
-                key: archive.numericKey,
-                gameVersion: this.store.gameVersion
+                key, gameVersion: this.store.gameVersion
             }
         }) || null;
     }
@@ -91,7 +103,7 @@ export class IndexService {
             archiveIndex.key = numericKey;
         }
 
-        archiveIndex.store = Promise.resolve(this.getStoreIndex());
+        // archiveIndex.store = Promise.resolve(this.getStoreIndex());
         archiveIndex.gameVersion = this.store.gameVersion;
         archiveIndex.name = name;
         archiveIndex.nameHash = nameHash;
@@ -104,6 +116,8 @@ export class IndexService {
     }
 
     public async saveArchiveIndex(archiveIndex: ArchiveIndexEntity): Promise<ArchiveIndexEntity> {
+        logger.info(`Saving archive ${archiveIndex.name} to index database...`);
+
         const existingIndex = await this.archiveRepo.findOne({
             where: {
                 key: archiveIndex.key,
@@ -112,22 +126,50 @@ export class IndexService {
         });
 
         if(existingIndex) {
+            // const groups = existingIndex.groups;
+            // delete existingIndex.groups;
+
+            const { name, nameHash, size, sha256, crc32, version } = archiveIndex;
+            existingIndex.name = name;
+            existingIndex.nameHash = nameHash;
+            existingIndex.size = size;
+            existingIndex.sha256 = sha256;
+            existingIndex.crc32 = crc32;
+            existingIndex.version = version;
+
             const result = await this.archiveRepo.update({
                 key: archiveIndex.key,
                 gameVersion: archiveIndex.gameVersion
             }, archiveIndex);
 
-            return archiveIndex;
+            if(!result.affected) {
+                throw new Error(`Error updating archive ${archiveIndex.name} index.`);
+            }
         } else {
-            return await this.archiveRepo.save(archiveIndex);
+            // const groups = archiveIndex.groups;
+            // delete archiveIndex.groups;
+
+            const result = await this.archiveRepo.insert(archiveIndex);
+
+            if(!result.identifiers?.length) {
+                throw new Error(`Error updating archive ${archiveIndex.name} index.`);
+            }
         }
+
+        logger.info(`Archive ${archiveIndex.name} index saved.`);
+
+        return await this.getArchiveIndex(archiveIndex.key);
     }
 
-    public async getGroupIndex(group: Group): Promise<GroupIndexEntity | null> {
+    public async getGroupIndex(group: Group): Promise<GroupIndexEntity | null>;
+    public async getGroupIndex(groupKey: number, archiveKey: number): Promise<GroupIndexEntity | null>;
+    public async getGroupIndex(group: Group | number, archive?: number): Promise<GroupIndexEntity | null> {
+        const key = typeof group === 'number' ? group : group.numericKey;
+        const archiveKey = typeof group === 'number' ? archive : group.archive.numericKey;
+
         return await this.groupRepo.findOne({
             where: {
-                key: group.numericKey,
-                archiveKey: group.archive.numericKey,
+                key, archiveKey,
                 gameVersion: this.store.gameVersion
             }
         }) || null;
@@ -157,8 +199,8 @@ export class IndexService {
             groupIndex.key = numericKey;
         }
 
-        groupIndex.store = Promise.resolve(this.getStoreIndex());
-        groupIndex.archive = Promise.resolve(this.getArchiveIndex(archive));
+        // groupIndex.store = Promise.resolve(this.getStoreIndex());
+        // groupIndex.archive = Promise.resolve(this.getArchiveIndex(archive));
         groupIndex.gameVersion = this.store.gameVersion;
         groupIndex.archiveKey = archive.numericKey;
         groupIndex.name = name;
@@ -243,9 +285,9 @@ export class IndexService {
             fileIndex.key = numericKey;
         }
 
-        fileIndex.store = Promise.resolve(this.getStoreIndex());
-        fileIndex.archive = Promise.resolve(this.getArchiveIndex(archive));
-        fileIndex.group = Promise.resolve(this.getGroupIndex(group));
+        // fileIndex.store = Promise.resolve(this.getStoreIndex());
+        // fileIndex.archive = Promise.resolve(this.getArchiveIndex(archive));
+        // fileIndex.group = Promise.resolve(this.getGroupIndex(group));
         fileIndex.gameVersion = this.store.gameVersion;
         fileIndex.archiveKey = archive.numericKey;
         fileIndex.groupKey = group.numericKey;

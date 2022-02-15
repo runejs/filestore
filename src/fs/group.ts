@@ -307,9 +307,11 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
     public override write(): void {
         if(!this._fileCount) {
-            logger.error(`Error writing group ${this.name || this.key}: Group is empty.`);
+            logger.error(`Error writing group ${this.name}: Group is empty.`);
             return;
         }
+
+        // logger.info(`Writing group ${this.name}...`);
 
         const groupPath = this.outputPath;
 

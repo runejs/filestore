@@ -103,9 +103,9 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
             const filePath = this.outputPath;
             const fileData = this.data.toNodeBuffer();
 
-            if(existsSync(filePath)) {
-                rmSync(filePath, { recursive: true, force: true });
-            }
+            // if(existsSync(filePath)) {
+            //     rmSync(filePath, { recursive: true, force: true });
+            // }
 
             writeFileSync(filePath, fileData);
         }

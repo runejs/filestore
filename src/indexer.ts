@@ -35,7 +35,7 @@ const indexFiles = async (store: Store, archiveName: string, compress: boolean, 
         }
 
         await store.read(compress);
-        // await Array.from(store.archives.values()).forEachAsync(async archive => await archive.saveIndexData());
+        await Array.from(store.archives.values()).forEachAsync(async archive => await archive.saveIndexData());
     } else {
         logger.info(`Indexing flat file store archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
@@ -45,7 +45,7 @@ const indexFiles = async (store: Store, archiveName: string, compress: boolean, 
         const archive = store.find(archiveName);
 
         await archive.read(compress);
-        // await archive.saveIndexData();
+        await archive.saveIndexData();
     }
 };
 
@@ -66,7 +66,11 @@ terminal.executeScript(async (terminal, args) => {
 
     const defaultStorePath = join('..', 'store');
 
-    while(!storePath) {
+    if(!storePath) {
+        storePath = defaultStorePath;
+    }
+
+    /*while(!storePath) {
         const storePathInput = await terminal.question(`Store path (default ${defaultStorePath}):`, defaultStorePath);
 
         if(storePathInput) {
@@ -77,7 +81,7 @@ terminal.executeScript(async (terminal, args) => {
                 storePath = '';
             }
         }
-    }
+    }*/
 
     while(!gameVersion || gameVersion === -1) {
         const versionInput = await terminal.question(`Please supply the desired game version to index (default 435):`, '435');
@@ -121,8 +125,7 @@ terminal.executeScript(async (terminal, args) => {
         }
     }
 
-
-    while(compress === null) {
+    /*while(compress === null) {
         let compressInput = await terminal.question(
             `Compress files for indexing? (default 'false'):`, 'false')
 
@@ -138,6 +141,10 @@ terminal.executeScript(async (terminal, args) => {
                 compress = false;
             }
         }
+    }*/
+
+    if(compress === null) {
+        compress = true;
     }
 
     terminal.close();

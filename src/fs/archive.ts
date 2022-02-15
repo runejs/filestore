@@ -43,7 +43,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
         this.generateCrc32();
 
-        logger.info(`Archive ${this.name ?? this.key} calculated checksum: ${this.crc32}`);
+        logger.info(`Archive ${this.name} calculated checksum: ${this.crc32}`);
 
         const archiveData = this.decompress();
 
@@ -59,6 +59,8 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         const format = archiveData.get('byte', 'unsigned');
         const filesNamed = (archiveData.get('byte', 'unsigned') & 0x01) !== 0;
         const fileCount = archiveData.get('short', 'unsigned');
+
+        logger.info(`${fileCount} groups were found within the ${this.name} archive.`);
 
         if(format !== this.config.format) {
             logger.warn(`Archive format mismatch; expected ${this.config.format} but received ${format}!`);

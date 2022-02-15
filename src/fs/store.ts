@@ -117,9 +117,8 @@ export class Store {
     }
 
     public js5Decode(): ByteBuffer | null {
-        const archives = Array.from(this.archives.values());
-        archives.forEach(archive => {
-            if(archive.numericKey === 255) {
+        this.archives.forEach((archive, key) => {
+            if(key === '255') {
                 return;
             }
 
@@ -163,31 +162,31 @@ export class Store {
         const start = Date.now();
         logger.info(`Writing flat file store...`);
 
-        if(existsSync(this.outputPath)) {
-            rmSync(this.outputPath, { recursive: true, force: true });
-        }
-
-        mkdirSync(this.outputPath, { recursive: true });
-
-        // await Promise.all(Array.from(this.archives.values()).map(async archive => archive.write()));
-
         try {
-            logger.info(`Saving file store index...`);
-            await this.indexService.saveStoreIndex();
-            logger.info(`File store index saved.`);
+            if(existsSync(this.outputPath)) {
+                rmSync(this.outputPath, { recursive: true, force: true });
+            }
+
+            mkdirSync(this.outputPath, { recursive: true });
         } catch(error) {
-            logger.error(`Error indexing file store:`, error);
+            logger.error(`Error clearing file store output path (${this.outputPath}):`, error);
             return;
         }
 
         try {
             logger.info(`Writing archive contents to disk...`);
-            for(const [ , archive ] of this.archives) {
-                await archive.write();
-            }
+            this.archives.forEach(archive => archive.write());
             logger.info(`Archives written.`);
         } catch(error) {
             logger.error(`Error writing archives:`, error);
+            return;
+        }
+
+        try {
+            await this.indexService.saveStoreIndex();
+            logger.info(`File store index saved.`);
+        } catch(error) {
+            logger.error(`Error indexing file store:`, error);
             return;
         }
 

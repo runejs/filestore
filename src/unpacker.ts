@@ -82,7 +82,11 @@ terminal.executeScript(async (terminal, args) => {
 
     const defaultStorePath = join('..', 'store');
 
-    while(!storePath) {
+    if(!storePath) {
+        storePath = defaultStorePath;
+    }
+
+    /*while(!storePath) {
         const storePathInput = await terminal.question(`Store path (default ${ defaultStorePath }):`, defaultStorePath);
 
         if(storePathInput) {
@@ -93,7 +97,7 @@ terminal.executeScript(async (terminal, args) => {
                 storePath = '';
             }
         }
-    }
+    }*/
 
     while(!gameVersion || gameVersion === -1) {
         const versionInput = await terminal.question(`Please supply the desired game version to unpack (default 435):`, '435');
@@ -121,7 +125,7 @@ terminal.executeScript(async (terminal, args) => {
     setLoggerDest(join(logDir, `unpack-${ gameVersion }.log`));
 
     const outputPath = join(storePath, 'output');
-    const store = await Store.create(gameVersion, storePath, outputPath);
+    const store = await Store.create(gameVersion, storePath, outputPath, { readFiles: false, compress: false });
 
     while(!archive) {
         const archiveNameInput = await terminal.question(

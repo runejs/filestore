@@ -10,27 +10,30 @@ import { GroupIndexEntity } from './group-index.entity';
 @Index('file_identifier', [ 'key', 'gameVersion', 'archiveKey', 'groupKey' ], { unique: true })
 export class FileIndexEntity extends IndexEntity {
 
-    @ManyToOne(() => StoreIndexEntity, async store => store.files,
-        { lazy: true, primary: true, onDelete: 'CASCADE' })
+    @ManyToOne(() => StoreIndexEntity, store => store.files,
+        { primary: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'game_version', referencedColumnName: 'gameVersion' })
-    store: Promise<StoreIndexEntity>;
+    store: StoreIndexEntity;
 
     @ManyToOne(() => ArchiveIndexEntity, archive => archive.groups,
-        { lazy: true, primary: true, onDelete: 'CASCADE' })
+        { primary: true, onDelete: 'CASCADE' })
     @JoinColumn([
         { name: 'archive_key', referencedColumnName: 'key' },
         { name: 'game_version', referencedColumnName: 'gameVersion' }
     ])
-    archive: Promise<ArchiveIndexEntity>;
+    archive: ArchiveIndexEntity;
 
     @ManyToOne(() => GroupIndexEntity, group => group.files,
-        { lazy: true, primary: true, onDelete: 'CASCADE' })
+        { primary: true, onDelete: 'CASCADE' })
     @JoinColumn([
         { name: 'archive_key', referencedColumnName: 'archiveKey' },
         { name: 'group_key', referencedColumnName: 'key' },
         { name: 'game_version', referencedColumnName: 'gameVersion' }
     ])
-    group: Promise<GroupIndexEntity>;
+    group: GroupIndexEntity;
+
+    @PrimaryColumn('integer', { name: 'game_version', nullable: false, unique: false })
+    gameVersion: number;
 
     @PrimaryColumn('integer', { name: 'archive_key', unique: false, nullable: false })
     archiveKey: number;

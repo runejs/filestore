@@ -150,4 +150,6 @@ terminal.executeScript(async (terminal, args) => {
     terminal.close();
 
     await indexFiles(store, archive, compress, args, debug);
+
+    process.exit(0);
 });

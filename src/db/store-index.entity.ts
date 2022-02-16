@@ -11,14 +11,14 @@ export class StoreIndexEntity {
     @PrimaryColumn('integer', { name: 'game_version', nullable: false, unique: true })
     gameVersion: number;
 
-    @OneToMany(() => ArchiveIndexEntity, async archive => archive.store, { lazy: true })
-    archives: Promise<ArchiveIndexEntity[]>;
+    @OneToMany(() => ArchiveIndexEntity, archive => archive.store)
+    archives: ArchiveIndexEntity[];
 
-    @OneToMany(() => GroupIndexEntity, async group => group.store, { lazy: true })
-    groups: Promise<GroupIndexEntity[]>;
+    @OneToMany(() => GroupIndexEntity, group => group.store)
+    groups: GroupIndexEntity[];
 
-    @OneToMany(() => FileIndexEntity, async file => file.store, { lazy: true })
-    files: Promise<FileIndexEntity[]>;
+    @OneToMany(() => FileIndexEntity, file => file.store)
+    files: FileIndexEntity[];
 
     @CreateDateColumn()
     created: Date;

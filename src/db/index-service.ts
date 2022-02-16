@@ -8,6 +8,9 @@ import { Archive, FlatFile, Group, Store } from '../fs';
 import { StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity } from './index';
 
 
+const CHUNK_SIZE = 250;
+
+
 export class IndexService {
 
     public readonly store: Store;
@@ -50,8 +53,6 @@ export class IndexService {
             storeIndex.gameVersion = this.store.gameVersion;
         }
 
-        logger.info(`Saving store index ${this.store.gameVersion}...`);
-
         if(!this.connection.isConnected) {
             logger.error(`The index database connection was closed prematurely.`);
             return null;
@@ -76,7 +77,8 @@ export class IndexService {
         return await this.archiveRepo.findOne({
             where: {
                 key, gameVersion: this.store.gameVersion
-            }
+            },
+            relations: [ 'groups' ]
         }) || null;
     }
 
@@ -103,7 +105,6 @@ export class IndexService {
             archiveIndex.key = numericKey;
         }
 
-        // archiveIndex.store = Promise.resolve(this.getStoreIndex());
         archiveIndex.gameVersion = this.store.gameVersion;
         archiveIndex.name = name;
         archiveIndex.nameHash = nameHash;
@@ -116,8 +117,6 @@ export class IndexService {
     }
 
     public async saveArchiveIndex(archiveIndex: ArchiveIndexEntity): Promise<ArchiveIndexEntity> {
-        logger.info(`Saving archive ${archiveIndex.name} to index database...`);
-
         const existingIndex = await this.archiveRepo.findOne({
             where: {
                 key: archiveIndex.key,
@@ -126,8 +125,7 @@ export class IndexService {
         });
 
         if(existingIndex) {
-            // const groups = existingIndex.groups;
-            // delete existingIndex.groups;
+            delete existingIndex.groups;
 
             const { name, nameHash, size, sha256, crc32, version } = archiveIndex;
             existingIndex.name = name;
@@ -140,14 +138,13 @@ export class IndexService {
             const result = await this.archiveRepo.update({
                 key: archiveIndex.key,
                 gameVersion: archiveIndex.gameVersion
-            }, archiveIndex);
+            }, existingIndex);
 
             if(!result.affected) {
                 throw new Error(`Error updating archive ${archiveIndex.name} index.`);
             }
         } else {
-            // const groups = archiveIndex.groups;
-            // delete archiveIndex.groups;
+            delete archiveIndex.groups;
 
             const result = await this.archiveRepo.insert(archiveIndex);
 
@@ -199,8 +196,6 @@ export class IndexService {
             groupIndex.key = numericKey;
         }
 
-        // groupIndex.store = Promise.resolve(this.getStoreIndex());
-        // groupIndex.archive = Promise.resolve(this.getArchiveIndex(archive));
         groupIndex.gameVersion = this.store.gameVersion;
         groupIndex.archiveKey = archive.numericKey;
         groupIndex.name = name;
@@ -225,11 +220,13 @@ export class IndexService {
     }
 
     public async saveGroupIndex(groupIndex: GroupIndexEntity): Promise<GroupIndexEntity> {
+        delete groupIndex.files;
         return await this.groupRepo.save(groupIndex);
     }
 
     public async saveGroupIndexes(groupIndexes: GroupIndexEntity[]): Promise<GroupIndexEntity[]> {
-        return await this.groupRepo.save(groupIndexes, { chunk: 100 });
+        groupIndexes.forEach(idx => delete idx.files);
+        return await this.groupRepo.save(groupIndexes, { chunk: CHUNK_SIZE });
     }
 
     public async getFileIndex(file: FlatFile): Promise<FileIndexEntity | null> {
@@ -285,9 +282,6 @@ export class IndexService {
             fileIndex.key = numericKey;
         }
 
-        // fileIndex.store = Promise.resolve(this.getStoreIndex());
-        // fileIndex.archive = Promise.resolve(this.getArchiveIndex(archive));
-        // fileIndex.group = Promise.resolve(this.getGroupIndex(group));
         fileIndex.gameVersion = this.store.gameVersion;
         fileIndex.archiveKey = archive.numericKey;
         fileIndex.groupKey = group.numericKey;
@@ -308,7 +302,7 @@ export class IndexService {
     }
 
     public async saveFileIndexes(fileIndexes: FileIndexEntity[]): Promise<FileIndexEntity[]> {
-        return await this.fileRepo.save(fileIndexes, { chunk: 100 });
+        return await this.fileRepo.save(fileIndexes, { chunk: CHUNK_SIZE });
     }
 
     public get loaded(): boolean {

@@ -6,9 +6,6 @@ export abstract class IndexEntity {
     @PrimaryColumn('integer', { nullable: false, unique: false })
     key: number;
 
-    @PrimaryColumn('integer', { name: 'game_version', nullable: false, unique: false })
-    gameVersion: number;
-
     @Column('text', { nullable: true, default: null })
     name: string | null = null;
 

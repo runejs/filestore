@@ -382,16 +382,24 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
     public async saveIndexData(): Promise<void> {
         await this.validate();
 
+        logger.info(`Saving archive ${this.name} to index...`);
+
         await this.indexService.saveArchiveIndex(this.index);
+
+        logger.info(`Saving archive ${this.name} group indexes...`);
 
         const groups = Array.from(this.groups.values());
 
         const groupIndexes = groups.map(group => group.index);
         await this.indexService.saveGroupIndexes(groupIndexes);
 
+        logger.info(`Saving archive ${this.name} file indexes...`);
+
         const flatFiles = groups.filter(group => group.files.size > 1).map(group => Array.from(group.files.values())
             .map(file => file.index)).reduce((a, v) => a.concat(v), []);
         await this.indexService.saveFileIndexes(flatFiles);
+
+        logger.info(`Archive ${this.name} indexing complete.`);
     }
 
     public has(childIndex: string | number): boolean {

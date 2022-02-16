@@ -41,7 +41,7 @@ export class FileIndexEntity extends IndexEntity {
     @PrimaryColumn('integer', { name: 'group_key', unique: false, nullable: false })
     groupKey: number;
 
-    @Column('integer', { nullable: false, name: 'stripe_count', default: 1 })
+    @Column('integer', { name: 'stripe_count', nullable: false, default: 1 })
     stripeCount: number = 1;
 
     @Column('text', { nullable: true, default: null })

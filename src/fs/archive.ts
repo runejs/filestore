@@ -207,10 +207,6 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             return this.store.js5Encode();
         }
 
-        if(!this.groups.size) {
-            this.read(true);
-        }
-
         const groups = this.groups;
         const groupCount = groups.size;
 
@@ -280,26 +276,19 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             }
         }
 
-        const indexData = buffer.flipWriter();
-        const indexDigest = this.sha256;
+        const indexData = buffer?.flipWriter();
 
-        if(indexData.length) {
+        if(indexData?.length) {
             this.setData(indexData, false);
-            this.generateSha256();
-
-            if(indexDigest !== this.sha256) {
-                // logger.warn(`Archive ${this.name} digest has changed:`, `Orig: ${indexDigest}`, `New:  ${this.sha256}`);
-                this.index.sha256 = this.sha256;
-            }
+            this.sha256 = this.index.sha256 = this.generateSha256();
 
             if(compress) {
                 this.compress();
+                this.crc32 = this.index.crc32 = this.generateCrc32();
             }
-
-            return this._data;
         }
 
-        return null;
+        return this.data ?? null;
     }
 
     public override compress(): ByteBuffer | null {
@@ -310,7 +299,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         return super.compress();
     }
 
-    public override async read(compress: boolean = false): Promise<ByteBuffer | null> {
+    public override read(compress: boolean = false): ByteBuffer | null {
         if(this._loaded) {
             return this._data;
         }
@@ -372,6 +361,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
     public override async validate(): Promise<void> {
         super.validate();
+        this.js5Encode(true);
         await this.indexService.verifyArchiveIndex(this);
 
         for(const [ , group ] of this.groups) {
@@ -389,7 +379,6 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         logger.info(`Saving archive ${this.name} group indexes...`);
 
         const groups = Array.from(this.groups.values());
-
         const groupIndexes = groups.map(group => group.index);
         await this.indexService.saveGroupIndexes(groupIndexes);
 

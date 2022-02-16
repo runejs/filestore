@@ -31,10 +31,10 @@ export class GroupIndexEntity extends IndexEntity {
     @OneToMany(() => FileIndexEntity, fileIndex => fileIndex.group, { cascade: true })
     files: FileIndexEntity[];
 
-    @Column('boolean', { nullable: false, name: 'flat', default: false })
+    @Column('boolean', { name: 'flat', nullable: false, default: false })
     flatFile: boolean = false;
 
-    @Column('integer', { nullable: false, name: 'stripe_count', default: 1 })
+    @Column('integer', { name: 'stripe_count', nullable: false, default: 1 })
     stripeCount: number = 1;
 
     @Column('text', { nullable: true, default: null })

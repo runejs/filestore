@@ -93,6 +93,14 @@ export abstract class IndexedFile<T extends IndexEntity> {
             this.compressed = properties.compressed;
         }
 
+        if(this.isSet(index['stripes'])) {
+            this.stripes = index['stripes'].split(',').map(n => Number(n));
+        }
+
+        if(this.isSet(index['stripeCount'])) {
+            this.stripeCount = Number(index['stripeCount']);
+        }
+
         this._errors = [];
         this._js5Encoded = false;
 
@@ -469,21 +477,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
             this.nameHash = this.store.hashFileName(name);
         }
 
-        if(!this.sha256?.length) {
-            if(this.compressed) {
-                this.decompress();
-            }
-
-            this.generateSha256();
-        }
-
-        if(!this.crc32 || this.crc32 === -1) {
-            if(!this.compressed) {
-                this.compress();
-            }
-
-            this.generateCrc32();
-        }
+        this.index.data = this.data?.toNodeBuffer() ?? null;
     }
 
     public generateCrc32(): number {

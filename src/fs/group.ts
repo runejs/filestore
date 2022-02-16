@@ -4,31 +4,15 @@ import { ByteBuffer } from '@runejs/common/buffer';
 import { logger } from '@runejs/common';
 import { FlatFile } from './flat-file';
 import { GroupIndexEntity } from '../db';
-import { AdditionalFileProperties, IndexedFile } from './indexed-file';
+import { IndexedFile } from './indexed-file';
 
 
 export class Group extends IndexedFile<GroupIndexEntity> {
 
-    public files: Map<string, FlatFile>;
-    public fileSizes: Map<string, number>;
+    public files: Map<string, FlatFile> = new Map<string, FlatFile>();
+    public fileSizes: Map<string, number> = new Map<string, number>();
 
-    private _fileCount: number;
-
-    public constructor(index: GroupIndexEntity, properties?: Partial<AdditionalFileProperties>) {
-        super(index, properties);
-
-        if(this.isSet(index.stripes)) {
-            this.stripes = index.stripes.split(',').map(n => Number(n));
-        }
-
-        if(this.isSet(index.stripeCount)) {
-            this.stripeCount = index.stripeCount;
-        }
-
-        this.files = new Map<string, FlatFile>();
-        this.fileSizes = new Map<string, number>();
-        this._fileCount = 0;
-    }
+    private _fileCount: number = 0;
 
     public override js5Decode(): ByteBuffer | null {
         if(!this._data?.length) {
@@ -328,6 +312,7 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
     public override async validate(): Promise<void> {
         super.validate();
+        this.js5Encode();
         await this.store.indexService.verifyGroupIndex(this);
 
         for(const [ , file ] of this.files) {

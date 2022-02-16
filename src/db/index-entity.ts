@@ -9,7 +9,7 @@ export abstract class IndexEntity {
     @Column('text', { nullable: true, default: null })
     name: string | null = null;
 
-    @Column('integer', { nullable: true, name: 'name_hash', default: 0 })
+    @Column('integer', { name: 'name_hash', nullable: true, default: 0 })
     nameHash: number = 0;
 
     @Column('integer', { nullable: false, default: 0 })
@@ -23,6 +23,9 @@ export abstract class IndexEntity {
 
     @Column('text', { nullable: true, default: null })
     sha256: string | null = null;
+
+    @Column('blob', { name: 'data', nullable: true, default: null })
+    data: Buffer | null = null;
 
     @CreateDateColumn()
     created: Date;

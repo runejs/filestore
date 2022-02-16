@@ -9,7 +9,6 @@ class IndexerOptions {
 
     public store: string = '';
     public debug: boolean = false;
-    public compress: boolean = null;
     public archive: string = '';
     public version: number = -1;
 
@@ -20,7 +19,7 @@ class IndexerOptions {
 }
 
 
-const indexFiles = async (store: Store, archiveName: string, compress: boolean, args: ArgumentMap, debug: boolean): Promise<void> => {
+const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, debug: boolean): Promise<void> => {
     const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
     const outputDir = store.outputPath;
 
@@ -34,7 +33,7 @@ const indexFiles = async (store: Store, archiveName: string, compress: boolean, 
             logger.info(argDebugString);
         }
 
-        await store.read(compress);
+        await store.read(true);
         await Array.from(store.archives.values()).forEachAsync(async archive => await archive.saveIndexData());
     } else {
         logger.info(`Indexing flat file store archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
@@ -44,7 +43,7 @@ const indexFiles = async (store: Store, archiveName: string, compress: boolean, 
 
         const archive = store.find(archiveName);
 
-        await archive.read(compress);
+        await archive.read(true);
         await archive.saveIndexData();
     }
 };
@@ -60,8 +59,7 @@ terminal.executeScript(async (terminal, args) => {
     let {
         version: gameVersion,
         archive,
-        store: storePath,
-        compress
+        store: storePath
     } = options;
 
     const defaultStorePath = join('..', 'store');
@@ -125,31 +123,9 @@ terminal.executeScript(async (terminal, args) => {
         }
     }
 
-    /*while(compress === null) {
-        let compressInput = await terminal.question(
-            `Compress files for indexing? (default 'false'):`, 'false')
-
-        if(compressInput) {
-            compressInput = compressInput.toLowerCase();
-
-            if(compressInput === 'true') {
-                compress = true;
-            } else if(compressInput === 'false') {
-                compress = false;
-            } else {
-                logger.error(`Compression response invalid, defaulting to 'false'.`);
-                compress = false;
-            }
-        }
-    }*/
-
-    if(compress === null) {
-        compress = true;
-    }
-
     terminal.close();
 
-    await indexFiles(store, archive, compress, args, debug);
+    await indexFiles(store, archive, args, debug);
 
     process.exit(0);
 });

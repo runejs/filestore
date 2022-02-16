@@ -2,22 +2,10 @@ import { join } from 'path';
 import { existsSync, readFileSync, writeFileSync, rmSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 import { FileIndexEntity } from '../db';
-import { AdditionalFileProperties, IndexedFile } from './indexed-file';
+import { IndexedFile } from './indexed-file';
 
 
 export class FlatFile extends IndexedFile<FileIndexEntity> {
-
-    public constructor(index: FileIndexEntity, properties?: Partial<AdditionalFileProperties>) {
-        super(index, properties);
-
-        if(this.isSet(index.stripes)) {
-            this.stripes = index.stripes.split(',').map(n => Number(n));
-        }
-
-        if(this.isSet(index.stripeCount)) {
-            this.stripeCount = index.stripeCount;
-        }
-    }
 
     public override read(compress: boolean = false): ByteBuffer | null | Promise<ByteBuffer | null> {
         if(!this.group) {
@@ -102,10 +90,6 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
         } else {
             const filePath = this.outputPath;
             const fileData = this.data.toNodeBuffer();
-
-            // if(existsSync(filePath)) {
-            //     rmSync(filePath, { recursive: true, force: true });
-            // }
 
             writeFileSync(filePath, fileData);
         }

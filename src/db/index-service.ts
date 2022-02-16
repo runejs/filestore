@@ -127,13 +127,14 @@ export class IndexService {
         if(existingIndex) {
             delete existingIndex.groups;
 
-            const { name, nameHash, size, sha256, crc32, version } = archiveIndex;
+            const { name, nameHash, size, sha256, crc32, version, data } = archiveIndex;
             existingIndex.name = name;
             existingIndex.nameHash = nameHash;
             existingIndex.size = size;
             existingIndex.sha256 = sha256;
             existingIndex.crc32 = crc32;
             existingIndex.version = version;
+            existingIndex.data = data;
 
             const result = await this.archiveRepo.update({
                 key: archiveIndex.key,

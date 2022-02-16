@@ -1,62 +1,36 @@
-![RuneJS](https://i.imgur.com/pmkdSfc.png)
-
-# RuneJS Filestore
-
 [![RuneJS Discord Server](https://img.shields.io/discord/678751302297059336?label=RuneJS%20Discord&logo=discord)](https://discord.gg/5P74nSh)
 
-Tools for managing the RuneScape indexed filestore used for RuneJS.
+[![RuneJS](https://i.imgur.com/QSXNzwC.png)](https://github.com/runejs/)
 
-## File Stores
+# FileStore
 
-### Binary File Store
+Node tools for managing and indexing the JS5 file store used with RuneJS.
 
-Holds miscellaneous binary files that don't fit into other filestores, including the game client title screen background image.
+## CLI Tools
+_@todo work in progress_
 
-`BinaryStore` files are all named with their extensions included, if applicable.
+- `index`
+- `unpack`
 
-### Configuration File Store
+## Archives
+_@todo work in progress_
 
-The `ConfigStore` contains various archives holding configuration files:
 
-#### Item Store (Archive)
-
-`ItemStore` holds files with game item data relevant to the game client.
-
-#### NPC Store (Archive)
-
-`NpcStore` files work similarly to `ItemStore`, but contain game NPC information instead.
-
-#### Object Store (Archive)
-
-`ObjectStore` files contain game object details. 
-
-### Sound (wav) File Store
-
-The `SoundStore` contains various `.wav` files for game sounds.
-
-### Jingle (ogg) File Store
-
-The `SoundStore` contains `.ogg` files for various minor game songs; level up songs, quest completion jingle, etc.
-
-### Music (midi) File Store
-
-`MusicStore` contains a list of `.mid` MIDI song files used to play game songs with a MIDI player.
-
-Most MIDI files within the store have specific names that match the name of that song.
-
-### Region Store
-
-`RegionStore` files contain map tile and landscape object definitions for all game map regions.
-
-These files are named with the format `m{regionX}_{regionY}` for map tile files and `l{regionX}_{regionY}` for landscape object files.
-
-### Model Store
-`ModelStore` contains information about individual game model files along with several rendering helper methods for implementing applications.
-
-### Sprite Store
-
-`SpriteStore` files are either single sprite/image, or archives of related game sprites. Files returned are of type `SpritePack`, which will contain one or more `Sprite` objects with indexed pixel data that can be converted directly to PNG format or base64 encoded via the included API.
-
-### Game Interface Widget Store
-
-`WidgetStore` files hold details on every different game interface widget that is available. Placement, type, options, sprites used, etc.
+| Key | Name             | Description                  | File Extension | Game Version |
+|-----|------------------|------------------------------|----------------|--------------|
+| 0   | anims            | Animation Sequences          |                |              |
+| 1   | bases            | Animation Base Files         |                |              |
+| 2   | config           | Game Configuration Files     |                |              |
+| 3   | interfaces       | Game Interfaces              |                |              |
+| 4   | synth_sounds     | Synthetic Game Sounds        | .wav           |              |
+| 5   | maps             | Game Map and Landscape Files |                |              |
+| 6   | midi_songs       | Midi Song Files              | .mid           |              |
+| 7   | models           | Game Model Files             |                |              |
+| 8   | sprites          | Sprite Packs (2D Images)     |                |              |
+| 9   | textures         | Game Texture Files           |                |              |
+| 10  | binary           | Miscellaneous Game Files     |                |              |
+| 11  | midi_jingles     | Shorter Midi Jingles         | .mid           |              |
+| 12  | clientscripts    | Client Script (CS2) Files    | .cs2           | ^435         |
+| 13  | fontmetrics      | Game Fonts                   |                | ^443         |
+| 14  | vorbis           | Player Script Variables      |                | ^451         |
+| 15  | midi_instruments | Midi Song Instruments        |                | ^451         |

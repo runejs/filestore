@@ -1,4 +1,4 @@
-import { Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany, PrimaryColumn } from 'typeorm';
 
 import { IndexEntity } from './index-entity';
 import { StoreIndexEntity } from './store-index.entity';
@@ -19,5 +19,11 @@ export class ArchiveIndexEntity extends IndexEntity {
 
     @PrimaryColumn('integer', { name: 'game_version', nullable: false, unique: false })
     gameVersion: number;
+
+    @Column('integer', { name: 'group_count', nullable: false, default: 0 })
+    groupCount: number = 0;
+
+    @Column('integer', { name: 'format', nullable: false, default: 5 })
+    format: number = 5;
 
 }

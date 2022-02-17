@@ -11,5 +11,6 @@ export interface ArchiveConfig {
     encryption?: EncryptionMethod | [ EncryptionMethod, string ];
     contentType?: string;
     filesNamed?: boolean;
+    flatten?: boolean;
     groupNames?: { [key: string]: number };
 }

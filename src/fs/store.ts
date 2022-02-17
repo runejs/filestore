@@ -5,15 +5,18 @@ import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
-import { Archive } from './index';
+import { Archive, Group } from './index';
 import { ArchiveIndexEntity, IndexService } from '../db';
 import { ArchiveConfig } from '../config';
 
 
+export type StoreType = 'flat' | 'js5';
+
+
 export class Store {
 
-    public readonly archives: Map<string, Archive>;
-    public readonly fileNameHashes: Map<number, string>;
+    public readonly archives: Map<string, Archive> = new Map<string, Archive>();
+    public readonly fileNameHashes: Map<number, string> = new Map<number, string>();
     public readonly indexService: IndexService;
 
     private _js5MainIndex: ByteBuffer;
@@ -22,6 +25,7 @@ export class Store {
 
     private _mainArchive: Archive;
     private _data: ByteBuffer;
+    private _compressed: boolean = false;
     private _path: string;
     private _outputPath: string;
     private _archiveConfig: { [key: string]: ArchiveConfig };
@@ -36,8 +40,6 @@ export class Store {
         this.indexService = new IndexService(this);
         this.loadArchiveConfig();
         Crc32.init();
-        this.archives = new Map<string, Archive>();
-        this.fileNameHashes = new Map<number, string>();
     }
 
     public static async create(gameVersion: number, storePath: string, outputPath: string, options: {
@@ -125,19 +127,27 @@ export class Store {
             archive.js5Decode();
         });
 
-        return new ByteBuffer([]); // @TODO
+        return this.data;
     }
 
     public js5Encode(): ByteBuffer {
-        return new ByteBuffer([]); // @TODO
+
+        return new ByteBuffer([]); // @TODO return main index file (crc table)
     }
 
-    public async compress(): Promise<ByteBuffer | null> {
-        const archives = Array.from(this.archives.values());
-        await archives.forEachAsync(async archive => archive.read());
-        archives.forEach(archive => archive.compress());
+    public compress(): ByteBuffer | null {
+        if(this._compressed) {
+            return this._data;
+        }
 
-        return null; // @TODO return main index file (crc table)
+        Array.from(this.archives.values()).forEach(archive => {
+            if(!archive.compressed) {
+                archive.compress();
+            }
+        });
+
+        this._compressed = true;
+        return this._data;
     }
 
     public async read(compress: boolean = false): Promise<ByteBuffer | null> {
@@ -151,7 +161,7 @@ export class Store {
             archives.forEach(archive => archive.compress());
         }
 
-        return null;
+        return this.js5Encode();
     }
 
     public async write(): Promise<void> {
@@ -279,7 +289,7 @@ export class Store {
 
         if(readFiles) {
             const archives = Array.from(this.archives.values());
-            await archives.forEachAsync(async archive => archive.read());
+            archives.forEach(archive => archive.read(false));
 
             if(compress) {
                 archives.forEach(archive => archive.compress());
@@ -288,12 +298,25 @@ export class Store {
     }
 
     public find(archiveName: string): Archive {
-        const archives = Array.from(this.archives.values());
-        return archives.find(child => child?.name === archiveName) ?? null;
+        return Array.from(this.archives.values()).find(child => child?.name === archiveName) ?? null;
     }
 
-    public has(archiveIndex: string | number): boolean {
-        return this.archives.has(String(archiveIndex));
+    public get(archiveKey: string): Archive | null;
+    public get(archiveKey: number): Archive | null;
+    public get(archiveKey: string | number): Archive | null;
+    public get(archiveKey: string | number): Archive | null {
+        return this.archives.get(String(archiveKey)) ?? null;
+    }
+
+    public set(archiveKey: string, archive: Archive): void;
+    public set(archiveKey: number, archive: Archive): void;
+    public set(archiveKey: string | number, archive: Archive): void;
+    public set(archiveKey: string | number, archive: Archive): void {
+        this.archives.set(String(archiveKey), archive);
+    }
+
+    public has(archiveKey: string | number): boolean {
+        return this.archives.has(String(archiveKey));
     }
 
     public loadArchiveConfig(): void {
@@ -417,6 +440,14 @@ export class Store {
 
     public get mainArchive(): Archive {
         return this._mainArchive;
+    }
+
+    public get data(): ByteBuffer {
+        return this._data;
+    }
+
+    public get compressed(): boolean {
+        return this._compressed;
     }
 
     public get path(): string {

@@ -30,7 +30,7 @@ export class IndexService {
 
         this.connection = await createConnection({
             type: 'sqlite',
-            database: join(indexPath, `index${this.store.gameVersion}.sqlite3`),
+            database: join(indexPath, `index_${this.store.gameVersion}.sqlite3`),
             entities: [ StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity ],
             synchronize: true,
             logging: [ 'error' ],
@@ -100,9 +100,15 @@ export class IndexService {
 
         if(archive.index) {
             archiveIndex = archive.index;
+            archiveIndex.groupCount = archive.groups?.size ?? 0;
+            archiveIndex.format = archive.index.format;
         } else {
             archiveIndex = new ArchiveIndexEntity();
             archiveIndex.key = numericKey;
+        }
+
+        if(!archiveIndex.format) {
+            archiveIndex.format = 5;
         }
 
         archiveIndex.gameVersion = this.store.gameVersion;
@@ -124,7 +130,10 @@ export class IndexService {
             }
         });
 
+        let groups: GroupIndexEntity[];
+
         if(existingIndex) {
+            groups = new Array(...(existingIndex.groups ?? []));
             delete existingIndex.groups;
 
             const { name, nameHash, size, sha256, crc32, version, data } = archiveIndex;
@@ -145,6 +154,7 @@ export class IndexService {
                 throw new Error(`Error updating archive ${archiveIndex.name} index.`);
             }
         } else {
+            groups = new Array(...archiveIndex.groups);
             delete archiveIndex.groups;
 
             const result = await this.archiveRepo.insert(archiveIndex);
@@ -156,7 +166,13 @@ export class IndexService {
 
         logger.info(`Archive ${archiveIndex.name} index saved.`);
 
-        return await this.getArchiveIndex(archiveIndex.key);
+        const savedIndex = await this.getArchiveIndex(archiveIndex.key);
+
+        if(!savedIndex?.groups?.length) {
+            savedIndex.groups = groups ?? [];
+        }
+
+        return savedIndex;
     }
 
     public async getGroupIndex(group: Group): Promise<GroupIndexEntity | null>;

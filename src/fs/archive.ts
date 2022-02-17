@@ -30,6 +30,10 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
     }
 
     public override js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
+        if(this.loaded && !this.js5Encoded) {
+            return this.data;
+        }
+
         this._missingEncryptionKeys = 0;
 
         if(this.name) {
@@ -56,14 +60,14 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
         const encrypted = this.encryption !== 'none';
 
-        const format = archiveData.get('byte', 'unsigned');
+        const format = this.index.format = archiveData.get('byte', 'unsigned');
         const filesNamed = (archiveData.get('byte', 'unsigned') & 0x01) !== 0;
-        const fileCount = archiveData.get('short', 'unsigned');
+        const groupCount = this.index.groupCount = archiveData.get('short', 'unsigned');
 
-        logger.info(`${fileCount} groups were found within the ${this.name} archive.`);
+        logger.info(`${groupCount} groups were found within the ${this.name} archive.`);
 
         if(format !== this.config.format) {
-            logger.warn(`Archive format mismatch; expected ${this.config.format} but received ${format}!`);
+            logger.error(`Archive ${this.name} format mismatch; expected ${this.config.format} but received ${format}!`);
         }
 
         if(filesNamed !== this.config.filesNamed) {
@@ -71,10 +75,10 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
                 `but received ${filesNamed}!`);
         }
 
-        const groupIndices: number[] = new Array(fileCount);
+        const groupIndices: number[] = new Array(groupCount);
         let accumulator = 0;
 
-        for(let i = 0; i < fileCount; i++) {
+        for(let i = 0; i < groupCount; i++) {
             const delta = archiveData.get('short', 'unsigned');
             groupIndices[i] = accumulator += delta;
             const group = new Group(this.indexService.verifyGroupIndex({
@@ -178,10 +182,10 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             }
 
             if(successes) {
-                logger.info(`${fileCount} file(s) were found, ` +
+                logger.info(`${groupCount} file(s) were found, ` +
                     `${successes} decompressed successfully.`);
             } else {
-                logger.info(`${fileCount} file(s) were found.`);
+                logger.info(`${groupCount} file(s) were found.`);
             }
 
             if(failures) {
@@ -192,13 +196,20 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
                 logger.error(`Missing ${this.missingEncryptionKeys} XTEA decryption key(s).`);
             }
         } else {
-            logger.info(`${fileCount} file(s) were found.`);
+            logger.info(`${groupCount} file(s) were found.`);
         }
+
+        this._js5Encoded = false;
+        this._loaded = true;
 
         return this._data ?? null;
     }
 
     public override js5Encode(compress: boolean = true): ByteBuffer | null {
+        if(this.loaded && this.js5Encoded) {
+            return this.data;
+        }
+
         if(!this.empty && (this.compressed || this.compression === 'none')) {
             return this.data;
         }
@@ -329,11 +340,9 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             }
         }
 
-        this.js5Encode(compress);
-
         logger.info(`${this.groups.size} file(s) were loaded from the ${this.name} archive.`);
 
-        return new ByteBuffer([]); // @TODO
+        return this.js5Encode(compress);
     }
 
     public override write(): void {
@@ -391,21 +400,30 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         logger.info(`Archive ${this.name} indexing complete.`);
     }
 
-    public has(childIndex: string | number): boolean {
-        return this.groups.has(String(childIndex));
+    public has(groupKey: string): boolean;
+    public has(groupKey: number): boolean;
+    public has(groupKey: string | number): boolean;
+    public has(groupKey: string | number): boolean {
+        return this.groups.has(String(groupKey));
     }
 
-    public get(childIndex: string | number): Archive | Group | FlatFile | null {
-        return this.groups.get(String(childIndex)) ?? null;
+    public get(groupKey: string): Group | null;
+    public get(groupKey: number): Group | null;
+    public get(groupKey: string | number): Group | null;
+    public get(groupKey: string | number): Group | null {
+        return this.groups.get(String(groupKey)) ?? null;
     }
 
-    public set(childIndex: string | number, group: Group): void {
-        this.groups.set(String(childIndex), group);
+    public set(groupKey: string, group: Group): void;
+    public set(groupKey: number, group: Group): void;
+    public set(groupKey: string | number, group: Group): void;
+    public set(groupKey: string | number, group: Group): void {
+        this.groups.set(String(groupKey), group);
     }
 
-    public find(fileName: string): Archive | Group | FlatFile | null {
+    public find(groupName: string): Archive | Group | FlatFile | null {
         const children = Array.from(this.groups.values());
-        return children.find(child => child?.name === fileName) ?? null;
+        return children.find(child => child?.name === groupName) ?? null;
     }
 
     public incrementMissingEncryptionKeys(): void {

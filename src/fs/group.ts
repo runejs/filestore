@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { existsSync, readdirSync, statSync, mkdirSync, rmSync } from 'graceful-fs';
+import { existsSync, readdirSync, statSync, mkdirSync, rmSync, writeFileSync } from 'graceful-fs';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { logger } from '@runejs/common';
 import { FlatFile } from './flat-file';
@@ -294,11 +294,15 @@ export class Group extends IndexedFile<GroupIndexEntity> {
             rmSync(groupPath, { recursive: true, force: true });
         }
 
-        if(this.files.size > 1) {
+        if(this.files.size > 1 && !this.archive.config.flatten) {
             mkdirSync(groupPath, { recursive: true });
         }
 
-        Array.from(this.files.values()).forEach(file => file.write());
+        if(!this.archive.config.flatten) {
+            Array.from(this.files.values()).forEach(file => file.write());
+        } else {
+            super.write();
+        }
     }
 
     public override async validate(): Promise<void> {
@@ -339,10 +343,15 @@ export class Group extends IndexedFile<GroupIndexEntity> {
             throw new Error(`Error generating group output path; Archive output path not provided to group ${this.key}.`);
         }
 
-        return join(archiveOutputPath, String(this.name || this.key));
+        const groupPath = join(archiveOutputPath, String(this.name || this.key));
+        return this.archive.config.flatten ? groupPath + this.type : groupPath;
     }
 
     public get fileCount(): number {
         return this._fileCount;
+    }
+
+    public get type(): string {
+        return this.archive?.config?.contentType ?? '';
     }
 }

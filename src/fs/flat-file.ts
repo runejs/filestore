@@ -74,27 +74,6 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
         return null;
     }
 
-    public override write(): void | Promise<void> {
-        if(this.empty) {
-            let name = (this.name || this.key);
-
-            if(this.group) {
-                if(this.group.fileCount > 1) {
-                    name = `${(this.group.name || this.group.key)}:${name}`;
-                } else {
-                    name = (this.group.name || this.group.key);
-                }
-            }
-
-            logger.error(`Error writing file ${name}: File is empty.`);
-        } else {
-            const filePath = this.outputPath;
-            const fileData = this.data.toNodeBuffer();
-
-            writeFileSync(filePath, fileData);
-        }
-    }
-
     public override async validate(): Promise<void> {
         super.validate();
         await this.store.indexService.verifyFileIndex(this);

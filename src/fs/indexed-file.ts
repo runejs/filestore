@@ -8,6 +8,7 @@ import { FileError } from './file-error';
 import { Store } from './store';
 import { Archive } from './archive';
 import { Group } from './group';
+import { writeFileSync } from 'graceful-fs';
 
 
 export interface AdditionalFileProperties {
@@ -503,13 +504,17 @@ export abstract class IndexedFile<T extends IndexEntity> {
         }
     }
 
+    public write(): void {
+        if(!this.empty) {
+            writeFileSync(this.outputPath, this.data.toNodeBuffer());
+        }
+    }
+
     protected isSet(variable: any): boolean {
         return variable !== undefined && variable !== null;
     }
 
     public abstract read(compress?: boolean): ByteBuffer | null | Promise<ByteBuffer | null>;
-
-    public abstract write(): void | Promise<void>;
 
     public get numericKey(): number {
         return Number(this.key);

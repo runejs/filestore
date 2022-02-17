@@ -380,6 +380,10 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
     }
 
     public async saveIndexData(): Promise<void> {
+        if(!this.groups.size) {
+            return;
+        }
+
         await this.validate();
 
         logger.info(`Saving archive ${this.name} to index...`);

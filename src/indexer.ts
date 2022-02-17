@@ -20,15 +20,16 @@ class IndexerOptions {
 
 
 const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, type: StoreType): Promise<void> => {
-    const argDebugString = args.size !== 0 ? Array.from(args.entries()).map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
-    const outputDir = store.outputPath;
-
-    if(!existsSync(outputDir)) {
-        mkdirSync(outputDir, { recursive: true });
-    }
+    const argDebugString = args.size !== 0 ? Array.from(args.entries())
+        .map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 
     if(type === 'js5') {
         store.js5Load();
+    } else {
+        const outputDir = store.outputPath;
+        if(!existsSync(outputDir)) {
+            mkdirSync(outputDir, { recursive: true });
+        }
     }
 
     let archives: Archive[] = [];
@@ -62,8 +63,8 @@ const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, 
 
         archives = [ archive ];
     }
-    
-    await store.indexService.saveStoreIndex();
+
+    await store.saveIndexData();
     await archives.forEachAsync(async archive => await archive.saveIndexData());
 };
 
@@ -111,8 +112,10 @@ terminal.executeScript(async (terminal, args) => {
 
     setLoggerDest(join(logDir, `index_${gameVersion}.log`));
 
-    const outputPath = join(storePath, 'output');
-    const store = await Store.create(gameVersion, storePath, outputPath);
+    const store = await Store.create(gameVersion, storePath, {
+        readFiles: false,
+        compress: false
+    });
 
     while(!archive) {
         const archiveNameInput = await terminal.question(
@@ -131,6 +134,4 @@ terminal.executeScript(async (terminal, args) => {
     terminal.close();
 
     await indexFiles(store, archive, args, type);
-
-    process.exit(0);
 });

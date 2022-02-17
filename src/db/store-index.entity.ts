@@ -1,4 +1,4 @@
-import { CreateDateColumn, Entity, OneToMany, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 
 import { ArchiveIndexEntity } from './archive-index.entity';
 import { GroupIndexEntity } from './group-index.entity';
@@ -11,14 +11,17 @@ export class StoreIndexEntity {
     @PrimaryColumn('integer', { name: 'game_version', nullable: false, unique: true })
     gameVersion: number;
 
-    @OneToMany(() => ArchiveIndexEntity, archive => archive.store)
-    archives: ArchiveIndexEntity[];
+    @OneToMany(() => ArchiveIndexEntity, archive => archive.store, { lazy: true })
+    archives: Promise<ArchiveIndexEntity[]> | ArchiveIndexEntity[];
 
-    @OneToMany(() => GroupIndexEntity, group => group.store)
-    groups: GroupIndexEntity[];
+    @OneToMany(() => GroupIndexEntity, group => group.store, { lazy: true })
+    groups: Promise<GroupIndexEntity[]> | GroupIndexEntity[];
 
-    @OneToMany(() => FileIndexEntity, file => file.store)
-    files: FileIndexEntity[];
+    @OneToMany(() => FileIndexEntity, file => file.store, { lazy: true })
+    files: Promise<FileIndexEntity[]> | FileIndexEntity[];
+
+    @Column('blob', { name: 'data', nullable: true, default: null })
+    data: Buffer | null = null;
 
     @CreateDateColumn()
     created: Date;

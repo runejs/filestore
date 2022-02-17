@@ -33,7 +33,8 @@ export class IndexService {
             database: join(indexPath, `index_${this.store.gameVersion}.sqlite3`),
             entities: [ StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity ],
             synchronize: true,
-            logging: [ 'error' ],
+            logging: [ 'error', 'warn' ],
+            // logging: 'all',
             name: 'index-service'
         });
     }
@@ -47,7 +48,13 @@ export class IndexService {
     }
 
     public async saveStoreIndex(): Promise<StoreIndexEntity | null> {
-        const storeIndex = (await this.getStoreIndex()) ?? new StoreIndexEntity();
+        let storeIndex = await this.getStoreIndex();
+        let update = true;
+
+        if(!storeIndex) {
+            storeIndex = new StoreIndexEntity();
+            update = false;
+        }
 
         if(!storeIndex.gameVersion) {
             storeIndex.gameVersion = this.store.gameVersion;
@@ -58,7 +65,24 @@ export class IndexService {
             return null;
         }
 
-        const savedIndex = await this.storeRepo.save(storeIndex);
+        storeIndex.data = this.store.data?.toNodeBuffer() || null;
+
+        let savedIndex: StoreIndexEntity;
+
+        if(update) {
+            const updateResult = await this.storeRepo.update({
+                gameVersion: this.store.gameVersion
+            }, storeIndex);
+
+            if(!updateResult?.affected) {
+                logger.error(`Main store entity update failed.`);
+                return null;
+            }
+
+            savedIndex = await this.getStoreIndex();
+        } else {
+            savedIndex = await this.storeRepo.save(storeIndex);
+        }
 
         if(savedIndex?.gameVersion !== this.store.gameVersion) {
             logger.error(`Error saving store index ${this.store.gameVersion}.`);
@@ -89,7 +113,8 @@ export class IndexService {
             },
             order: {
                 key: 'ASC'
-            }
+            },
+            relations: [ 'groups' ]
         }) || [];
     }
 
@@ -130,10 +155,9 @@ export class IndexService {
             }
         });
 
-        let groups: GroupIndexEntity[];
+        let affected = 0;
 
         if(existingIndex) {
-            groups = new Array(...(existingIndex.groups ?? []));
             delete existingIndex.groups;
 
             const { name, nameHash, size, sha256, crc32, version, data } = archiveIndex;
@@ -150,29 +174,21 @@ export class IndexService {
                 gameVersion: archiveIndex.gameVersion
             }, existingIndex);
 
-            if(!result.affected) {
-                throw new Error(`Error updating archive ${archiveIndex.name} index.`);
-            }
+            affected = result?.affected || 0;
         } else {
-            groups = new Array(...archiveIndex.groups);
             delete archiveIndex.groups;
 
             const result = await this.archiveRepo.insert(archiveIndex);
-
-            if(!result.identifiers?.length) {
-                throw new Error(`Error updating archive ${archiveIndex.name} index.`);
-            }
+            affected = result?.identifiers?.length || 0;
         }
 
-        logger.info(`Archive ${archiveIndex.name} index saved.`);
-
-        const savedIndex = await this.getArchiveIndex(archiveIndex.key);
-
-        if(!savedIndex?.groups?.length) {
-            savedIndex.groups = groups ?? [];
+        if(!affected) {
+            logger.error(`Error updating archive ${archiveIndex.name} database index.`);
+        } else {
+            logger.info(`Archive ${archiveIndex.name} database index saved.`);
         }
 
-        return savedIndex;
+        return await this.getArchiveIndex(archiveIndex.key);
     }
 
     public async getGroupIndex(group: Group): Promise<GroupIndexEntity | null>;

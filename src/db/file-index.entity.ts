@@ -10,12 +10,12 @@ import { GroupIndexEntity } from './group-index.entity';
 @Index('file_identifier', [ 'key', 'gameVersion', 'archiveKey', 'groupKey' ], { unique: true })
 export class FileIndexEntity extends IndexEntity {
 
-    @ManyToOne(() => StoreIndexEntity, store => store.files,
+    @ManyToOne(() => StoreIndexEntity, async store => store.files,
         { primary: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'game_version', referencedColumnName: 'gameVersion' })
     store: StoreIndexEntity;
 
-    @ManyToOne(() => ArchiveIndexEntity, archive => archive.groups,
+    @ManyToOne(() => ArchiveIndexEntity, async archive => archive.groups,
         { primary: true, onDelete: 'CASCADE' })
     @JoinColumn([
         { name: 'archive_key', referencedColumnName: 'key' },
@@ -23,7 +23,7 @@ export class FileIndexEntity extends IndexEntity {
     ])
     archive: ArchiveIndexEntity;
 
-    @ManyToOne(() => GroupIndexEntity, group => group.files,
+    @ManyToOne(() => GroupIndexEntity, async group => group.files,
         { primary: true, onDelete: 'CASCADE' })
     @JoinColumn([
         { name: 'archive_key', referencedColumnName: 'archiveKey' },

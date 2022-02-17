@@ -1,11 +1,11 @@
-import { existsSync, readFileSync, mkdirSync, rmSync, statSync, readdirSync } from 'graceful-fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'graceful-fs';
 import { join } from 'path';
 import JSON5 from 'json5';
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
-import { Archive, Group } from './index';
+import { Archive } from './index';
 import { ArchiveIndexEntity, IndexService } from '../db';
 import { ArchiveConfig } from '../config';
 
@@ -26,6 +26,7 @@ export class Store {
     private _mainArchive: Archive;
     private _data: ByteBuffer;
     private _compressed: boolean = false;
+    private _js5Encoded: boolean = false;
     private _path: string;
     private _outputPath: string;
     private _archiveConfig: { [key: string]: ArchiveConfig };
@@ -33,29 +34,25 @@ export class Store {
     private _gameVersion: number | undefined;
     private _gameVersionMissing: boolean;
 
-    protected constructor(gameVersion: number, storePath: string, outputPath: string) {
-        this._path = storePath;
-        this._outputPath = outputPath;
+    protected constructor(gameVersion: number, path: string, outputPath?: string) {
         this._gameVersion = gameVersion;
+        this._path = path;
+        this._outputPath = outputPath ? outputPath : join(path, 'output');
         this.indexService = new IndexService(this);
         this.loadArchiveConfig();
         Crc32.init();
     }
 
-    public static async create(gameVersion: number, storePath: string, outputPath: string, options: {
-        readFiles: boolean;
-        compress: boolean;
+    public static async create(gameVersion: number, path: string, options: {
+        readFiles?: boolean | undefined;
+        compress?: boolean | undefined;
+        outputPath?: string | undefined;
     } = { readFiles: false, compress: false }): Promise<Store> {
-        let { readFiles, compress } = options;
-        if(readFiles === undefined) {
-            readFiles = false;
-        }
-        if(compress === undefined) {
-            compress = false;
-        }
+        options.readFiles = options.readFiles || false;
+        options.compress = options.compress || false;
 
-        const store = new Store(gameVersion, storePath, outputPath);
-        await store.load(readFiles, compress);
+        const store = new Store(gameVersion, path, options.outputPath);
+        await store.load(options.readFiles, options.compress);
         return store;
     }
 
@@ -113,9 +110,10 @@ export class Store {
                 continue;
             }
 
-            const fileData = new ByteBuffer(readFileSync(join(js5StorePath, fileName)));
-            this._js5ArchiveIndexes.set(index, fileData);
+            this._js5ArchiveIndexes.set(index, new ByteBuffer(readFileSync(join(js5StorePath, fileName))));
         }
+
+        logger.info(`JS5 store loaded for game version ${this.gameVersion}.`);
     }
 
     public js5Decode(): ByteBuffer | null {
@@ -131,8 +129,23 @@ export class Store {
     }
 
     public js5Encode(): ByteBuffer {
+        if(this.js5Encoded) {
+            return this.data;
+        }
 
-        return new ByteBuffer([]); // @TODO return main index file (crc table)
+        // const dataLength = (4 * archiveCount) + 5;
+        this._data = new ByteBuffer(4096);
+
+        this.data.put(0);
+        this.data.put(4 * this.archiveCount, 'int');
+
+        for(let archiveIndex = 0; archiveIndex < this.archiveCount; archiveIndex++) {
+            this.data.put(this.get(archiveIndex).crc32, 'int');
+        }
+
+        this.mainArchive.setData(this.data, false);
+        this._js5Encoded = true;
+        return this.data;
     }
 
     public compress(): ByteBuffer | null {
@@ -140,25 +153,21 @@ export class Store {
             return this._data;
         }
 
-        Array.from(this.archives.values()).forEach(archive => {
-            if(!archive.compressed) {
-                archive.compress();
-            }
-        });
+        this.archives.forEach(archive => archive.compress());
 
         this._compressed = true;
         return this._data;
     }
 
-    public async read(compress: boolean = false): Promise<ByteBuffer | null> {
+    public async read(compress: boolean = false): Promise<ByteBuffer> {
+        this._js5Encoded = false;
+        this._compressed = false;
         const archives = Array.from(this.archives.values());
 
-        for(const archive of archives) {
-            await archive.read();
-        }
+        await this.archives.forEachAsync(async a => a.read(false));
 
         if(compress) {
-            archives.forEach(archive => archive.compress());
+            this.compress();
         }
 
         return this.js5Encode();
@@ -192,13 +201,7 @@ export class Store {
             return;
         }
 
-        try {
-            await this.indexService.saveStoreIndex();
-            logger.info(`File store index saved.`);
-        } catch(error) {
-            logger.error(`Error indexing file store:`, error);
-            return;
-        }
+        await this.saveIndexData();
 
         try {
             logger.info(`Indexing archive contents...`);
@@ -215,7 +218,7 @@ export class Store {
         logger.info(`Flat file store written and indexed in ${(end - start) / 1000} seconds.`);
     }
 
-    public async load(readFiles: boolean = false, compress: boolean = false): Promise<void> {
+    public async load(readFiles: boolean = false, compress: boolean = false): Promise<Store> {
         await this.indexService.load();
 
         this.loadEncryptionKeys();
@@ -260,22 +263,24 @@ export class Store {
                 });
             }
 
-            archiveIndex.groups = await this.indexService.getGroupIndexes(archiveIndex);
+            const groups = await archiveIndex.groups;
 
             // Bulk-fetch the archive's files and sort them into the appropriate groups
             const archiveFileIndexes = await this.indexService.getFileIndexes(archiveIndex);
             for(const fileIndex of archiveFileIndexes) {
-                const group = archiveIndex.groups.find(group => group.key === fileIndex.groupKey);
+                const group = groups.find(group => group.key === fileIndex.groupKey);
                 if(!group) {
                     continue;
                 }
 
-                if(!group.files?.length) {
+                if(!Array.isArray(group.files) || !group.files?.length) {
                     group.files = [ fileIndex ];
                 } else {
                     group.files.push(fileIndex);
                 }
             }
+
+            archiveIndex.groups = groups;
 
             const archive = new Archive(archiveIndex, config, {
                 store: this,
@@ -288,12 +293,25 @@ export class Store {
         }
 
         if(readFiles) {
-            const archives = Array.from(this.archives.values());
-            archives.forEach(archive => archive.read(false));
+            await this.archives.forEachAsync(async archive => archive.read(false));
 
             if(compress) {
-                archives.forEach(archive => archive.compress());
+                this.archives.forEach(archive => archive.compress());
             }
+        }
+
+        return this;
+    }
+
+    public async saveIndexData(): Promise<void> {
+        this.js5Encode(); // Encode the main index data for storage
+
+        try {
+            await this.indexService.saveStoreIndex();
+            logger.info(`File store index saved.`);
+        } catch(error) {
+            logger.error(`Error indexing file store:`, error);
+            return;
         }
     }
 
@@ -414,6 +432,10 @@ export class Store {
         this._gameVersionMissing = true;
     }
 
+    public get archiveCount(): number {
+        return this.archives?.size || 0;
+    }
+
     public get js5MainIndex(): ByteBuffer {
         if(!this._js5MainIndex?.length || !this._js5MainArchiveData?.length) {
             this.js5Decode();
@@ -448,6 +470,10 @@ export class Store {
 
     public get compressed(): boolean {
         return this._compressed;
+    }
+
+    public get js5Encoded(): boolean {
+        return this._js5Encoded;
     }
 
     public get path(): string {

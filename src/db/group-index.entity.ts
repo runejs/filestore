@@ -9,12 +9,12 @@ import { StoreIndexEntity } from './store-index.entity';
 @Index('group_identifier', [ 'key', 'gameVersion', 'archiveKey' ], { unique: true })
 export class GroupIndexEntity extends IndexEntity {
 
-    @ManyToOne(() => StoreIndexEntity, store => store.groups,
+    @ManyToOne(() => StoreIndexEntity, async store => store.groups,
         { primary: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'game_version', referencedColumnName: 'gameVersion' })
     store: StoreIndexEntity;
 
-    @ManyToOne(() => ArchiveIndexEntity, archive => archive.groups,
+    @ManyToOne(() => ArchiveIndexEntity, async archive => archive.groups,
         { primary: true, onDelete: 'CASCADE' })
     @JoinColumn([
         { name: 'archive_key', referencedColumnName: 'key' },
@@ -28,8 +28,9 @@ export class GroupIndexEntity extends IndexEntity {
     @PrimaryColumn('integer', { name: 'archive_key', unique: false, nullable: false })
     archiveKey: number;
 
-    @OneToMany(() => FileIndexEntity, fileIndex => fileIndex.group, { cascade: true })
-    files: FileIndexEntity[];
+    @OneToMany(() => FileIndexEntity, fileIndex => fileIndex.group,
+        { cascade: true, lazy: true })
+    files: Promise<FileIndexEntity[]> | FileIndexEntity[];
 
     @Column('boolean', { name: 'flat', nullable: false, default: false })
     flatFile: boolean = false;

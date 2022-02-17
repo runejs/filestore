@@ -17,7 +17,7 @@
         "start": "ts-node-dev src/dev.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
-        "unpack": "ts-node-dev --max-old-space-size=4096 src/unpacker.ts",
+        "unpack": "ts-node-dev --max-old-space-size=2048 src/unpacker.ts",
         "unpacker": "npm run unpack",
         "unpack435": "npm run unpack -- -version 435 -store ../store -archive main",
         "index": "ts-node-dev --max-old-space-size=2048 src/indexer.ts",

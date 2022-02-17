@@ -111,8 +111,10 @@ terminal.executeScript(async (terminal, args) => {
 
     setLoggerDest(join(logDir, `unpack_${ gameVersion }.log`));
 
-    const outputPath = join(storePath, 'output');
-    const store = await Store.create(gameVersion, storePath, outputPath, { readFiles: false, compress: false });
+    const store = await Store.create(gameVersion, storePath, {
+        readFiles: false,
+        compress: false
+    });
 
     while(!archive) {
         const archiveNameInput = await terminal.question(
@@ -145,6 +147,4 @@ terminal.executeScript(async (terminal, args) => {
             await unpackFiles(store, archive, args, debug);
         }
     }
-
-    process.exit(0);
 });

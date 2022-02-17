@@ -310,7 +310,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         return super.compress();
     }
 
-    public override read(compress: boolean = false): ByteBuffer | null {
+    public override async read(compress: boolean = false): Promise<ByteBuffer> {
         if(this._loaded) {
             return this._data;
         }
@@ -320,7 +320,8 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         this._loaded = true;
 
         // Read in all groups within the archive
-        for(const groupIndex of this.index.groups) {
+        const groupIndexes = Array.isArray(this.index.groups) ? this.index.groups : await this.index.groups;
+        for(const groupIndex of groupIndexes) {
             const group = new Group(groupIndex, {
                 archive: this,
                 compression: this.config.compression,
@@ -330,7 +331,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             });
 
             this.groups.set(group.key, group);
-            group.read(false);
+            await group.read(false);
         }
 
         if(compress) {

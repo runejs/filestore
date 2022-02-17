@@ -189,14 +189,16 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         return super.compress();
     }
 
-    public override read(compress: boolean = false): ByteBuffer | null {
+    public override async read(compress: boolean = false): Promise<ByteBuffer | null> {
         if(!this.index) {
             logger.error(`Error reading group ${this.name} files: Group is not indexed, please re-index the ` +
                 `${this.archive.name} archive.`);
             return null;
         }
 
-        if(!this.index.files?.length) {
+        const files = Array.isArray(this.index.files) ? this.index.files : await this.index.files;
+
+        if(!files?.length) {
             // Single file indexes are not stored to save on DB space and read/write times
             // So if a group has no children, assume it is a single-file group and create a single index for it
             const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, stripeCount, archive } = this;
@@ -204,17 +206,6 @@ export class Group extends IndexedFile<GroupIndexEntity> {
                 numericKey: 0, name, nameHash, version, size, crc32, sha256, stripes, stripeCount, group: this, archive
             }) ];
         }
-
-        const files = this.index.files;
-
-        /*if(!children?.length) {
-            // Set default single child file (which is excluded from the .index file to save on disk space)
-            children = new Map<string, FileIndex>();
-            const { name, nameHash, size, version, crc32, sha256, stripes } = this.index;
-            children.set('0', {
-                key: 0, name, nameHash, size, version, crc32, sha256, stripes
-            });
-        }*/
 
         let isDirectory = false;
         let childFileCount = 1;

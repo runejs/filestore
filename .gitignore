@@ -6,7 +6,6 @@ packed/*
 config/xtea/*
 /indexes/
 /logs/
-!.gitkeep
 
 
 node_modules
@@ -26,3 +25,5 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+!packed/.gitkeep

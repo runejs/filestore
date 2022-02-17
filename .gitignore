@@ -1,13 +1,16 @@
+/unpacked/
+packed/*
+/lib/
+/temp/
+/tmp/
+config/xtea/*
+/indexes/
+/logs/
+!.gitkeep
+
+
 node_modules
 .DS_Store
-/dist
-/lib
-/cache
-/data
-/output
-/stores
-/packed
-/unpacked
 .env
 
 # Log files

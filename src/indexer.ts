@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
-import { logger, setLoggerDest } from '@runejs/common';
+import { logger } from '@runejs/common';
 import { Archive, Store, StoreType } from './fs';
 import { createObject, TerminalInterface, ArgumentMap } from './util';
 
@@ -82,7 +82,7 @@ terminal.executeScript(async (terminal, args) => {
         store: storePath
     } = options;
 
-    const defaultStorePath = join('..', 'store');
+    const defaultStorePath = './';
 
     if(!storePath) {
         storePath = defaultStorePath;
@@ -110,7 +110,7 @@ terminal.executeScript(async (terminal, args) => {
         mkdirSync(logDir, { recursive: true });
     }
 
-    setLoggerDest(join(logDir, `index_${gameVersion}.log`));
+    logger.destination(join(logDir, `index_${gameVersion}.log`));
 
     const store = await Store.create(gameVersion, storePath, {
         readFiles: false,

@@ -37,13 +37,13 @@ export class Store {
     protected constructor(gameVersion: number, path: string, outputPath?: string) {
         this._gameVersion = gameVersion;
         this._path = path;
-        this._outputPath = outputPath ? outputPath : join(path, 'output');
+        this._outputPath = outputPath ? outputPath : join(path, 'unpacked');
         this.indexService = new IndexService(this);
         this.loadArchiveConfig();
         Crc32.init();
     }
 
-    public static async create(gameVersion: number, path: string, options: {
+    public static async create(gameVersion: number, path: string = './', options: {
         readFiles?: boolean | undefined;
         compress?: boolean | undefined;
         outputPath?: string | undefined;
@@ -57,7 +57,7 @@ export class Store {
     }
 
     public js5Load(): void {
-        const js5StorePath = join(this.path, 'js5');
+        const js5StorePath = join(this.path, 'packed');
 
         if(!existsSync(js5StorePath)) {
             throw new Error(`${js5StorePath} could not be found.`);

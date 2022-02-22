@@ -122,7 +122,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
         }
     }
 
-    public setData(data: ByteBuffer, compressed: boolean): void {
+    public setData(data: ByteBuffer, compressed: boolean): ByteBuffer | null {
         if(data) {
             data.readerIndex = 0;
             data.writerIndex = 0;
@@ -134,32 +134,37 @@ export abstract class IndexedFile<T extends IndexEntity> {
         }
 
         this.compressed = compressed;
+
+        if(compressed) {
+            this.generateCrc32();
+        } else {
+            this.generateSha256();
+        }
+
+        return this._data;
     }
 
     public js5Decode(): ByteBuffer | null {
-        const archive = this.archive;
-        if(!archive) {
-            logger.error(`JS5 file ${this.key} does not belong to an archive.`);
+        const archiveKey: number = this.archive ? this.archive.numericKey : 255;
+        const fileKey = this.numericKey;
+        const archiveName: string = this.archive ? this.archive.name : 'main';
+        const indexChannel: ByteBuffer = archiveKey !== 255 ?
+            this.store.js5ArchiveIndexes.get(String(archiveKey)) : this.store.js5MainIndex;
+
+        if(archiveKey === 255 && fileKey === 255) {
             return null;
         }
 
         const indexDataLength = 6;
-        const usingMainIndex = archive.numericKey === 255;
-        const indexChannel = usingMainIndex ? this.store.js5MainIndex : this.store.js5ArchiveIndexes.get(this.archive?.key ?? this.key);
         const dataChannel = this.store.js5MainArchiveData;
 
         indexChannel.readerIndex = 0;
         dataChannel.readerIndex = 0;
 
-        let pointer = this.numericKey * indexDataLength;
+        let pointer = fileKey * indexDataLength;
 
         if(pointer < 0 || pointer >= indexChannel.length) {
-            if(!usingMainIndex) {
-                logger.error(`File ${this.key} was not found within the JS5 ${archive.name} archive index file.`);
-            } else {
-                logger.error(`Archive ${this.key} was not found within the main index file.`);
-            }
-
+            logger.error(`File ${fileKey} was not found within the ${archiveName} archive index file.`);
             return null;
         }
 
@@ -167,7 +172,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
         indexChannel.copy(fileIndexData, 0, pointer, pointer + indexDataLength);
 
         if(fileIndexData.readable !== indexDataLength) {
-            logger.error(`Error extracting JS5 file ${this.key}: the end of the data stream was reached.`);
+            logger.error(`Error extracting JS5 file ${fileKey}: the end of the data stream was reached.`);
             return null;
         }
 
@@ -175,7 +180,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
         const stripeCount = fileIndexData.get('int24', 'unsigned');
 
         if(this.size <= 0) {
-            logger.warn(`Extracted JS5 file ${this.key} has a recorded size of 0, no file data will be extracted.`);
+            logger.warn(`Extracted JS5 file ${fileKey} has a recorded size of 0, no file data will be extracted.`);
             return null;
         }
 
@@ -192,7 +197,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
             dataChannel.copy(temp, 0, pointer, pointer + stripeLength);
 
             if(temp.readable !== stripeLength) {
-                logger.error(`Error reading stripe for packed file ${this.key}, the end of the data stream was reached.`);
+                logger.error(`Error reading stripe for packed file ${fileKey}, the end of the data stream was reached.`);
                 return null;
             }
 
@@ -208,18 +213,18 @@ export abstract class IndexedFile<T extends IndexEntity> {
                 data.writerIndex = (data.writerIndex + stripeDataLength);
                 remaining -= stripeDataLength;
 
-                if(stripeArchiveIndex !== this.archive.numericKey) {
-                    logger.error(`Archive index mismatch, expected archive ${this.archive.key} but found archive ${stripeFileIndex}`);
+                if(stripeArchiveIndex !== archiveKey) {
+                    logger.error(`Archive index mismatch, expected archive ${archiveKey} but found archive ${stripeFileIndex}`);
                     return null;
                 }
 
-                if(stripeFileIndex !== this.numericKey) {
-                    logger.error(`File index mismatch, expected ${this.key} but found ${stripeFileIndex}.`);
+                if(stripeFileIndex !== fileKey) {
+                    logger.error(`File index mismatch, expected ${fileKey} but found ${stripeFileIndex}.`);
                     return null;
                 }
 
                 if(currentStripe !== stripe++) {
-                    logger.error(`Error extracting JS5 file ${this.key}, file data is corrupted.`);
+                    logger.error(`Error extracting JS5 file ${fileKey}, file data is corrupted.`);
                     return null;
                 }
 
@@ -312,14 +317,12 @@ export abstract class IndexedFile<T extends IndexEntity> {
 
     public compress(): ByteBuffer | null {
         if(!this.empty && (this.compressed || this.compression === 'none')) {
-            return this._data;
+            return this.setData(this._data, true);
         }
 
         if(this.empty) {
             return null;
         }
-
-        const originalCrc = this.crc32;
 
         const decompressedData = this._data;
         let data: ByteBuffer;
@@ -361,14 +364,6 @@ export abstract class IndexedFile<T extends IndexEntity> {
 
         if(data?.length) {
             this.setData(data.flipWriter(), true);
-
-            this.generateCrc32();
-
-            if(originalCrc !== this.crc32) {
-                // logger.warn(`Archive ${this.name} checksum has changed from ${originalCrc} to ${this.crc32}.`);
-                this.index.crc32 = this.crc32;
-            }
-
             return this._data;
         } else {
             return null;
@@ -463,22 +458,25 @@ export abstract class IndexedFile<T extends IndexEntity> {
     }
 
     public validate(): void | Promise<void> {
-        const isNamed = !!this.name && this.name.length;
-        let name = this.name;
-        let nameHash: number | undefined = undefined;
+        if(!this.name && this.hasNameHash) {
+            this.name = this.hasNameHash ? this.store.findFileName(this.nameHash, String(this.nameHash)) : this.key;
+        } else if(!this.hasNameHash && this.named) {
+            this.nameHash = this.store.hashFileName(this.name);
+        } else {
+            this.nameHash = -1;
+        }
 
-        if(!isNamed) {
-            if(this.hasNameHash) {
-                name = this.store.findFileName(this.nameHash, String(this.nameHash));
-                nameHash = this.nameHash;
-            } else {
-                name = this.key;
+        if(this.archive?.config?.versioned) {
+            if(this.index.crc32 !== this.crc32 || this.index.sha256 !== this.sha256 || this.index.size !== this.size) {
+                this.index.version = this.index.version ? this.index.version + 1 : 1;
             }
-        } else if(this.hasNameHash) {
-            this.nameHash = this.store.hashFileName(name);
         }
 
         this.index.data = this.data?.toNodeBuffer() ?? null;
+        this.index.name = this.name;
+        this.index.size = this.size;
+        this.index.crc32 = this.crc32;
+        this.index.sha256 = this.sha256;
     }
 
     public generateCrc32(): number {
@@ -518,6 +516,18 @@ export abstract class IndexedFile<T extends IndexEntity> {
 
     public get numericKey(): number {
         return Number(this.key);
+    }
+
+    public get named(): boolean {
+        if(!this.name) {
+            return false;
+        }
+
+        return !/^\d+$/.test(this.name);
+    }
+
+    public get unnamed(): boolean {
+        return !this.named;
     }
 
     public get hasNameHash(): boolean {

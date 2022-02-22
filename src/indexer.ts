@@ -23,7 +23,7 @@ const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, 
     const argDebugString = args.size !== 0 ? Array.from(args.entries())
         .map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 
-    if(type === 'js5') {
+    if(type === 'packed') {
         store.js5Load();
     } else {
         const outputDir = store.outputPath;
@@ -32,8 +32,6 @@ const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, 
         }
     }
 
-    let archives: Archive[] = [];
-
     if(archiveName === 'main') {
         logger.info(`Indexing ${type} store${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
@@ -41,12 +39,15 @@ const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, 
         }
 
         if(type === 'flat') {
-            await store.read(true);
-        } else if(type === 'js5') {
-            store.js5Decode();
+            await store.read();
+        } else if(type === 'packed') {
+            store.js5Decode(true);
         }
 
-        archives = Array.from(store.archives.values());
+        store.js5Encode(true);
+        store.compress(true);
+
+        await store.saveIndexData(true, true, true);
     } else {
         logger.info(`Indexing ${type} store archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
         if(args.size !== 0) {
@@ -56,16 +57,16 @@ const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, 
         const archive = store.find(archiveName);
 
         if(type === 'flat') {
-            await archive.read(true);
-        } else if(type === 'js5') {
+            await archive.read(false);
+        } else if(type === 'packed') {
             archive.js5Decode();
         }
 
-        archives = [ archive ];
-    }
+        archive.js5Encode(true);
+        archive.compress(true);
 
-    await store.saveIndexData();
-    await archives.forEachAsync(async archive => await archive.saveIndexData());
+        await archive.saveIndexData(true, true);
+    }
 };
 
 
@@ -100,7 +101,7 @@ terminal.executeScript(async (terminal, args) => {
         }
     }
 
-    if(type !== 'flat' && type !== 'js5') {
+    if(type !== 'flat' && type !== 'packed') {
         throw new Error(`Invalid store type specified: ${type}. Please use 'flat' or 'js5' for store type.`);
     }
 

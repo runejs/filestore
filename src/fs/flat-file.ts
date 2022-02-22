@@ -1,5 +1,5 @@
 import { join } from 'path';
-import { existsSync, readFileSync, writeFileSync, rmSync } from 'graceful-fs';
+import { existsSync, readFileSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 import { FileIndexEntity } from '../db';
 import { IndexedFile } from './indexed-file';
@@ -85,12 +85,10 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
             throw new Error(`Error generating file path; File ${this.key} has not been added to a group.`);
         }
 
-        const extension = (this.archive?.config?.contentType || '');
-
-        if(this.group.fileCount === 1) {
-            return groupPath + extension;
+        if(this.group.fileCount === 1 || this.archive?.config?.flatten) {
+            return groupPath + this.type;
         } else {
-            return join(groupPath, String(this.name || this.key)) + extension;
+            return join(groupPath, String(this.name || this.key)) + this.type;
         }
     }
 
@@ -100,7 +98,7 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
             throw new Error(`Error generating file output path; File ${this.key} has not been added to a group.`);
         }
 
-        if(this.group.fileCount === 1) {
+        if(this.group.fileCount === 1 || this.archive?.config?.flatten) {
             return groupOutputPath + this.type;
         } else {
             return join(groupOutputPath, String(this.name || this.key) + this.type);

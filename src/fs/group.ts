@@ -196,18 +196,17 @@ export class Group extends IndexedFile<GroupIndexEntity> {
             return null;
         }
 
-        const files = Array.isArray(this.index.files) ? this.index.files : await this.index.files;
+        const indexedFiles = Array.isArray(this.index.files) ? this.index.files : await this.index.files;
 
-        if(!files?.length) {
+        if(!indexedFiles?.length) {
             // Single file indexes are not stored to save on DB space and read/write times
             // So if a group has no children, assume it is a single-file group and create a single index for it
-            const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, stripeCount, archive } = this;
+            const { name, nameHash, version, size, crc32, sha256, stripes, stripeCount, archive } = this;
             this.index.files = [ this.indexService.verifyFileIndex({
                 numericKey: 0, name, nameHash, version, size, crc32, sha256, stripes, stripeCount, group: this, archive
             }) ];
         }
 
-        let isDirectory = false;
         let childFileCount = 1;
 
         const groupName = this.index.name;
@@ -219,18 +218,19 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
         if(existsSync(groupPath) && statSync(groupPath).isDirectory()) {
             childFileCount = readdirSync(groupPath).length ?? 1;
-            isDirectory = true;
         }
 
-        if(files.length !== childFileCount) {
+        if(indexedFiles.length !== childFileCount) {
             this._modified = true;
         }
+
+        this._fileCount = childFileCount;
 
         this.files.clear();
         this.fileSizes.clear();
 
         // Load the group's files
-        for(const fileIndexData of files) {
+        for(const fileIndexData of indexedFiles) {
             const file = new FlatFile(fileIndexData, {
                 group: this, archive: this.archive, store: this.store
             });
@@ -239,7 +239,6 @@ export class Group extends IndexedFile<GroupIndexEntity> {
             this.fileSizes.set(file.key, fileIndexData.size);
         }
 
-        this._fileCount = this.files.size;
         this.stripeCount = (this.index as GroupIndexEntity).stripeCount || 1;
 
         // Read the content of each file within the group
@@ -264,16 +263,6 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
         if(compress) {
             this.compress();
-
-            const originalCrc = this.crc32;
-
-            if(originalCrc !== this.generateCrc32()) {
-                if(!this._modified) {
-                    logger.info(`Detected changes in file ${this.archive.name}:${groupName}.`);
-                }
-                this.index.crc32 = this.crc32;
-                this._modified = true;
-            }
         }
 
         this._loaded = true;
@@ -305,14 +294,24 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         }
     }
 
-    public override async validate(): Promise<void> {
+    public override async validate(validateFiles: boolean = true): Promise<void> {
         super.validate();
-        this.js5Encode();
         await this.store.indexService.verifyGroupIndex(this);
 
-        for(const [ , file ] of this.files) {
-            await file.validate();
+        if(validateFiles) {
+            await this.validateFiles();
         }
+    }
+
+    public async validateFiles(): Promise<void> {
+        const promises = new Array(this.files.size);
+        let idx = 0;
+
+        for(const [ , file ] of this.files) {
+            promises[idx++] = file.validate();
+        }
+
+        await Promise.all(promises);
     }
 
     public has(fileIndex: string | number): boolean {
@@ -348,7 +347,7 @@ export class Group extends IndexedFile<GroupIndexEntity> {
     }
 
     public get fileCount(): number {
-        return this._fileCount;
+        return this.files.size;
     }
 
     public get type(): string {

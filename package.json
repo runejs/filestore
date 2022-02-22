@@ -6,6 +6,7 @@
     "types": "./index.d.ts",
     "exports": {
         ".": "./index.js",
+        "./db": "./db/index.js",
         "./fs": "./fs/index.js",
         "./config": "./config/index.js",
         "./util": "./util/index.js",

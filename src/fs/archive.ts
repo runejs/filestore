@@ -30,6 +30,11 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
     }
 
     public override js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
+        if(this.numericKey === 255) {
+            this.setData(super.js5Decode(), true);
+            return this.data;
+        }
+
         if(this.loaded && !this.js5Encoded) {
             return this.data;
         }
@@ -109,13 +114,13 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         /* read the crc values */
         for(const groupIndex of groupIndices) {
             const group = this.get(groupIndex);
-            group.crc32 = group.index.crc32 = archiveData.get('int');
+            group.crc32 = archiveData.get('int');
         }
 
         /* read the version numbers */
         for(const groupIndex of groupIndices) {
             const group = this.get(groupIndex);
-            group.version = group.index.version = archiveData.get('int');
+            group.version = archiveData.get('int');
         }
 
         /* read the child count */
@@ -205,11 +210,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         return this._data ?? null;
     }
 
-    public override js5Encode(compress: boolean = true): ByteBuffer | null {
-        if(this.loaded && this.js5Encoded) {
-            return this.data;
-        }
-
+    public override js5Encode(encodeGroups: boolean = true): ByteBuffer | null {
         if(!this.empty && (this.compressed || this.compression === 'none')) {
             return this.data;
         }
@@ -292,21 +293,19 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         if(indexData?.length) {
             this.setData(indexData, false);
             this.sha256 = this.index.sha256 = this.generateSha256();
+        }
 
-            if(compress) {
-                this.compress();
-                this.crc32 = this.index.crc32 = this.generateCrc32();
-            }
+        if(encodeGroups) {
+            this.groups.forEach(group => group.js5Encode());
         }
 
         return this.data ?? null;
     }
 
-    public override compress(): ByteBuffer | null {
-        if(this.empty) {
-            this.js5Encode(false);
+    public override compress(compressGroups: boolean = true): ByteBuffer | null {
+        if(compressGroups) {
+            this.groups.forEach(group => group.compress());
         }
-
         return super.compress();
     }
 
@@ -343,7 +342,13 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
         logger.info(`${this.groups.size} file(s) were loaded from the ${this.name} archive.`);
 
-        return this.js5Encode(compress);
+        this.js5Encode();
+
+        if(compress) {
+            return this.compress();
+        } else {
+            return this._data;
+        }
     }
 
     public override write(): void {
@@ -369,17 +374,46 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         logger.info(`Archive ${this.name || this.key} written in ${(end - start) / 1000} seconds.`)
     }
 
-    public override async validate(): Promise<void> {
+    public override async validate(validateGroups: boolean = true, validateFiles: boolean = true): Promise<void> {
         super.validate();
-        this.js5Encode(true);
         await this.indexService.verifyArchiveIndex(this);
 
-        for(const [ , group ] of this.groups) {
-            await group.validate();
+        if(validateGroups) {
+            await this.validateGroups(false);
+        }
+
+        if(validateFiles) {
+            await this.validateFiles();
         }
     }
 
-    public async saveIndexData(): Promise<void> {
+    public async validateGroups(validateFiles: boolean = true): Promise<void> {
+        const promises = new Array(this.groups.size);
+        let idx = 0;
+
+        for(const [ , group ] of this.groups) {
+            promises[idx++] = group.validateFiles();
+        }
+
+        await Promise.all(promises);
+
+        if(validateFiles) {
+            await this.validateFiles();
+        }
+    }
+
+    public async validateFiles(): Promise<void> {
+        const promises = new Array(this.groups.size);
+        let idx = 0;
+
+        for(const [ , group ] of this.groups) {
+            promises[idx++] = group.validateFiles();
+        }
+
+        await Promise.all(promises);
+    }
+
+    public async saveIndexData(saveGroups: boolean = true, saveFiles: boolean = true): Promise<void> {
         if(!this.groups.size) {
             return;
         }
@@ -390,19 +424,36 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
         await this.indexService.saveArchiveIndex(this.index);
 
-        logger.info(`Saving archive ${this.name} group indexes...`);
+        if(saveGroups) {
+            await this.saveGroupIndexes(saveFiles);
+        }
+
+        logger.info(`Archive ${this.name} indexing complete.`);
+    }
+
+    public async saveGroupIndexes(saveFlatFiles: boolean = true): Promise<void> {
+        logger.info(`Saving archive ${ this.name } group indexes...`);
 
         const groups = Array.from(this.groups.values());
         const groupIndexes = groups.map(group => group.index);
         await this.indexService.saveGroupIndexes(groupIndexes);
 
-        logger.info(`Saving archive ${this.name} file indexes...`);
+        if(saveFlatFiles) {
+            await this.saveFlatFileIndexes();
+        }
+    }
 
+    public async saveFlatFileIndexes(): Promise<void> {
+        if(this.config.flatten) {
+            return;
+        }
+
+        logger.info(`Saving archive ${ this.name } flat file indexes...`);
+
+        const groups = Array.from(this.groups.values());
         const flatFiles = groups.filter(group => group.files.size > 1).map(group => Array.from(group.files.values())
             .map(file => file.index)).reduce((a, v) => a.concat(v), []);
         await this.indexService.saveFileIndexes(flatFiles);
-
-        logger.info(`Archive ${this.name} indexing complete.`);
     }
 
     public has(groupKey: string): boolean;
@@ -447,7 +498,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             throw new Error(`Error generating archive path; Name not provided for archive ${this.key}.`);
         }
 
-        return join(this.store.path, 'archives', this.name);
+        return join(this.store.path, 'unpacked', this.name);
     }
 
     public override get outputPath(): string {

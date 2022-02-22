@@ -6,11 +6,11 @@ import { ByteBuffer } from '@runejs/common/buffer';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '../util';
 import { Archive } from './index';
-import { ArchiveIndexEntity, IndexService } from '../db';
+import { ArchiveIndexEntity, IndexService, StoreIndexEntity } from '../db';
 import { ArchiveConfig } from '../config';
 
 
-export type StoreType = 'flat' | 'js5';
+export type StoreType = 'flat' | 'packed';
 
 
 export class Store {
@@ -23,6 +23,7 @@ export class Store {
     private _js5ArchiveIndexes: Map<string, ByteBuffer>;
     private _js5MainArchiveData: ByteBuffer;
 
+    private _index: StoreIndexEntity;
     private _mainArchive: Archive;
     private _data: ByteBuffer;
     private _compressed: boolean = false;
@@ -69,7 +70,7 @@ export class Store {
         }
 
         const storeFileNames = readdirSync(js5StorePath);
-        const dataFile = 'main_file_cache.dat2'; // @TODO support more
+        const dataFile = 'main_file_cache.dat2';
         const mainIndexFile = 'main_file_cache.idx255';
 
         if(storeFileNames.indexOf(dataFile) === -1) {
@@ -116,44 +117,40 @@ export class Store {
         logger.info(`JS5 store loaded for game version ${this.gameVersion}.`);
     }
 
-    public js5Decode(): ByteBuffer | null {
-        this.archives.forEach((archive, key) => {
-            if(key === '255') {
-                return;
-            }
-
-            archive.js5Decode();
-        });
-
-        return this.data;
+    public js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
+        this.archives.forEach((archive, key) => archive.js5Decode(decodeGroups));
+        return null;
     }
 
-    public js5Encode(): ByteBuffer {
-        if(this.js5Encoded) {
-            return this.data;
-        }
+    public js5Encode(encodeGroups: boolean = true): ByteBuffer {
+        const fileSize = 4 * this.archiveCount;
 
-        // const dataLength = (4 * archiveCount) + 5;
-        this._data = new ByteBuffer(4096);
+        console.log(`fileSize = ${fileSize}`);
 
-        this.data.put(0);
-        this.data.put(4 * this.archiveCount, 'int');
+        this._data = new ByteBuffer(fileSize + 31);
+
+        console.log(`encodedLength = ${this._data}`);
+
+        this._data.put(0);
+        this._data.put(fileSize, 'int');
 
         for(let archiveIndex = 0; archiveIndex < this.archiveCount; archiveIndex++) {
-            this.data.put(this.get(archiveIndex).crc32, 'int');
+            this._data.put(this.get(archiveIndex).index.crc32, 'int');
         }
 
-        this.mainArchive.setData(this.data, false);
+        this.mainArchive.setData(this._data, false);
+        this.mainArchive.index.data = this.index.data = this._data.toNodeBuffer();
         this._js5Encoded = true;
+
+        if(encodeGroups) {
+            this.archives.forEach(archive => archive.js5Encode(true));
+        }
+
         return this.data;
     }
 
-    public compress(): ByteBuffer | null {
-        if(this._compressed) {
-            return this._data;
-        }
-
-        this.archives.forEach(archive => archive.compress());
+    public compress(compressGroups: boolean = true): ByteBuffer | null {
+        this.archives.forEach(archive => archive.compress(compressGroups));
 
         this._compressed = true;
         return this._data;
@@ -162,7 +159,6 @@ export class Store {
     public async read(compress: boolean = false): Promise<ByteBuffer> {
         this._js5Encoded = false;
         this._compressed = false;
-        const archives = Array.from(this.archives.values());
 
         await this.archives.forEachAsync(async a => a.read(false));
 
@@ -173,53 +169,10 @@ export class Store {
         return this.js5Encode();
     }
 
-    public async write(): Promise<void> {
-        if(!this.archives.size) {
-            throw new Error(`Archives not loaded, please load a flat file store or a JS5 store.`);
-        }
-
-        const start = Date.now();
-        logger.info(`Writing flat file store...`);
-
-        try {
-            if(existsSync(this.outputPath)) {
-                rmSync(this.outputPath, { recursive: true, force: true });
-            }
-
-            mkdirSync(this.outputPath, { recursive: true });
-        } catch(error) {
-            logger.error(`Error clearing file store output path (${this.outputPath}):`, error);
-            return;
-        }
-
-        try {
-            logger.info(`Writing archive contents to disk...`);
-            this.archives.forEach(archive => archive.write());
-            logger.info(`Archives written.`);
-        } catch(error) {
-            logger.error(`Error writing archives:`, error);
-            return;
-        }
-
-        await this.saveIndexData();
-
-        try {
-            logger.info(`Indexing archive contents...`);
-            for(const [ , archive ] of this.archives) {
-                await archive.saveIndexData();
-            }
-            logger.info(`Archives indexed.`);
-        } catch(error) {
-            logger.error(`Error indexing archives:`, error);
-            return;
-        }
-
-        const end = Date.now();
-        logger.info(`Flat file store written and indexed in ${(end - start) / 1000} seconds.`);
-    }
-
     public async load(readFiles: boolean = false, compress: boolean = false): Promise<Store> {
         await this.indexService.load();
+
+        this._index = await this.indexService.getStoreIndex();
 
         this.loadEncryptionKeys();
         this.loadFileNames();
@@ -303,8 +256,41 @@ export class Store {
         return this;
     }
 
-    public async saveIndexData(): Promise<void> {
-        this.js5Encode(); // Encode the main index data for storage
+    public write(): void {
+        if(!this.archives.size) {
+            throw new Error(`Archives not loaded, please load a flat file store or a JS5 store.`);
+        }
+
+        const start = Date.now();
+        logger.info(`Writing flat file store...`);
+
+        try {
+            if(existsSync(this.outputPath)) {
+                rmSync(this.outputPath, { recursive: true, force: true });
+            }
+
+            mkdirSync(this.outputPath, { recursive: true });
+        } catch(error) {
+            logger.error(`Error clearing file store output path (${this.outputPath}):`, error);
+            return;
+        }
+
+        try {
+            logger.info(`Writing archive contents to disk...`);
+            this.archives.forEach(archive => archive.write());
+            logger.info(`Archives written.`);
+        } catch(error) {
+            logger.error(`Error writing archives:`, error);
+            return;
+        }
+
+        const end = Date.now();
+        logger.info(`Flat file store written in ${(end - start) / 1000} seconds.`);
+    }
+
+    public async saveIndexData(saveArchives: boolean = true, saveGroups: boolean = true, saveFiles: boolean = true): Promise<void> {
+        const start = Date.now();
+        logger.info(`Indexing store...`);
 
         try {
             await this.indexService.saveStoreIndex();
@@ -313,6 +299,51 @@ export class Store {
             logger.error(`Error indexing file store:`, error);
             return;
         }
+
+        if(saveArchives) {
+            logger.info(`Indexing archives...`);
+
+            for(const [ , archive ] of this.archives) {
+                try {
+                    await archive.validate(false);
+                    await archive.saveIndexData(false);
+                } catch(error) {
+                    logger.error(`Error indexing archive:`, error);
+                    return;
+                }
+            }
+        }
+
+        if(saveGroups) {
+            logger.info(`Indexing archive groups...`);
+
+            for(const [ , archive ] of this.archives) {
+                try {
+                    await archive.validateGroups(false);
+                    await archive.saveGroupIndexes(false);
+                } catch(error) {
+                    logger.error(`Error indexing group:`, error);
+                    return;
+                }
+            }
+        }
+
+        if(saveFiles) {
+            logger.info(`Indexing archive files...`);
+
+            for(const [ , archive ] of this.archives) {
+                try {
+                    await archive.validateFiles();
+                    await archive.saveFlatFileIndexes();
+                } catch(error) {
+                    logger.error(`Error indexing flat file:`, error);
+                    return;
+                }
+            }
+        }
+
+        const end = Date.now();
+        logger.info(`Indexing completed in ${(end - start) / 1000} seconds.`);
     }
 
     public find(archiveName: string): Archive {
@@ -458,6 +489,10 @@ export class Store {
         }
 
         return this._js5MainArchiveData;
+    }
+
+    public get index(): StoreIndexEntity {
+        return this._index;
     }
 
     public get mainArchive(): Archive {

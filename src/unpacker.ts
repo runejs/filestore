@@ -8,8 +8,6 @@ import { createObject, TerminalInterface, ArgumentMap } from './util';
 class UnpackOptions {
 
     public store: string = '';
-    public skipXtea: boolean = false;
-    public matchMapFiles: boolean = false;
     public debug: boolean = false;
     public archive: string = '';
     public version: number = -1;
@@ -34,13 +32,18 @@ const unpackFiles = async (store: Store, archiveName: string, args: ArgumentMap,
                 logger.info(argDebugString);
             }
 
-            store.js5Decode();
+            store.js5Decode(true);
+
+            store.js5Encode(true);
+            store.compress(true);
 
             if(!debug) {
-                await store.write();
+                store.write();
             } else {
                 logger.info(`Flat file store writing is disabled in debug mode.`, `Decoding completed.`);
             }
+
+            await store.saveIndexData(true, true, true);
         } else {
             logger.info(`Unpacking JS5 archive ${ archiveName }${ args.size !== 0 ? ` with arguments:` : `...` }`);
             if(args.size !== 0) {
@@ -53,13 +56,18 @@ const unpackFiles = async (store: Store, archiveName: string, args: ArgumentMap,
                 throw new Error(`Archive ${ a } was not found.`);
             }
 
-            a.js5Decode();
+            a.js5Decode(true);
+
+            a.js5Encode(true);
+            a.compress(true);
 
             if(!debug) {
-                await a.write();
+                a.write();
             } else {
                 logger.info(`Archive writing is disabled in debug mode.`, `Decoding completed.`);
             }
+
+            await a.saveIndexData(true, true);
         }
     } catch(error) {
         logger.error(error);

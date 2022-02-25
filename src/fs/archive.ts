@@ -392,7 +392,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         let idx = 0;
 
         for(const [ , group ] of this.groups) {
-            promises[idx++] = group.validateFiles();
+            promises[idx++] = group.validate(false);
         }
 
         await Promise.all(promises);

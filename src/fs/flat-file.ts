@@ -25,7 +25,7 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
         try {
             data = readFileSync(filePath);
         } catch(error) {
-            logger.error(`Error reading file at ${filePath}:`, error);
+            logger.error(`Error reading file ${this.name || this.key } at ${filePath}:`, error);
             data = null;
         }
 

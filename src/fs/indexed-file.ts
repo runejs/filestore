@@ -95,7 +95,11 @@ export abstract class IndexedFile<T extends IndexEntity> {
         }
 
         if(this.isSet(index['stripes'])) {
-            this.stripes = index['stripes'].split(',').map(n => Number(n));
+            if(index['stripes'] === 'NaN') {
+                this.stripes = [];
+            } else {
+                this.stripes = index['stripes'].split(',').map(n => Number(n));
+            }
         }
 
         if(this.isSet(index['stripeCount'])) {
@@ -474,6 +478,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
 
         this.index.data = this.data?.toNodeBuffer() ?? null;
         this.index.name = this.name;
+        this.index.nameHash = this.nameHash;
         this.index.size = this.size;
         this.index.crc32 = this.crc32;
         this.index.sha256 = this.sha256;

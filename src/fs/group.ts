@@ -118,10 +118,6 @@ export class Group extends IndexedFile<GroupIndexEntity> {
     }
 
     public override js5Encode(): ByteBuffer | null {
-        if(this.js5Encoded) {
-            return this._data;
-        }
-
         // Single-file group
         if(this._fileCount === 1) {
             const flatFile = Array.from(this.files.values())[0];
@@ -196,13 +192,13 @@ export class Group extends IndexedFile<GroupIndexEntity> {
             return null;
         }
 
-        const indexedFiles = Array.isArray(this.index.files) ? this.index.files : await this.index.files;
+        let indexedFiles = Array.isArray(this.index.files) ? this.index.files : await this.index.files;
 
         if(!indexedFiles?.length) {
             // Single file indexes are not stored to save on DB space and read/write times
             // So if a group has no children, assume it is a single-file group and create a single index for it
             const { name, nameHash, version, size, crc32, sha256, stripes, stripeCount, archive } = this;
-            this.index.files = [ this.indexService.verifyFileIndex({
+            indexedFiles = this.index.files = [ this.indexService.verifyFileIndex({
                 numericKey: 0, name, nameHash, version, size, crc32, sha256, stripes, stripeCount, group: this, archive
             }) ];
         }
@@ -347,7 +343,7 @@ export class Group extends IndexedFile<GroupIndexEntity> {
     }
 
     public get fileCount(): number {
-        return this.files.size;
+        return this._fileCount;
     }
 
     public get type(): string {

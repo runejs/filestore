@@ -218,7 +218,7 @@ export class IndexService {
     }
 
     public verifyGroupIndex(group: Group | Partial<Group>): GroupIndexEntity {
-        const { numericKey, name, nameHash, version, size, crc32, sha256, stripeCount, archive } = group;
+        const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, archive, files } = group;
 
         let groupIndex: GroupIndexEntity;
 
@@ -237,17 +237,9 @@ export class IndexService {
         groupIndex.size = size;
         groupIndex.crc32 = crc32;
         groupIndex.sha256 = sha256;
-
-        if(group.files?.size === 1) {
-            const file = group.get(0);
-            groupIndex.flatFile = true;
-            groupIndex.stripes = file.stripes?.join(',') || String(file.size || size);
-            groupIndex.stripeCount = groupIndex.stripes?.length || 1;
-        } else {
-            groupIndex.flatFile = false;
-            groupIndex.stripes = null;
-            groupIndex.stripeCount = stripeCount;
-        }
+        groupIndex.stripes = stripes?.length ? stripes.join(',') : null;
+        groupIndex.stripeCount = stripes?.length || 1;
+        groupIndex.flatFile = (files?.size === 1 || archive.config.flatten);
 
         return groupIndex;
     }

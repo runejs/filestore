@@ -174,6 +174,11 @@ export class Store {
 
         this._index = await this.indexService.getStoreIndex();
 
+        if(!this._index) {
+            this._index = new StoreIndexEntity();
+            this._index.gameVersion = this.gameVersion;
+        }
+
         this.loadEncryptionKeys();
         this.loadFileNames();
 

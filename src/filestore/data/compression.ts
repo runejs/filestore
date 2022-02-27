@@ -1,4 +1,4 @@
-import { ByteBuffer } from '@runejs/core/buffer';
+import { ByteBuffer } from '@runejs/common';
 import { gunzipSync } from 'zlib';
 const seekBzip = require('seek-bzip');
 

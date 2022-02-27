@@ -1,11 +1,11 @@
-import { ByteBuffer } from '@runejs/core/buffer';
+import { ByteBuffer } from '@runejs/common';
 
 import { FileIndex } from '../file-index';
 import { Filestore } from '../filestore';
 import { FileData } from '../file-data';
 import { Archive } from '../archive';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 
 
 export abstract class WidgetBase {

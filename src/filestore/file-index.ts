@@ -1,4 +1,4 @@
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 
 import { Archive } from './archive';
 import { FileData } from './file-data';

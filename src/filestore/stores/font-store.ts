@@ -1,4 +1,4 @@
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 import { createCanvas, createImageData } from 'canvas';
 
 import { Filestore } from '../filestore';

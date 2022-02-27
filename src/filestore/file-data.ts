@@ -1,4 +1,4 @@
-import { ByteBuffer } from '@runejs/core/buffer';
+import { ByteBuffer } from '@runejs/common';
 
 import { decompress, readIndexedDataChunk, FilestoreChannels } from './data';
 import { FileIndex } from './file-index';

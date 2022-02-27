@@ -1,5 +1,5 @@
 import { XteaDefinition } from '../stores';
-import { loadConfigurationFiles } from '@runejs/core/fs';
+import { loadConfigurationFiles } from '@runejs/common/fs';
 
 
 export type XteaRegionMap = { [key: number]: XteaRegion };

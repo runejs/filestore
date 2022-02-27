@@ -1,5 +1,5 @@
 import { Filestore } from './filestore';
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 
 
 const fileStore = new Filestore('./packed', { configDir: './config' });

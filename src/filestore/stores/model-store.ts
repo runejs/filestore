@@ -1,5 +1,5 @@
-import { logger } from '@runejs/core';
-import { ByteBuffer } from '@runejs/core/buffer';
+import { logger } from '@runejs/common';
+import { ByteBuffer } from '@runejs/common';
 
 import { Filestore } from '../filestore';
 import { FileIndex } from '../file-index';

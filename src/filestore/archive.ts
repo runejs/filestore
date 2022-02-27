@@ -1,4 +1,4 @@
-import { ByteBuffer } from '@runejs/core/buffer';
+import { ByteBuffer } from '@runejs/common';
 
 import { FileData } from './file-data';
 import { FileIndex } from './file-index';

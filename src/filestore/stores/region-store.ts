@@ -1,4 +1,4 @@
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 import { readFileSync } from 'fs';
 import path from 'path';
 

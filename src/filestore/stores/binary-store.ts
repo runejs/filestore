@@ -1,4 +1,4 @@
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 
 import { Filestore, getFileName } from '../filestore';

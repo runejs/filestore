@@ -1,4 +1,4 @@
-import { logger } from '@runejs/core';
+import { logger } from '@runejs/common';
 import { PNG } from 'pngjs';
 import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'fs';
 

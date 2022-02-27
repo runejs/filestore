@@ -151,7 +151,7 @@ export class IndexService {
         const existingIndex = await this.archiveRepo.findOne({
             where: {
                 key: archiveIndex.key,
-                gameVersion: archiveIndex.gameVersion
+                gameVersion: this.store.gameVersion
             }
         });
 
@@ -171,7 +171,7 @@ export class IndexService {
 
             const result = await this.archiveRepo.update({
                 key: archiveIndex.key,
-                gameVersion: archiveIndex.gameVersion
+                gameVersion: this.store.gameVersion
             }, existingIndex);
 
             affected = result?.affected || 0;

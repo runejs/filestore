@@ -145,6 +145,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
                     name: String(childFileIndex),
                     group, archive: this
                 }), {
+                    store: this.store,
                     archive: this,
                     group: group
                 }));

@@ -17,7 +17,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
         if (buffer.length - (compressedLength + readerIndex + 4) >= 2) {
             lengthOffset += 2;
         }
-        const decryptedData = this.decryptXtea(buffer, keys, buffer.length - lengthOffset);
+        const decryptedData = decryptXtea(buffer, keys, buffer.length - lengthOffset);
         decryptedData.copy(buffer, readerIndex, 0);
         buffer.readerIndex = readerIndex;
     }
@@ -26,7 +26,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
         // Uncompressed file
         const data = new ByteBuffer(compressedLength);
         buffer.copy(data, 0, buffer.readerIndex, compressedLength);
-        const decryptedData = this.decryptXtea(data, keys, compressedLength);
+        const decryptedData = decryptXtea(data, keys, compressedLength);
         buffer.readerIndex = (buffer.readerIndex + compressedLength);
 
         let version = -1;
@@ -49,7 +49,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
 
         let decompressed: ByteBuffer;
         if(compression === 1) { // BZIP2
-            decompressed = this.decompressBzip(decryptedData);
+            decompressed = decompressBzip(decryptedData);
         } else if(compression === 2) { // GZIP
             decompressed = new ByteBuffer(gunzipSync(decryptedData));
         } else {

@@ -126,8 +126,12 @@ export abstract class IndexedFile<T extends IndexEntity> {
         }
     }
 
-    public setData(data: ByteBuffer, compressed: boolean): ByteBuffer | null {
+    public setData(data: Buffer, compressed: boolean): ByteBuffer | null;
+    public setData(data: ByteBuffer, compressed: boolean): ByteBuffer | null;
+    public setData(data: ByteBuffer | Buffer, compressed: boolean): ByteBuffer | null;
+    public setData(data: ByteBuffer | Buffer, compressed: boolean): ByteBuffer | null {
         if(data) {
+            data = new ByteBuffer(data);
             data.readerIndex = 0;
             data.writerIndex = 0;
             this._data = data;
@@ -244,16 +248,11 @@ export abstract class IndexedFile<T extends IndexEntity> {
     }
 
     public js5Encode(): ByteBuffer | null {
-        return this._data; // @TODO
+        return this._data; // @TODO needed for full re-packing of the data file
     }
 
     public decompress(): ByteBuffer | null {
-        if(!this.compressed && !this.empty) {
-            this._data.readerIndex = 0;
-            return this._data;
-        }
-
-        if(this.empty) {
+        if(!this._data?.length) {
             return null;
         }
 
@@ -320,11 +319,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
     }
 
     public compress(): ByteBuffer | null {
-        if(!this.empty && (this.compressed || this.compression === 'none')) {
-            return this.setData(this._data, true);
-        }
-
-        if(this.empty) {
+        if(!this._data?.length) {
             return null;
         }
 
@@ -366,20 +361,10 @@ export abstract class IndexedFile<T extends IndexEntity> {
             data.putBytes(compressedData);
         }
 
-        if(data?.length) {
-            this.setData(data.flipWriter(), true);
-            return this._data;
-        } else {
-            return null;
-        }
+        return this.setData(data, true);
     }
 
     public decrypt(): ByteBuffer {
-        if(!this.encrypted) {
-            // Data is not encrypted
-            return this._data;
-        }
-
         if(this.archive?.config?.encryption) {
             // File name must match the given pattern to be encrypted
             if(!this.name) {

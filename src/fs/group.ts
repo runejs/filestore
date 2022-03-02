@@ -185,11 +185,15 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         return super.compress();
     }
 
-    public override async read(compress: boolean = false): Promise<ByteBuffer | null> {
+    public override async read(compress: boolean = false, readDiskFiles: boolean = true): Promise<ByteBuffer | null> {
         if(!this.index) {
             logger.error(`Error reading group ${this.name} files: Group is not indexed, please re-index the ` +
                 `${this.archive.name} archive.`);
             return null;
+        }
+
+        if(this.index.data?.length) {
+            this.setData(this.index.data, true);
         }
 
         let indexedFiles = Array.isArray(this.index.files) ? this.index.files : await this.index.files;
@@ -238,12 +242,14 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         this.stripeCount = (this.index as GroupIndexEntity).stripeCount || 1;
 
         // Read the content of each file within the group
-        Array.from(this.files.values()).forEach(file => file.read(compress));
+        if(readDiskFiles) {
+            Array.from(this.files.values()).forEach(file => file.read(compress));
 
-        if(this._fileCount === 1) {
-            // Single file group, set the group data to match the flat file data
-            const file = this.files.get('0');
-            this.setData(file.data, file.compressed);
+            if(this._fileCount === 1) {
+                // Single file group, set the group data to match the flat file data
+                const file = this.files.get('0');
+                this.setData(file.data, file.compressed);
+            }
         }
 
         this.js5Encode();

@@ -212,10 +212,6 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
     }
 
     public override js5Encode(encodeGroups: boolean = true): ByteBuffer | null {
-        if(!this.empty && (this.compressed || this.compression === 'none')) {
-            return this.data;
-        }
-
         if(this.numericKey === 255) {
             return this.store.js5Encode();
         }
@@ -252,18 +248,18 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         }
 
         // Write file version numbers
-        for(const [ , file ] of groups) {
+        for(const [ , ] of groups) {
             buffer.put(0, 'int');
         }
 
         // Write file group child counts
         for(const [ , group ] of groups) {
-            buffer.put((group instanceof Group) ? (group.files.size ?? 1) : 1, 'short');
+            buffer.put(group.files.size ?? 1, 'short');
         }
 
         // Write group file indices
         for(const [ , group ] of groups) {
-            if(group instanceof Group && group.files.size > 1) {
+            if(group.files.size > 1) {
                 writtenFileIndex = 0;
 
                 for(const [ , file ] of group.files) {
@@ -279,7 +275,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         // Write group file name hashes (if applicable)
         if(this.config.filesNamed) {
             for(const [ , group ] of groups) {
-                if(group instanceof Group && group.files.size > 1) {
+                if(group.files.size > 1) {
                     for(const [ , file ] of group.files) {
                         buffer.put(file.nameHash ?? -1, 'int');
                     }
@@ -310,7 +306,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         return super.compress();
     }
 
-    public override async read(compress: boolean = false): Promise<ByteBuffer> {
+    public override async read(compress: boolean = false, readDiskFiles: boolean = true): Promise<ByteBuffer> {
         logger.info(`Reading archive ${this.name}...`);
 
         this._loaded = true;
@@ -327,7 +323,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             });
 
             this.groups.set(group.key, group);
-            await group.read(false);
+            await group.read(false, readDiskFiles);
         }
 
         if(compress) {

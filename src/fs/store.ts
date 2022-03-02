@@ -152,12 +152,12 @@ export class Store {
         return this._data;
     }
 
-    public async read(compress: boolean = false): Promise<ByteBuffer> {
+    public async read(compress: boolean = false, readDiskFiles: boolean = true): Promise<ByteBuffer> {
         this._js5Encoded = false;
         this._compressed = false;
 
         for(const [ , archive ] of this.archives) {
-            await archive.read(false);
+            await archive.read(false, readDiskFiles);
         }
 
         if(compress) {

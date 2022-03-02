@@ -103,23 +103,27 @@
         compression: 'gzip',
         versioned: true,
         contentType: '.cs2',
-        filesNamed: true
+        filesNamed: true,
+        build: 435
     },
     fontmetrics: {
         index: 13,
         compression: 'gzip',
         versioned: false,
-        filesNamed: true
+        filesNamed: true,
+        build: 443
     },
     vorbis: {
         index: 14,
         compression: 'gzip',
-        versioned: true
+        versioned: true,
+        build: 451
     },
     midi_instruments: {
         index: 15,
         compression: 'gzip',
         versioned: false,
-        contentType: '.wav'
+        contentType: '.wav',
+        build: 451
     }
 }

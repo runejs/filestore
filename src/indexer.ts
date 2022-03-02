@@ -1,27 +1,44 @@
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
-import { Archive, Store, StoreType } from './fs';
-import { createObject, TerminalInterface, ArgumentMap } from './util';
+
+import { Store, StoreType } from './fs';
+import { ScriptExecutor, ArgumentOptions } from './scripts';
 
 
-class IndexerOptions {
-
-    public store: string = '';
-    public type: StoreType = 'flat';
-    public archive: string = '';
-    public version: number = -1;
-
-    public static create(options?: Partial<IndexerOptions>): IndexerOptions {
-        return createObject<IndexerOptions>(IndexerOptions, options, true);
-    }
-
+interface IndexerOptions {
+    dir: string;
+    type: StoreType;
+    archive: string;
+    build: number;
 }
 
 
-const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, type: StoreType): Promise<void> => {
-    const argDebugString = args.size !== 0 ? Array.from(args.entries())
+const indexerArgumentOptions: ArgumentOptions = {
+    dir: {
+        alias: 'd', type: 'string', default: './',
+        description: `The store root directory. Defaults to the current location.`
+    },
+    type: {
+        alias: 't', type: 'string', default: 'unpacked', choices: [ 'unpacked', 'packed' ],
+        description: `The type of store to index, either 'unpacked' or 'packed'. Defaults to 'unpacked'.`
+    },
+    archive: {
+        alias: 'a', type: 'string', default: 'main',
+        description: `The archive to index. Defaults to 'main', which will index all store archives one by one. Specify an archive name to index a single archive.`
+    },
+    build: {
+        alias: 'b', type: 'number', default: 435,
+        description: `The game version that the store should belong to, also known as the game build number. Defaults to '435', a game build from late October, 2006.`
+    }
+};
+
+
+async function indexFiles(store: Store, args: IndexerOptions): Promise<void> {
+    const argDebugString = args ? Array.from(Object.entries(args))
         .map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
+
+    const { archive: archiveName, type } = args;
 
     if(type === 'packed') {
         store.js5Load();
@@ -33,12 +50,9 @@ const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, 
     }
 
     if(archiveName === 'main') {
-        logger.info(`Indexing ${type} store${args.size !== 0 ? ` with arguments:` : `...`}`);
-        if(args.size !== 0) {
-            logger.info(argDebugString);
-        }
+        logger.info(`Indexing ${type} store with arguments:`, argDebugString);
 
-        if(type === 'flat') {
+        if(type === 'unpacked') {
             await store.read();
         } else if(type === 'packed') {
             store.js5Decode(true);
@@ -49,14 +63,11 @@ const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, 
 
         await store.saveIndexData(true, true, true);
     } else {
-        logger.info(`Indexing ${type} store archive ${archiveName}${args.size !== 0 ? ` with arguments:` : `...`}`);
-        if(args.size !== 0) {
-            logger.info(argDebugString);
-        }
+        logger.info(`Indexing ${type} archive ${archiveName} with arguments:`, argDebugString);
 
         const archive = store.find(archiveName);
 
-        if(type === 'flat') {
+        if(type === 'unpacked') {
             await archive.read(false);
         } else if(type === 'packed') {
             archive.js5Decode();
@@ -67,72 +78,35 @@ const indexFiles = async (store: Store, archiveName: string, args: ArgumentMap, 
 
         await archive.saveIndexData(true, true);
     }
-};
+}
 
 
-const terminal: TerminalInterface = new TerminalInterface();
-terminal.executeScript(async (terminal, args) => {
-    const options = IndexerOptions.create(args as any);
-    const {
-        type
-    } = options;
+new ScriptExecutor().executeScript<IndexerOptions>(indexerArgumentOptions, async (terminal, args) => {
+    const start = Date.now();
+    logger.info(`Indexing store...`);
 
-    let {
-        version: gameVersion,
-        archive,
-        store: storePath
-    } = options;
+    const { build, dir } = args;
 
-    const defaultStorePath = './';
-
-    if(!storePath) {
-        storePath = defaultStorePath;
-    }
-
-    while(!gameVersion || gameVersion === -1) {
-        const versionInput = await terminal.question(`Please supply the desired game version to index (default 435):`, '435');
-
-        if(versionInput) {
-            gameVersion = parseInt(versionInput, 10);
-
-            if(isNaN(gameVersion)) {
-                gameVersion = -1;
-            }
-        }
-    }
-
-    if(type !== 'flat' && type !== 'packed') {
-        throw new Error(`Invalid store type specified: ${type}. Please use 'flat' or 'js5' for store type.`);
-    }
-
-    const logDir = join(storePath, 'logs');
+    const logDir = join(dir, 'logs');
 
     if(!existsSync(logDir)) {
         mkdirSync(logDir, { recursive: true });
     }
 
-    logger.destination(join(logDir, `index_${gameVersion}.log`));
+    logger.destination(join(logDir, `index_${build}.log`));
 
-    const store = await Store.create(gameVersion, storePath, {
+    const store = await Store.create(build, dir, {
         readFiles: false,
         compress: false
     });
 
-    while(!archive) {
-        const archiveNameInput = await terminal.question(
-            `Please supply the archive you wish to index (default 'main'):`, 'main')
+    await indexFiles(store, args);
 
-        if(archiveNameInput) {
-            archive = archiveNameInput.toLowerCase();
+    logger.boom.flush();
+    logger.boom.end();
 
-            if(!store.archiveConfig[archive]) {
-                logger.error(`Archive ${archiveNameInput} was not found within the archive configuration file.`);
-                archive = '';
-            }
-        }
-    }
+    const end = Date.now();
+    logger.info(`Indexing completed in ${(end - start) / 1000} seconds.`);
 
-    terminal.close();
-
-    await indexFiles(store, archive, args, type);
+    process.exit(0);
 });

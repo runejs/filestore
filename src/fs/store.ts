@@ -1,16 +1,16 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'graceful-fs';
 import { join } from 'path';
 import JSON5 from 'json5';
-import { logger } from '@runejs/common';
-import { ByteBuffer } from '@runejs/common/buffer';
+import { logger, ByteBuffer } from '@runejs/common';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
-import { Crc32 } from '../util';
+import { Crc32 } from '@runejs/common/crc32';
+
 import { Archive } from './index';
 import { ArchiveIndexEntity, IndexService, StoreIndexEntity } from '../db';
 import { ArchiveConfig } from '../config';
 
 
-export type StoreType = 'flat' | 'packed';
+export type StoreType = 'unpacked' | 'packed';
 
 
 export class Store {
@@ -118,18 +118,14 @@ export class Store {
     }
 
     public js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
-        this.archives.forEach((archive, key) => archive.js5Decode(decodeGroups));
+        this.archives.forEach(archive => archive.js5Decode(decodeGroups));
         return null;
     }
 
     public js5Encode(encodeGroups: boolean = true): ByteBuffer {
         const fileSize = 4 * this.archiveCount;
 
-        console.log(`fileSize = ${fileSize}`);
-
         this._data = new ByteBuffer(fileSize + 31);
-
-        console.log(`encodedLength = ${this._data}`);
 
         this._data.put(0);
         this._data.put(fileSize, 'int');
@@ -160,7 +156,9 @@ export class Store {
         this._js5Encoded = false;
         this._compressed = false;
 
-        await this.archives.forEachAsync(async a => a.read(false));
+        for(const [ , archive ] of this.archives) {
+            await archive.read(false);
+        }
 
         if(compress) {
             this.compress();
@@ -212,6 +210,13 @@ export class Store {
                 continue;
             }
 
+            if(config.build) {
+                if(this.gameVersion < config.build) {
+                    logger.info(`Skipping archive ${name} as it is not available in this game build.`);
+                    continue;
+                }
+            }
+
             let archiveIndex = archiveIndexes.find(a => a?.key === config.index);
             if(!archiveIndex) {
                 archiveIndex = this.indexService.verifyArchiveIndex({
@@ -251,7 +256,9 @@ export class Store {
         }
 
         if(readFiles) {
-            await this.archives.forEachAsync(async archive => archive.read(false));
+            for(const [ , archive ] of this.archives) {
+                await archive.read(false);
+            }
 
             if(compress) {
                 this.archives.forEach(archive => archive.compress());
@@ -294,9 +301,6 @@ export class Store {
     }
 
     public async saveIndexData(saveArchives: boolean = true, saveGroups: boolean = true, saveFiles: boolean = true): Promise<void> {
-        const start = Date.now();
-        logger.info(`Indexing store...`);
-
         try {
             await this.indexService.saveStoreIndex();
             logger.info(`File store index saved.`);
@@ -346,9 +350,6 @@ export class Store {
                 }
             }
         }
-
-        const end = Date.now();
-        logger.info(`Indexing completed in ${(end - start) / 1000} seconds.`);
     }
 
     public find(archiveName: string): Archive {

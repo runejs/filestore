@@ -13,4 +13,5 @@ export interface ArchiveConfig {
     filesNamed?: boolean;
     flatten?: boolean;
     groupNames?: { [key: string]: number };
+    build?: number;
 }

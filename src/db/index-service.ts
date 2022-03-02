@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
-import { Connection, ConnectionOptions, createConnection, Repository } from 'typeorm';
+import { Connection, createConnection, Repository } from 'typeorm';
 
 import { logger } from '@runejs/common';
 
@@ -29,7 +29,7 @@ export class IndexService {
         }
 
         this.connection = await createConnection({
-            type: 'sqlite',
+            type: 'better-sqlite3',
             database: join(indexPath, `index_${this.store.gameVersion}.sqlite3`),
             entities: [ StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity ],
             synchronize: true,
@@ -66,6 +66,10 @@ export class IndexService {
         }
 
         storeIndex.data = this.store.data?.toNodeBuffer() || null;
+
+        delete storeIndex.archives;
+        delete storeIndex.groups;
+        delete storeIndex.files;
 
         let savedIndex: StoreIndexEntity;
 
@@ -155,11 +159,9 @@ export class IndexService {
             }
         });
 
-        let affected = 0;
+        let affected;
 
         if(existingIndex) {
-            delete existingIndex.groups;
-
             const { name, nameHash, size, sha256, crc32, version, data } = archiveIndex;
             existingIndex.name = name;
             existingIndex.nameHash = nameHash;
@@ -168,6 +170,8 @@ export class IndexService {
             existingIndex.crc32 = crc32;
             existingIndex.version = version;
             existingIndex.data = data;
+
+            delete existingIndex.groups;
 
             const result = await this.archiveRepo.update({
                 key: archiveIndex.key,
@@ -244,14 +248,28 @@ export class IndexService {
         return groupIndex;
     }
 
-    public async saveGroupIndex(groupIndex: GroupIndexEntity): Promise<GroupIndexEntity> {
+    public async saveGroupIndex(group: Group): Promise<GroupIndexEntity> {
+        const groupIndex = {
+            ...group.index,
+            gameVersion: this.store.gameVersion,
+            archiveKey: group.archive.numericKey
+        };
         delete groupIndex.files;
         return await this.groupRepo.save(groupIndex);
     }
 
-    public async saveGroupIndexes(groupIndexes: GroupIndexEntity[]): Promise<GroupIndexEntity[]> {
-        groupIndexes.forEach(idx => delete idx.files);
-        return await this.groupRepo.save(groupIndexes, { chunk: CHUNK_SIZE });
+    public async saveGroupIndexes(groups: Group[]): Promise<void> {
+        const groupIndexes = groups.map(group => ({
+            ...group.index,
+            gameVersion: this.store.gameVersion,
+            archiveKey: group.archive.numericKey
+        }));
+        groupIndexes.forEach(g => {
+            delete g.files;
+        });
+        await this.groupRepo.save(groupIndexes, {
+            chunk: CHUNK_SIZE, reload: false, transaction: true, listeners: false
+        });
     }
 
     public async getFileIndex(file: FlatFile): Promise<FileIndexEntity | null> {
@@ -322,12 +340,27 @@ export class IndexService {
         return fileIndex;
     }
 
-    public async saveFileIndex(fileIndex: FileIndexEntity): Promise<FileIndexEntity> {
+    public async saveFileIndex(file: FlatFile): Promise<FileIndexEntity> {
+        const fileIndex = {
+            ...file.index,
+            gameVersion: this.store.gameVersion,
+            archiveKey: file.archive.numericKey,
+            groupKey: file.group.numericKey
+        };
         return await this.fileRepo.save(fileIndex);
     }
 
-    public async saveFileIndexes(fileIndexes: FileIndexEntity[]): Promise<FileIndexEntity[]> {
-        return await this.fileRepo.save(fileIndexes, { chunk: CHUNK_SIZE });
+    public async saveFileIndexes(files: FlatFile[]): Promise<void> {
+        const flatFileIndexes = files.map(file => ({
+            ...file.index,
+            gameVersion: this.store.gameVersion,
+            archiveKey: file.archive.numericKey,
+            groupKey: file.group.numericKey
+        }));
+
+        await this.fileRepo.save(flatFileIndexes, {
+            chunk: CHUNK_SIZE, reload: false, transaction: true, listeners: false
+        });
     }
 
     public get loaded(): boolean {

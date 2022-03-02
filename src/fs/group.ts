@@ -1,7 +1,7 @@
 import { join } from 'path';
-import { existsSync, readdirSync, statSync, mkdirSync, rmSync, writeFileSync } from 'graceful-fs';
-import { ByteBuffer } from '@runejs/common/buffer';
-import { logger } from '@runejs/common';
+import { existsSync, readdirSync, statSync, mkdirSync, rmSync } from 'graceful-fs';
+import { ByteBuffer, logger } from '@runejs/common';
+
 import { FlatFile } from './flat-file';
 import { GroupIndexEntity } from '../db';
 import { IndexedFile } from './indexed-file';

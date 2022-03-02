@@ -2,7 +2,7 @@ import { IndexEntity, IndexService } from '../db';
 import { ByteBuffer, logger } from '@runejs/common';
 import { Bzip2, CompressionMethod, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { EncryptionMethod, Xtea, XteaKeys } from '@runejs/common/encrypt';
-import { Crc32 } from '../util';
+import { Crc32 } from '@runejs/common/crc32';
 import { createHash } from 'crypto';
 import { FileError } from './file-error';
 import { Store } from './store';

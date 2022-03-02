@@ -1,7 +1,7 @@
 import { join } from 'path';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'graceful-fs';
-import { logger } from '@runejs/common';
-import { ByteBuffer } from '@runejs/common/buffer';
+import { existsSync, mkdirSync, rmSync } from 'graceful-fs';
+import { logger, ByteBuffer } from '@runejs/common';
+
 import { Group, FlatFile } from './index';
 import { ArchiveIndexEntity } from '../db';
 import { AdditionalFileProperties, IndexedFile } from './indexed-file';
@@ -311,10 +311,6 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
     }
 
     public override async read(compress: boolean = false): Promise<ByteBuffer> {
-        if(this._loaded) {
-            return this._data;
-        }
-
         logger.info(`Reading archive ${this.name}...`);
 
         this._loaded = true;
@@ -433,11 +429,12 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
     }
 
     public async saveGroupIndexes(saveFlatFiles: boolean = true): Promise<void> {
-        logger.info(`Saving archive ${ this.name } group indexes...`);
-
         const groups = Array.from(this.groups.values());
-        const groupIndexes = groups.map(group => group.index);
-        await this.indexService.saveGroupIndexes(groupIndexes);
+
+        if(groups?.length) {
+            logger.info(`Saving archive ${ this.name } group indexes...`);
+            await this.indexService.saveGroupIndexes(groups);
+        }
 
         if(saveFlatFiles) {
             await this.saveFlatFileIndexes();
@@ -449,12 +446,19 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             return;
         }
 
-        logger.info(`Saving archive ${ this.name } flat file indexes...`);
-
         const groups = Array.from(this.groups.values());
-        const flatFiles = groups.filter(group => group.files.size > 1).map(group => Array.from(group.files.values())
-            .map(file => file.index)).reduce((a, v) => a.concat(v), []);
-        await this.indexService.saveFileIndexes(flatFiles);
+        const flatFiles = groups.filter(group => {
+            if(!group?.files?.size || group?.index?.flatFile) {
+                return false;
+            }
+            return group.files.size > 1;
+        }).map(group => Array.from(group.files.values()))
+            .reduce((a, v) => a.concat(v), []);
+
+        if(flatFiles?.length) {
+            logger.info(`Saving archive ${ this.name } flat file indexes...`);
+            await this.indexService.saveFileIndexes(flatFiles);
+        }
     }
 
     public has(groupKey: string): boolean;

@@ -6,9 +6,10 @@
     "types": "./index.d.ts",
     "exports": {
         ".": "./index.js",
+        "./config": "./config/index.js",
         "./db": "./db/index.js",
         "./fs": "./fs/index.js",
-        "./config": "./config/index.js",
+        "./scripts": "./scripts/index.js",
         "./util": "./util/index.js",
         "./indexer": "./indexer.js",
         "./unpacker": "./unpacker.js"
@@ -50,36 +51,37 @@
     },
     "homepage": "https://github.com/runejs/store#readme",
     "peerDependencies": {
-        "@runejs/common": ">=2.0.0-rc.14",
+        "@runejs/common": ">=2.0.1",
         "graceful-fs": ">=4.2.0",
         "tslib": ">=2.3.0",
-        "typescript": ">=4.4.0"
+        "typescript": ">=4.5.0"
     },
     "dependencies": {
-        "@runejs/common": ">=2.0.0-rc.14",
+        "@runejs/common": ">=2.0.1",
         "graceful-fs": ">=4.2.0",
         "json5": "^2.2.0",
         "pngjs": "^6.0.0",
         "reflect-metadata": "^0.1.13",
         "sqlite": "^4.0.23",
         "tslib": ">=2.3.0",
-        "typeorm": "^0.2.41"
+        "typeorm": "^0.2.44",
+        "yargs": "^17.3.1"
     },
     "devDependencies": {
         "@runejs/eslint-config": "^1.0.0",
         "@types/graceful-fs": "^4.1.5",
-        "@types/json5": "^2.2.0",
-        "@types/node": "^16.10.5",
+        "@types/node": "^16.11.26",
         "@types/pngjs": "^3.4.2",
-        "@typescript-eslint/eslint-plugin": "^4.29.3",
-        "@typescript-eslint/parser": "^4.29.3",
+        "@types/yargs": "^17.0.8",
+        "@typescript-eslint/eslint-plugin": "^4.33.0",
+        "@typescript-eslint/parser": "^4.33.0",
+        "better-sqlite3": "^7.5.0",
         "copyfiles": "^2.4.1",
         "eslint": "^7.32.0",
         "rimraf": "^3.0.2",
         "source-map-support": "^0.5.20",
-        "sqlite3": "^5.0.2",
         "ts-node-dev": "^1.1.8",
-        "typescript": "^4.4.4"
+        "typescript": "^4.5.5"
     },
     "eslintConfig": {
         "extends": [

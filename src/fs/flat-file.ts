@@ -1,6 +1,7 @@
 import { join } from 'path';
 import { existsSync, readFileSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
+
 import { FileIndexEntity } from '../db';
 import { IndexedFile } from './indexed-file';
 

@@ -3,10 +3,10 @@ import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'graceful-f
 import { ByteBuffer, logger } from '@runejs/common';
 
 import { FlatFile } from './flat-file';
-import { GroupIndexEntity } from '../db';
+import { GroupIndexEntity } from './db';
 import { AdditionalFileProperties, IndexedFile } from './indexed-file';
 import { FileState } from './file-state';
-import { isSet } from '../util';
+import { isSet } from './util';
 
 
 export class Group extends IndexedFile<GroupIndexEntity> {

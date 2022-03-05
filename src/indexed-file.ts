@@ -5,11 +5,11 @@ import { Bzip2, CompressionMethod, getCompressionMethod, Gzip } from '@runejs/co
 import { EncryptionMethod, Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '@runejs/common/crc32';
 
-import { IndexEntity, IndexService } from '../db';
+import { IndexEntity, IndexService } from './db';
 import { Store } from './store';
 import { Archive } from './archive';
 import { Group } from './group';
-import { isSet } from '../util';
+import { isSet } from './util';
 import { FileState } from './file-state';
 
 

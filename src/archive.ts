@@ -3,9 +3,9 @@ import { existsSync, mkdirSync, rmSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 
 import { FileState, FlatFile, Group } from './index';
-import { ArchiveIndexEntity } from '../db';
+import { ArchiveIndexEntity } from './db';
 import { AdditionalFileProperties, IndexedFile } from './indexed-file';
-import { ArchiveConfig } from '../config';
+import { ArchiveConfig } from './config';
 
 
 export class Archive extends IndexedFile<ArchiveIndexEntity> {

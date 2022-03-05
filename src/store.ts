@@ -6,8 +6,8 @@ import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '@runejs/common/crc32';
 
 import { Archive, FileState } from './index';
-import { ArchiveIndexEntity, IndexService, StoreIndexEntity } from '../db';
-import { ArchiveConfig } from '../config';
+import { ArchiveIndexEntity, IndexService, StoreIndexEntity } from './db';
+import { ArchiveConfig } from './config';
 
 
 export type StoreFormat = 'unpacked' | 'packed';

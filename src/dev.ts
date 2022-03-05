@@ -1,4 +1,4 @@
-import { Store } from './fs';
+import { Store } from './index';
 import { join } from 'path';
 
 

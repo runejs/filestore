@@ -2,8 +2,8 @@ import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 
-import { Store, StoreFormat } from './fs';
-import { ScriptExecutor, ArgumentOptions } from './scripts';
+import { Store, StoreFormat } from '../index';
+import { ScriptExecutor, ArgumentOptions } from './index';
 
 
 interface IndexerOptions {

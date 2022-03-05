@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, PrimaryColumn, UpdateDateColumn } from 'typeorm';
-import { FileState } from '../fs';
+import { FileState } from '../index';
 
 
 export abstract class IndexEntity {

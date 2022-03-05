@@ -2,10 +2,10 @@ import { join } from 'path';
 import { existsSync, readFileSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 
-import { FileIndexEntity } from '../db';
+import { FileIndexEntity } from './db';
 import { AdditionalFileProperties, IndexedFile } from './indexed-file';
 import { FileState } from './file-state';
-import { isSet } from '../util';
+import { isSet } from './util';
 
 
 export class FlatFile extends IndexedFile<FileIndexEntity> {

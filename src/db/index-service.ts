@@ -4,7 +4,7 @@ import { Connection, createConnection, Repository } from 'typeorm';
 
 import { logger } from '@runejs/common';
 
-import { Archive, FlatFile, Group, Store } from '../fs';
+import { Archive, FlatFile, Group, Store } from '../index';
 import { StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity } from './index';
 
 

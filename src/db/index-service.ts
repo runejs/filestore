@@ -8,7 +8,7 @@ import { Archive, FlatFile, Group, Store } from '../fs';
 import { StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity } from './index';
 
 
-const CHUNK_SIZE = 250;
+const CHUNK_SIZE = 300; // 250
 
 
 export class IndexService {
@@ -123,7 +123,7 @@ export class IndexService {
     }
 
     public verifyArchiveIndex(archive: Archive | Partial<Archive>): ArchiveIndexEntity {
-        const { numericKey, name, nameHash, version, size, crc32, sha256 } = archive;
+        const { numericKey, name, size, crc32, sha256, state } = archive;
 
         let archiveIndex: ArchiveIndexEntity;
 
@@ -142,11 +142,10 @@ export class IndexService {
 
         archiveIndex.gameVersion = this.store.gameVersion;
         archiveIndex.name = name;
-        archiveIndex.nameHash = nameHash;
-        archiveIndex.version = version;
         archiveIndex.size = size;
         archiveIndex.crc32 = crc32;
         archiveIndex.sha256 = sha256;
+        archiveIndex.state = state;
 
         return archiveIndex;
     }
@@ -162,14 +161,13 @@ export class IndexService {
         let affected;
 
         if(existingIndex) {
-            const { name, nameHash, size, sha256, crc32, version, data } = archiveIndex;
+            const { name, size, sha256, crc32, data, state } = archiveIndex;
             existingIndex.name = name;
-            existingIndex.nameHash = nameHash;
             existingIndex.size = size;
             existingIndex.sha256 = sha256;
             existingIndex.crc32 = crc32;
-            existingIndex.version = version;
             existingIndex.data = data;
+            existingIndex.state = state;
 
             delete existingIndex.groups;
 
@@ -222,7 +220,7 @@ export class IndexService {
     }
 
     public verifyGroupIndex(group: Group | Partial<Group>): GroupIndexEntity {
-        const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, archive, files } = group;
+        const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, archive, files, state } = group;
 
         let groupIndex: GroupIndexEntity;
 
@@ -244,6 +242,7 @@ export class IndexService {
         groupIndex.stripes = stripes?.length ? stripes.join(',') : null;
         groupIndex.stripeCount = stripes?.length || 1;
         groupIndex.flatFile = (files?.size === 1 || archive.config.flatten);
+        groupIndex.state = state;
 
         return groupIndex;
     }
@@ -314,7 +313,7 @@ export class IndexService {
     }
 
     public verifyFileIndex(file: FlatFile | Partial<FlatFile>): FileIndexEntity {
-        const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, group, archive } = file;
+        const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, group, archive, state } = file;
 
         let fileIndex: FileIndexEntity;
 
@@ -336,6 +335,7 @@ export class IndexService {
         fileIndex.sha256 = sha256;
         fileIndex.stripes = stripes?.join(',') || String(size);
         fileIndex.stripeCount = fileIndex.stripes?.length || 1;
+        fileIndex.state = state;
 
         return fileIndex;
     }

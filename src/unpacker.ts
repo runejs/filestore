@@ -41,14 +41,14 @@ async function unpackFiles(store: Store, args: UnpackOptions): Promise<void> {
     const { archive: archiveName, debug } = args;
 
     try {
-        store.js5Load();
+        store.loadPackedStore();
 
         if(archiveName === 'main') {
             logger.info(`Unpacking JS5 file store with arguments:`, argDebugString);
 
-            store.js5Decode(true);
+            store.decode(true);
 
-            store.js5Encode(true);
+            store.encode(true);
             store.compress(true);
 
             if(!debug) {
@@ -69,9 +69,9 @@ async function unpackFiles(store: Store, args: UnpackOptions): Promise<void> {
                 throw new Error(`Archive ${ a } was not found.`);
             }
 
-            a.js5Decode(true);
+            a.decode(true);
 
-            a.js5Encode(true);
+            a.encode(true);
             a.compress(true);
 
             if(!debug) {
@@ -104,10 +104,7 @@ new ScriptExecutor().executeScript<UnpackOptions>(unpackerArgumentOptions, async
 
     logger.destination(join(logDir, `unpack_${ build }.log`));
 
-    const store = await Store.create(build, dir, {
-        readFiles: false,
-        compress: false
-    });
+    const store = await Store.create(build, dir);
 
     const js5Dir = join(dir, 'packed');
 
@@ -125,7 +122,7 @@ new ScriptExecutor().executeScript<UnpackOptions>(unpackerArgumentOptions, async
         }
     }
 
-    logger.boom.flush();
+    logger.boom.flushSync();
     logger.boom.end();
 
     const end = Date.now();

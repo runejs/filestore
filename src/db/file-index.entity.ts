@@ -10,6 +10,12 @@ import { GroupIndexEntity } from './group-index.entity';
 @Index('file_identifier', [ 'key', 'gameVersion', 'archiveKey', 'groupKey' ], { unique: true })
 export class FileIndexEntity extends IndexEntity {
 
+    @Column('integer', { name: 'name_hash', nullable: true, default: 0 })
+    nameHash: number = 0;
+
+    @Column('integer', { nullable: false, default: 0 })
+    version: number = 0;
+
     @ManyToOne(() => StoreIndexEntity, async store => store.files,
         { primary: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'game_version', referencedColumnName: 'gameVersion' })

@@ -1,24 +1,23 @@
-import { IndexEntity, IndexService } from '../db';
+import { writeFileSync } from 'graceful-fs';
+import { createHash } from 'crypto';
 import { ByteBuffer, logger } from '@runejs/common';
 import { Bzip2, CompressionMethod, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { EncryptionMethod, Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '@runejs/common/crc32';
-import { createHash } from 'crypto';
-import { FileError } from './file-error';
+
+import { IndexEntity, IndexService } from '../db';
 import { Store } from './store';
 import { Archive } from './archive';
 import { Group } from './group';
-import { writeFileSync } from 'graceful-fs';
+import { isSet } from '../util';
+import { FileState } from './file-state';
 
 
+// @TODO refactor this out of existence
 export interface AdditionalFileProperties {
     store: Store;
     archive: Archive;
     group: Group;
-    encryption: EncryptionMethod | [ EncryptionMethod, string ];
-    encrypted: boolean;
-    compression: CompressionMethod;
-    compressed: boolean;
 }
 
 
@@ -36,78 +35,46 @@ export abstract class IndexedFile<T extends IndexEntity> {
     public size: number = 0;
     public crc32: number = -1;
     public sha256: string = '';
-    public stripes: number[] = [];
-    public stripeCount: number = 1;
     public encryption: EncryptionMethod | [ EncryptionMethod, string ] = 'none';
-    public encrypted: boolean = false;
     public compression: CompressionMethod = 'none';
-    public compressed: boolean = false;
+    public state: FileState = FileState.unloaded;
 
     protected _data: ByteBuffer | null = null;
-    protected _js5Encoded: boolean = false;
-    protected _loaded: boolean = false;
     protected _modified: boolean = false;
-    protected _errors: FileError[] = [];
 
     protected constructor(index: T, properties?: Partial<AdditionalFileProperties>) {
         this.index = index;
         this.key = String(index.key);
 
-        if(this.isSet(index.name)) {
+        if(isSet(index.name)) {
             this.name = index.name;
         }
-        if(this.isSet(index.nameHash)) {
-            this.nameHash = index.nameHash;
-        }
-        if(this.isSet(index.version)) {
-            this.version = index.version;
-        }
-        if(this.isSet(index.size)) {
+        if(isSet(index.size)) {
             this.size = index.size;
         }
-        if(this.isSet(index.crc32)) {
+        if(isSet(index.crc32)) {
             this.crc32 = index.crc32;
         }
-        if(this.isSet(index.sha256)) {
+        if(isSet(index.sha256)) {
             this.sha256 = index.sha256;
         }
-
-        if(this.isSet(properties?.store)) {
-            this.store = properties.store;
-        }
-        if(this.isSet(properties?.archive)) {
-            this.archive = properties.archive;
-        }
-        if(this.isSet(properties?.group)) {
-            this.group = properties.group;
-        }
-        if(this.isSet(properties?.encryption)) {
-            this.encryption = properties.encryption;
-        }
-        if(this.isSet(properties?.encrypted)) {
-            this.encrypted = properties.encrypted;
-        }
-        if(this.isSet(properties?.compression)) {
-            this.compression = properties.compression;
-        }
-        if(this.isSet(properties?.compressed)) {
-            this.compressed = properties.compressed;
+        if(isSet(index.state)) {
+            this.state = FileState[index.state];
         }
 
-        if(this.isSet(index['stripes'])) {
-            if(index['stripes'] === 'NaN') {
-                this.stripes = [];
-            } else {
-                this.stripes = index['stripes'].split(',').map(n => Number(n));
+        if(properties) {
+            const { store, archive, group } = properties;
+            
+            if(isSet(store)) {
+                this.store = store;
+            }
+            if(isSet(archive)) {
+                this.archive = archive;
+            }
+            if(isSet(group)) {
+                this.group = group;
             }
         }
-
-        if(this.isSet(index['stripeCount'])) {
-            this.stripeCount = Number(index['stripeCount']);
-        }
-
-        this._errors = [];
-        this._js5Encoded = false;
 
         // Attempt to infer the archive or store that this file belongs to, if not provided in the options
 
@@ -124,35 +91,12 @@ export abstract class IndexedFile<T extends IndexEntity> {
                 this.store = this.group.store;
             }
         }
+
+        this.encryption = this.archive?.config?.encryption || 'none';
+        this.compression = this.archive?.config?.compression || 'none';
     }
 
-    public setData(data: Buffer, compressed: boolean): ByteBuffer | null;
-    public setData(data: ByteBuffer, compressed: boolean): ByteBuffer | null;
-    public setData(data: ByteBuffer | Buffer, compressed: boolean): ByteBuffer | null;
-    public setData(data: ByteBuffer | Buffer, compressed: boolean): ByteBuffer | null {
-        if(data) {
-            data = new ByteBuffer(data);
-            data.readerIndex = 0;
-            data.writerIndex = 0;
-            this._data = data;
-            this.size = data.length;
-        } else {
-            this._data = null;
-            this.size = 0;
-        }
-
-        this.compressed = compressed;
-
-        if(compressed) {
-            this.generateCrc32();
-        } else {
-            this.generateSha256();
-        }
-
-        return this._data;
-    }
-
-    public js5Decode(): ByteBuffer | null {
+    public unpack(): ByteBuffer | null {
         const archiveKey: number = this.archive ? this.archive.numericKey : 255;
         const fileKey = this.numericKey;
         const archiveName: string = this.archive ? this.archive.name : 'main';
@@ -244,11 +188,25 @@ export abstract class IndexedFile<T extends IndexEntity> {
             }
         } while(remaining > 0);
 
+        if(data?.length) {
+            this.setData(data, FileState.compressed);
+        } else {
+            this.setData(null, FileState.missing);
+        }
+
         return data?.length ? data : null;
     }
 
-    public js5Encode(): ByteBuffer | null {
+    public pack(): ByteBuffer | null {
         return this._data; // @TODO needed for full re-packing of the data file
+    }
+
+    public decode(): ByteBuffer | null {
+        return this._data; // stubbed
+    }
+
+    public encode(): ByteBuffer | null {
+        return this._data; // stubbed
     }
 
     public decompress(): ByteBuffer | null {
@@ -294,7 +252,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
                         data = null;
                     }
                 } catch(error) {
-                    if(this.encrypted) {
+                    if(this.state === FileState.encrypted) {
                         logger.error(`Unable to decrypt file ${this.name || this.key}.`);
                         this.archive?.incrementMissingEncryptionKeys();
                     } else {
@@ -311,8 +269,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
         }
 
         if((data?.length ?? 0) > 0) {
-            this.setData(data, false);
-            this._data.readerIndex = 0;
+            this.setData(data, FileState.encoded);
         }
 
         return this._data ?? null;
@@ -361,11 +318,12 @@ export abstract class IndexedFile<T extends IndexEntity> {
             data.putBytes(compressedData);
         }
 
-        return this.setData(data, true);
+        return this.setData(data, FileState.compressed);
     }
 
     public decrypt(): ByteBuffer {
-        if(this.archive?.config?.encryption) {
+        if(this.state === FileState.encrypted) {
+        // if(this.archive?.config?.encryption) {
             // File name must match the given pattern to be encrypted
             if(!this.name) {
                 throw new Error(`Error decrypting file ${this.key}: File name not found.`);
@@ -378,12 +336,12 @@ export abstract class IndexedFile<T extends IndexEntity> {
                 // Only XTEA encryption is supported for v1.0.0
                 if(encryption !== 'xtea' || !patternRegex.test(this.name)) {
                     // File name does not match the pattern, data should be unencrypted
-                    this.encrypted = false;
+                    this.setState(FileState.decrypted);
                     return this._data;
                 }
             } else if(this.archive.config.encryption !== 'xtea') {
                 // Only XTEA encryption is supported for v1.0.0
-                this.encrypted = false;
+                this.setState(FileState.decrypted);
                 return this._data;
             }
         }
@@ -398,6 +356,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
                     `Please provide the JS5 file store game version using the --version ### argument.`);
             }
 
+            this.setState(FileState.decrypted);
             return this._data;
         }
 
@@ -435,6 +394,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
             if(decryptedData?.length) {
                 decryptedData.copy(dataCopy, readerIndex, 0);
                 dataCopy.readerIndex = readerIndex;
+                this.setState(FileState.decrypted);
                 return dataCopy;
             } else {
                 logger.warn(`Invalid XTEA decryption keys found for file ${this.name || this.key} using game version ${gameVersion}.`);
@@ -446,7 +406,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
         return this._data;
     }
 
-    public validate(): void | Promise<void> {
+    public validateIndex(): void | Promise<void> {
         if(!this.name && this.hasNameHash) {
             this.name = this.hasNameHash ? this.store.findFileName(this.nameHash, String(this.nameHash)) : this.key;
         } else if(!this.hasNameHash && this.named) {
@@ -455,54 +415,70 @@ export abstract class IndexedFile<T extends IndexEntity> {
             this.nameHash = -1;
         }
 
-        if(this.archive?.config?.versioned) {
-            if(this.index.crc32 !== this.crc32 || this.index.sha256 !== this.sha256 || this.index.size !== this.size) {
-                this.index.version = this.index.version ? this.index.version + 1 : 1;
-            }
-        }
-
         this.index.data = this.data?.toNodeBuffer() ?? null;
         this.index.name = this.name;
-        this.index.nameHash = this.nameHash;
         this.index.size = this.size;
         this.index.crc32 = this.crc32;
         this.index.sha256 = this.sha256;
     }
 
-    public generateCrc32(): number {
-        this.crc32 = !this.empty ? Crc32.update(0, this.size, this._data) : -1;
-        return this.crc32;
-    }
-
-    public generateSha256(): string {
-        this.sha256 = !this.empty ? createHash('sha256')
-            .update(this._data.toNodeBuffer()).digest('hex') : '';
-        return this.sha256;
-    }
-
-    public clearErrors(): void {
-        this._errors = [];
-    }
-
-    public recordError(error: FileError): void {
-        if(!this.hasErrors) {
-            this._errors = [ error ];
-        } else if(this._errors.indexOf(error) === -1) {
-            this._errors.push(error);
+    public read(compress?: boolean): ByteBuffer | null | Promise<ByteBuffer | null> {
+        if(this.state === FileState.unloaded) {
+            this.setState(FileState.loaded);
         }
+
+        return this._data;
     }
 
     public write(): void {
-        if(!this.empty) {
+        if(!this._data?.length) {
             writeFileSync(this.outputPath, this.data.toNodeBuffer());
         }
     }
 
-    protected isSet(variable: any): boolean {
-        return variable !== undefined && variable !== null;
+    public setData(data: Buffer, state: FileState): ByteBuffer | null;
+    public setData(data: ByteBuffer, state: FileState): ByteBuffer | null;
+    public setData(data: ByteBuffer | Buffer, state: FileState): ByteBuffer | null;
+    public setData(data: ByteBuffer | Buffer, state: FileState): ByteBuffer | null {
+        this.size = data?.length ?? 0;
+
+        if(this.size) {
+            this._data = new ByteBuffer(data);
+            this._data.readerIndex = 0;
+            this._data.writerIndex = 0;
+        } else {
+            this._data = null;
+        }
+
+        this.state = state;
+
+        if(state === FileState.compressed) {
+            this.generateCrc32();
+        } else if(state === FileState.raw || state === FileState.encoded) {
+            this.generateSha256();
+        }
+
+        return this._data;
     }
 
-    public abstract read(compress?: boolean): ByteBuffer | null | Promise<ByteBuffer | null>;
+    public generateCrc32(): number {
+        this.crc32 = this._data?.length ? Crc32.update(0, this.size, Buffer.from(this._data)) : -1;
+        return this.crc32;
+    }
+
+    public generateSha256(): string {
+        this.sha256 = this._data?.length ? createHash('sha256')
+            .update(Buffer.from(this._data)).digest('hex') : '';
+        return this.sha256;
+    }
+
+    public setState(fileState: FileState): void {
+        this.state = fileState;
+    }
+
+    public abstract get path(): string;
+
+    public abstract get outputPath(): string;
 
     public get numericKey(): number {
         return Number(this.key);
@@ -516,52 +492,28 @@ export abstract class IndexedFile<T extends IndexEntity> {
         return !/^\d+$/.test(this.name);
     }
 
-    public get unnamed(): boolean {
-        return !this.named;
-    }
-
     public get hasNameHash(): boolean {
-        return this.nameHash !== undefined && this.nameHash !== null && this.nameHash !== -1 && !isNaN(this.nameHash);
+        return isSet(this.nameHash) && !isNaN(this.nameHash) && this.nameHash !== -1;
     }
 
     public get data(): ByteBuffer {
         return this._data;
     }
 
-    public get js5Encoded(): boolean {
-        return this._js5Encoded;
-    }
-
-    public set js5Encoded(value: boolean) {
-        this._js5Encoded = value;
-    }
-
-    public get loaded(): boolean {
-        return this._loaded;
-    }
-
-    public get empty(): boolean {
-        return !this._data?.length;
-    }
-
-    public get modified(): boolean {
-        return this._modified;
-    }
-
-    public get errors(): FileError[] {
-        return this._errors;
-    }
-
-    public get hasErrors(): boolean {
-        return (this._errors?.length ?? 0) !== 0;
-    }
-
     public get indexService(): IndexService {
         return this.store.indexService;
     }
 
-    public abstract get path(): string;
+    public get type(): string {
+        return this.archive?.config?.contentType ?? '';
+    }
 
-    public abstract get outputPath(): string;
+    public get empty(): boolean {
+        return (this._data?.length ?? 0) !== 0;
+    }
+
+    public get modified(): boolean {
+        return this.index.crc32 !== this.crc32 || this.index.sha256 !== this.sha256 || this.index.size !== this.size;
+    }
 
 }

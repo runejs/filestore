@@ -1,8 +1,8 @@
 import { join } from 'path';
 import { existsSync, mkdirSync, rmSync } from 'graceful-fs';
-import { logger, ByteBuffer } from '@runejs/common';
+import { ByteBuffer, logger } from '@runejs/common';
 
-import { Group, FlatFile } from './index';
+import { FileState, FlatFile, Group } from './index';
 import { ArchiveIndexEntity } from '../db';
 import { AdditionalFileProperties, IndexedFile } from './indexed-file';
 import { ArchiveConfig } from '../config';
@@ -29,42 +29,27 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         this.compression = this.config.compression || 'none';
     }
 
-    public override js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
-        if(this.numericKey === 255) {
-            this.setData(super.js5Decode(), true);
-            return this.data;
-        }
-
-        if(this.loaded && !this.js5Encoded) {
-            return this.data;
-        }
+    public override decode(decodeGroups: boolean = true): ByteBuffer | null {
+        logger.info(`Decoding archive ${this.name}...`);
 
         this._missingEncryptionKeys = 0;
 
-        if(this.name) {
-            this.nameHash = this.store.hashFileName(this.name);
+        this.unpack();
+
+        logger.info(`Archive ${this.name} checksum: ${this.crc32}`);
+
+        if(this.numericKey === 255) {
+            return this.data;
         }
 
-        logger.info(`Decoding archive ${this.name}...`);
+        this.decompress();
 
-        const js5File = super.js5Decode();
-        this.setData(js5File, true);
-
-        this.generateCrc32();
-
-        logger.info(`Archive ${this.name} calculated checksum: ${this.crc32}`);
-
-        const archiveData = this.decompress();
-
-        this.generateSha256();
-
-        if(!archiveData?.length) {
+        if(!this._data?.length) {
             logger.error(`Error decompressing file data.`);
             return null;
         }
 
-        const encrypted = this.encryption !== 'none';
-
+        const archiveData = this._data;
         const format = this.index.format = archiveData.get('byte', 'unsigned');
         const filesNamed = (archiveData.get('byte', 'unsigned') & 0x01) !== 0;
         const groupCount = this.index.groupCount = archiveData.get('short', 'unsigned');
@@ -91,15 +76,11 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
                 name: String(groupIndices[i]),
                 archive: this
             }), {
-                archive: this,
-                encryption: this.encryption,
-                encrypted,
-                compression: this.compression,
-                compressed: true
+                store: this.store,
+                archive: this
             });
 
-            group.js5Encoded = true;
-
+            group.setState(FileState.encoded);
             this.set(groupIndices[i], group);
         }
 
@@ -174,9 +155,9 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
             for(const [ , group ] of this.groups) {
                 try {
-                    group.js5Decode();
+                    group.decode();
 
-                    if(group.data?.length && !group.compressed) {
+                    if(group.data?.length && group.state === FileState.raw) {
                         successes++;
                     } else {
                         failures++;
@@ -205,15 +186,13 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             logger.info(`${groupCount} file(s) were found.`);
         }
 
-        this._js5Encoded = false;
-        this._loaded = true;
-
+        this.setData(this._data, FileState.raw);
         return this._data ?? null;
     }
 
-    public override js5Encode(encodeGroups: boolean = true): ByteBuffer | null {
+    public override encode(encodeGroups: boolean = true): ByteBuffer | null {
         if(this.numericKey === 255) {
-            return this.store.js5Encode();
+            return this.store.encode();
         }
 
         const groups = this.groups;
@@ -288,12 +267,12 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         const indexData = buffer?.flipWriter();
 
         if(indexData?.length) {
-            this.setData(indexData, false);
+            this.setData(indexData, FileState.encoded);
             this.sha256 = this.index.sha256 = this.generateSha256();
         }
 
         if(encodeGroups) {
-            this.groups.forEach(group => group.js5Encode());
+            this.groups.forEach(group => group.encode());
         }
 
         return this.data ?? null;
@@ -309,17 +288,12 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
     public override async read(compress: boolean = false, readDiskFiles: boolean = true): Promise<ByteBuffer> {
         logger.info(`Reading archive ${this.name}...`);
 
-        this._loaded = true;
-
         // Read in all groups within the archive
         const groupIndexes = Array.isArray(this.index.groups) ? this.index.groups : await this.index.groups;
         for(const groupIndex of groupIndexes) {
             const group = new Group(groupIndex, {
-                archive: this,
-                compression: this.config.compression,
-                compressed: false,
-                encryption: this.config.encryption,
-                encrypted: false
+                store: this.store,
+                archive: this
             });
 
             this.groups.set(group.key, group);
@@ -335,7 +309,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
         logger.info(`${this.groups.size} file(s) were loaded from the ${this.name} archive.`);
 
-        this.js5Encode();
+        this.encode();
 
         if(compress) {
             return this.compress();
@@ -367,8 +341,8 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         logger.info(`Archive ${this.name || this.key} written in ${(end - start) / 1000} seconds.`)
     }
 
-    public override async validate(validateGroups: boolean = true, validateFiles: boolean = true): Promise<void> {
-        super.validate();
+    public override async validateIndex(validateGroups: boolean = true, validateFiles: boolean = true): Promise<void> {
+        super.validateIndex();
         await this.indexService.verifyArchiveIndex(this);
 
         if(validateGroups) {
@@ -385,7 +359,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         let idx = 0;
 
         for(const [ , group ] of this.groups) {
-            promises[idx++] = group.validate(false);
+            promises[idx++] = group.validateIndex(false);
         }
 
         await Promise.all(promises);
@@ -400,7 +374,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         let idx = 0;
 
         for(const [ , group ] of this.groups) {
-            promises[idx++] = group.validateFiles();
+            promises[idx++] = group.validateFileIndexes();
         }
 
         await Promise.all(promises);
@@ -411,7 +385,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             return;
         }
 
-        await this.validate();
+        await this.validateIndex();
 
         logger.info(`Saving archive ${this.name} to index...`);
 

@@ -23,25 +23,24 @@
         compression: 'bzip',
         versioned: true,
         groupNames: {
-            flu: 1,     // Floor Underlays
-            // 2?       // ???
-            idk: 3,     // Identity Kit
-            flo: 4,     // Floor Overlays
-            inv: 5,     // Inventory
-            loc: 6,     // Objects
-            // 7?       // ???
-            enum: 8,    // Enums
-            npc: 9,     // Npcs
-            obj: 10,    // Items
-            param: 11,  // ???
-            seq: 12,    // Animation Sequences
-            spot: 13,   // Graphical "Spot" Animations
-            varbit: 14, // Player Bit Variables
-            // 15?      // ???
-            varp: 16,   // Player Variables
-            // 17?      // ???
-            // 18?      // ???
-            // ...?     // ???
+            '.flu':         1,  // Floor Underlays
+            // 2?
+            '.idk':         3,  // Identity Kit
+            '.flo':         4,  // Floor Overlays
+            '.inv':         5,  // Inventory
+            '.loc':         6,  // Objects
+            // 7?
+            '.enum':        8,  // Enums
+            '.npc':         9,  // Npcs
+            '.obj':         10, // Items
+            '.param':       11, // Script Parameters
+            '.seq':         12, // Animation Sequences
+            '.spotanim':    13, // Graphical "Spot" Animations
+            '.var_bit':     14, // Bit Variables
+            // 15?
+            '.var_player':  16, // Player Variables
+            // 17?
+            '.area':        18,
         }
     },
     interfaces: {
@@ -73,7 +72,8 @@
     models: {
         index: 7,
         compression: 'gzip',
-        versioned: true
+        versioned: true,
+        contentType: '.dat'
     },
     sprites: {
         index: 8,
@@ -117,13 +117,13 @@
         index: 14,
         compression: 'gzip',
         versioned: true,
+        contentType: '.ogg',
         build: 451
     },
     midi_instruments: {
         index: 15,
         compression: 'gzip',
         versioned: false,
-        contentType: '.wav',
         build: 451
     }
 }

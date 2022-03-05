@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { FileState } from '../fs';
 
 
 export abstract class IndexEntity {
@@ -8,12 +9,6 @@ export abstract class IndexEntity {
 
     @Column('text', { nullable: true, default: null })
     name: string | null = null;
-
-    @Column('integer', { name: 'name_hash', nullable: true, default: 0 })
-    nameHash: number = 0;
-
-    @Column('integer', { nullable: false, default: 0 })
-    version: number = 0;
 
     @Column('integer', { nullable: false, default: 0 })
     size: number = 0;
@@ -26,6 +21,9 @@ export abstract class IndexEntity {
 
     @Column('blob', { name: 'data', nullable: true, default: null })
     data: Buffer | null = null;
+
+    @Column('text', { name: 'state', nullable: false })
+    state: FileState;
 
     @CreateDateColumn()
     created: Date;

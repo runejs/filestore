@@ -9,6 +9,12 @@ import { StoreIndexEntity } from './store-index.entity';
 @Index('group_identifier', [ 'key', 'gameVersion', 'archiveKey' ], { unique: true })
 export class GroupIndexEntity extends IndexEntity {
 
+    @Column('integer', { name: 'name_hash', nullable: true, default: 0 })
+    nameHash: number = 0;
+
+    @Column('integer', { nullable: false, default: 0 })
+    version: number = 0;
+
     @ManyToOne(() => StoreIndexEntity, async store => store.groups,
         { primary: true, onDelete: 'CASCADE' })
     @JoinColumn({ name: 'game_version', referencedColumnName: 'gameVersion' })

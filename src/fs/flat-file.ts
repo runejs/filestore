@@ -3,10 +3,32 @@ import { existsSync, readFileSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 
 import { FileIndexEntity } from '../db';
-import { IndexedFile } from './indexed-file';
+import { AdditionalFileProperties, IndexedFile } from './indexed-file';
+import { FileState } from './file-state';
+import { isSet } from '../util';
 
 
 export class FlatFile extends IndexedFile<FileIndexEntity> {
+
+    public stripes: number[] = [];
+    public stripeCount: number = 1;
+
+    public constructor(index: FileIndexEntity, props?: Partial<AdditionalFileProperties>) {
+        super(index, props);
+
+        if(isSet(index.stripes)) {
+            this.stripes = index.stripes.split(',').map(n => Number(n));
+        }
+        if(isSet(index.stripeCount)) {
+            this.stripeCount = index.stripeCount;
+        }
+        if(isSet(index.version)) {
+            this.version = index.version;
+        }
+        if(isSet(index.nameHash)) {
+            this.nameHash = index.nameHash;
+        }
+    }
 
     public override read(compress: boolean = false): ByteBuffer | null | Promise<ByteBuffer | null> {
         if(!this.group) {
@@ -17,7 +39,7 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
 
         if(!existsSync(filePath)) {
             logger.error(`File not found: ${filePath}`);
-            this.recordError('NOT_FOUND');
+            this.setState(FileState.missing);
             return null;
         }
 
@@ -31,9 +53,9 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
         }
 
         if(!data) {
-            this.recordError('INVALID');
+            this.setState(FileState.corrupt);
         } else if(!data.length) {
-            this.recordError('EMPTY');
+            this.setState(FileState.empty);
         } else {
             const fileData = new ByteBuffer(data);
 
@@ -60,13 +82,11 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
                 this.sha256 = this.index.sha256 ?? undefined;
             }
 
-            this.setData(fileData, false);
+            this.setData(fileData, FileState.raw);
 
             if(this.size !== this.index.size || this.sha256 !== this.generateSha256()) {
                 this._modified = true;
             }
-
-            this._loaded = true;
 
             return fileData;
         }
@@ -75,8 +95,17 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
         return null;
     }
 
-    public override async validate(): Promise<void> {
-        super.validate();
+    public override async validateIndex(): Promise<void> {
+        super.validateIndex();
+
+        if(this.archive?.config?.versioned) {
+            if(this.modified) {
+                this.index.version = this.index.version ? this.index.version + 1 : 1;
+            }
+        }
+
+        this.index.nameHash = this.nameHash;
+
         await this.store.indexService.verifyFileIndex(this);
     }
 
@@ -104,10 +133,6 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
         } else {
             return join(groupOutputPath, String(this.name || this.key) + this.type);
         }
-    }
-
-    public get type(): string {
-        return this.archive?.config?.contentType ?? '';
     }
 
 }

@@ -1,33 +1,44 @@
 import { join } from 'path';
-import { existsSync, readdirSync, statSync, mkdirSync, rmSync } from 'graceful-fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 
 import { FlatFile } from './flat-file';
 import { GroupIndexEntity } from '../db';
-import { IndexedFile } from './indexed-file';
+import { AdditionalFileProperties, IndexedFile } from './indexed-file';
+import { FileState } from './file-state';
+import { isSet } from '../util';
 
 
 export class Group extends IndexedFile<GroupIndexEntity> {
 
-    public files: Map<string, FlatFile> = new Map<string, FlatFile>();
-    public fileSizes: Map<string, number> = new Map<string, number>();
+    public readonly files: Map<string, FlatFile> = new Map<string, FlatFile>();
+    public readonly fileSizes: Map<string, number> = new Map<string, number>();
+
+    public stripes: number[] = [];
+    public stripeCount: number = 1;
 
     private _fileCount: number = 0;
 
-    public override js5Decode(): ByteBuffer | null {
-        if(!this._data?.length) {
-            const js5File = super.js5Decode();
-            this.setData(js5File, true);
+    public constructor(index: GroupIndexEntity, props?: Partial<AdditionalFileProperties>) {
+        super(index, props);
+
+        if(isSet(index.stripes)) {
+            this.stripes = index.stripes.split(',').map(n => Number(n));
         }
-
-        this.encryption = this.archive.encryption || 'none';
-        this.encrypted = (this.archive.encryption || 'none') !== 'none';
-
-        if(this.compressed) {
-            this.decompress();
+        if(isSet(index.stripeCount)) {
+            this.stripeCount = index.stripeCount;
         }
+        if(isSet(index.version)) {
+            this.version = index.version;
+        }
+        if(isSet(index.nameHash)) {
+            this.nameHash = index.nameHash;
+        }
+    }
 
-        this.generateSha256();
+    public override decode(): ByteBuffer | null {
+        this.unpack();
+        this.decompress();
 
         if(this._fileCount === 1) {
             const flatFile: FlatFile = Array.from(this.files.values())[0];
@@ -36,14 +47,13 @@ export class Group extends IndexedFile<GroupIndexEntity> {
             flatFile.sha256 = this.sha256;
             flatFile.crc32 = this.crc32;
             flatFile.encryption = this.encryption;
-            flatFile.encrypted = this.encrypted;
-            flatFile.setData(this._data, this.compressed);
+            flatFile.setData(this._data, this.state);
         } else {
             const dataLength = this._data?.length || 0;
 
             if(!dataLength || dataLength <= 0) {
                 logger.error(`Error decoding group ${this.key}`);
-                return;
+                return null;
             }
 
             this._data.readerIndex = (dataLength - 1); // EOF
@@ -81,7 +91,7 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
             for(const [ fileIndex, file ] of this.files) {
                 const fileSize = this.fileSizes.get(fileIndex) || 0;
-                file.setData(new ByteBuffer(fileSize), false);
+                file.setData(new ByteBuffer(fileSize), FileState.raw);
                 file.size = fileSize;
             }
 
@@ -89,13 +99,9 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
             for(let stripe = 0; stripe < this.stripeCount; stripe++) {
                 for(const [ , file ] of this.files) {
-                    if(file.empty) {
-                        continue;
-                    }
-
                     let stripeLength = file.stripes[stripe];
-
                     let sourceEnd: number = this._data.readerIndex + stripeLength;
+
                     if(this._data.readerIndex + stripeLength >= this._data.length) {
                         sourceEnd = this._data.length;
                         stripeLength = (this._data.readerIndex + stripeLength) - this._data.length;
@@ -105,24 +111,23 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
                     file.data.putBytes(stripeData);
 
-                    file.generateSha256();
-
                     this._data.readerIndex = sourceEnd;
                 }
             }
+
+            this.files.forEach(file => file.generateSha256());
         }
 
+        this.setData(this._data, FileState.raw);
         this._fileCount = this.files.size;
-        this._js5Encoded = false;
         return this._data ?? null;
     }
 
-    public override js5Encode(): ByteBuffer | null {
+    public override encode(): ByteBuffer | null {
         // Single-file group
         if(this._fileCount === 1) {
             const flatFile = Array.from(this.files.values())[0];
-            this.setData(flatFile.data ?? new ByteBuffer([]), false);
-            this._js5Encoded = true;
+            this.setData(flatFile.data ?? new ByteBuffer([]), FileState.encoded);
             return this._data;
         }
 
@@ -175,14 +180,8 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
         groupBuffer.put(this.stripes?.length ?? 1, 'byte');
 
-        this.setData(groupBuffer.flipWriter(), false);
-
-        this._js5Encoded = true;
+        this.setData(groupBuffer.flipWriter(), FileState.encoded);
         return this._data;
-    }
-
-    public override compress(): ByteBuffer | null {
-        return super.compress();
     }
 
     public override async read(compress: boolean = false, readDiskFiles: boolean = true): Promise<ByteBuffer | null> {
@@ -193,7 +192,7 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         }
 
         if(this.index.data?.length) {
-            this.setData(this.index.data, true);
+            this.setData(this.index.data, FileState.compressed);
         }
 
         let indexedFiles = Array.isArray(this.index.files) ? this.index.files : await this.index.files;
@@ -248,26 +247,25 @@ export class Group extends IndexedFile<GroupIndexEntity> {
             if(this._fileCount === 1) {
                 // Single file group, set the group data to match the flat file data
                 const file = this.files.get('0');
-                this.setData(file.data, file.compressed);
+                this.setData(file.data, file.state);
             }
         }
 
-        this.js5Encode();
+        this.encode();
 
         const originalDigest = this.sha256;
         this.generateSha256();
 
         if(this.sha256 && originalDigest !== this.sha256) {
-            logger.info(`Detected changes in file ${this.archive.name}:${groupName}.`);
+            // logger.info(`Detected changes in file ${this.archive.name}:${groupName}.`);
             this.index.sha256 = this.sha256;
             this._modified = true;
         }
 
-        if(compress) {
+        if(compress && this.state !== FileState.compressed) {
             this.compress();
         }
 
-        this._loaded = true;
         return this._data;
     }
 
@@ -296,21 +294,30 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         }
     }
 
-    public override async validate(validateFiles: boolean = true): Promise<void> {
-        super.validate();
+    public override async validateIndex(validateFiles: boolean = true): Promise<void> {
+        super.validateIndex();
+
+        if(this.archive?.config?.versioned) {
+            if(this.modified) {
+                this.index.version = this.index.version ? this.index.version + 1 : 1;
+            }
+        }
+
+        this.index.nameHash = this.nameHash;
+
         await this.store.indexService.verifyGroupIndex(this);
 
         if(validateFiles) {
-            await this.validateFiles();
+            await this.validateFileIndexes();
         }
     }
 
-    public async validateFiles(): Promise<void> {
+    public async validateFileIndexes(): Promise<void> {
         const promises = new Array(this.files.size);
         let idx = 0;
 
         for(const [ , file ] of this.files) {
-            promises[idx++] = file.validate();
+            promises[idx++] = file.validateIndex();
         }
 
         await Promise.all(promises);

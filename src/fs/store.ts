@@ -1,16 +1,20 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from 'graceful-fs';
 import { join } from 'path';
 import JSON5 from 'json5';
-import { logger, ByteBuffer } from '@runejs/common';
+import { ByteBuffer, logger } from '@runejs/common';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { Crc32 } from '@runejs/common/crc32';
 
-import { Archive } from './index';
+import { Archive, FileState } from './index';
 import { ArchiveIndexEntity, IndexService, StoreIndexEntity } from '../db';
 import { ArchiveConfig } from '../config';
 
 
-export type StoreType = 'unpacked' | 'packed';
+export type StoreFormat = 'unpacked' | 'packed';
+
+export interface StoreOptions {
+    outputPath?: string | undefined;
+}
 
 
 export class Store {
@@ -44,20 +48,94 @@ export class Store {
         Crc32.init();
     }
 
-    public static async create(gameVersion: number, path: string = './', options: {
-        readFiles?: boolean | undefined;
-        compress?: boolean | undefined;
-        outputPath?: string | undefined;
-    } = { readFiles: false, compress: false }): Promise<Store> {
-        options.readFiles = options.readFiles || false;
-        options.compress = options.compress || false;
+    public static async create(gameVersion: number, path: string = './', options?: StoreOptions): Promise<Store> {
+        const store = new Store(gameVersion, path, options?.outputPath);
 
-        const store = new Store(gameVersion, path, options.outputPath);
-        await store.load(options.readFiles, options.compress);
+        await store.indexService.load();
+
+        store._index = await store.indexService.getStoreIndex();
+
+        if(!store._index) {
+            store._index = new StoreIndexEntity();
+            store._index.gameVersion = gameVersion;
+        }
+
+        store.loadEncryptionKeys();
+        store.loadFileNames();
+
+        store.archives.clear();
+
+        const archiveConfigs = Object.entries(store.archiveConfig);
+        const mainArchiveConfig = Array.from(Object.values(store.archiveConfig)).find(a => a.index === 255);
+
+        if(!mainArchiveConfig) {
+            throw new Error(`Main archive (index 255) configuration was not found. ` +
+                `Please configure the main archive using the archives.json5 file within the store config directory.`)
+        }
+
+        const mainArchiveIndex = new ArchiveIndexEntity();
+        mainArchiveIndex.key = 255;
+        mainArchiveIndex.gameVersion = gameVersion;
+        mainArchiveIndex.name = 'main';
+        store._mainArchive = new Archive(mainArchiveIndex, mainArchiveConfig, { store });
+
+        let archiveIndexes = await store.indexService.getArchiveIndexes();
+
+        if(!archiveIndexes?.length) {
+            archiveIndexes = new Array(archiveConfigs.length);
+        }
+
+        for(const [ name, config ] of archiveConfigs) {
+            if(config.index === 255) {
+                continue;
+            }
+
+            if(config.build) {
+                if(gameVersion < config.build) {
+                    logger.info(`Skipping archive ${name} as it is not available in this game build.`);
+                    continue;
+                }
+            }
+
+            let archiveIndex = archiveIndexes.find(a => a?.key === config.index);
+            if(!archiveIndex) {
+                archiveIndex = store.indexService.verifyArchiveIndex({
+                    numericKey: config.index,
+                    name,
+                    nameHash: store.hashFileName(name)
+                });
+            }
+
+            const groups = await archiveIndex.groups;
+
+            // Bulk-fetch the archive's files and sort them into the appropriate groups
+            const archiveFileIndexes = await store.indexService.getFileIndexes(archiveIndex);
+            for(const fileIndex of archiveFileIndexes) {
+                const group = groups.find(group => group.key === fileIndex.groupKey);
+                if(!group) {
+                    continue;
+                }
+
+                if(!Array.isArray(group.files) || !group.files?.length) {
+                    group.files = [ fileIndex ];
+                } else {
+                    group.files.push(fileIndex);
+                }
+            }
+
+            archiveIndex.groups = groups;
+
+            const archive = new Archive(archiveIndex, config, {
+                store, archive: store._mainArchive
+            });
+
+            store.archives.set(archive.key, archive);
+        }
+
         return store;
     }
 
-    public js5Load(): void {
+    public loadPackedStore(): void {
         const js5StorePath = join(this.path, 'packed');
 
         if(!existsSync(js5StorePath)) {
@@ -117,12 +195,16 @@ export class Store {
         logger.info(`JS5 store loaded for game version ${this.gameVersion}.`);
     }
 
-    public js5Decode(decodeGroups: boolean = true): ByteBuffer | null {
-        this.archives.forEach(archive => archive.js5Decode(decodeGroups));
+    public pack(): void {
+        // @TODO
+    }
+
+    public decode(decodeGroups: boolean = true): ByteBuffer | null {
+        this.archives.forEach(archive => archive.decode(decodeGroups));
         return null;
     }
 
-    public js5Encode(encodeGroups: boolean = true): ByteBuffer {
+    public encode(encodeGroups: boolean = true): ByteBuffer {
         const fileSize = 4 * this.archiveCount;
 
         this._data = new ByteBuffer(fileSize + 31);
@@ -134,12 +216,11 @@ export class Store {
             this._data.put(this.get(archiveIndex).index.crc32, 'int');
         }
 
-        this.mainArchive.setData(this._data, false);
+        this.mainArchive.setData(this._data, FileState.encoded);
         this.mainArchive.index.data = this.index.data = this._data.toNodeBuffer();
-        this._js5Encoded = true;
 
         if(encodeGroups) {
-            this.archives.forEach(archive => archive.js5Encode(true));
+            this.archives.forEach(archive => archive.encode(true));
         }
 
         return this.data;
@@ -164,108 +245,7 @@ export class Store {
             this.compress();
         }
 
-        return this.js5Encode();
-    }
-
-    public async load(readFiles: boolean = false, compress: boolean = false): Promise<Store> {
-        await this.indexService.load();
-
-        this._index = await this.indexService.getStoreIndex();
-
-        if(!this._index) {
-            this._index = new StoreIndexEntity();
-            this._index.gameVersion = this.gameVersion;
-        }
-
-        this.loadEncryptionKeys();
-        this.loadFileNames();
-
-        this.archives.clear();
-
-        const archiveConfigs = Object.entries(this.archiveConfig);
-        const mainArchiveConfig = Array.from(Object.values(this.archiveConfig)).find(a => a.index === 255);
-
-        if(!mainArchiveConfig) {
-            throw new Error(`Main archive (index 255) configuration was not found. ` +
-                `Please configure the main archive using the archives.json5 file within the store config directory.`)
-        }
-
-        const mainArchiveIndex = new ArchiveIndexEntity();
-        mainArchiveIndex.key = 255;
-        mainArchiveIndex.gameVersion = this.gameVersion;
-        mainArchiveIndex.name = 'main';
-        mainArchiveIndex.nameHash = this.hashFileName('main');
-        this._mainArchive = new Archive(mainArchiveIndex, mainArchiveConfig, {
-            store: this
-        });
-
-        let archiveIndexes = await this.indexService.getArchiveIndexes();
-
-        if(!archiveIndexes?.length) {
-            archiveIndexes = new Array(archiveConfigs.length);
-        }
-
-        for(const [ name, config ] of archiveConfigs) {
-            if(config.index === 255) {
-                continue;
-            }
-
-            if(config.build) {
-                if(this.gameVersion < config.build) {
-                    logger.info(`Skipping archive ${name} as it is not available in this game build.`);
-                    continue;
-                }
-            }
-
-            let archiveIndex = archiveIndexes.find(a => a?.key === config.index);
-            if(!archiveIndex) {
-                archiveIndex = this.indexService.verifyArchiveIndex({
-                    numericKey: config.index,
-                    name,
-                    nameHash: this.hashFileName(name)
-                });
-            }
-
-            const groups = await archiveIndex.groups;
-
-            // Bulk-fetch the archive's files and sort them into the appropriate groups
-            const archiveFileIndexes = await this.indexService.getFileIndexes(archiveIndex);
-            for(const fileIndex of archiveFileIndexes) {
-                const group = groups.find(group => group.key === fileIndex.groupKey);
-                if(!group) {
-                    continue;
-                }
-
-                if(!Array.isArray(group.files) || !group.files?.length) {
-                    group.files = [ fileIndex ];
-                } else {
-                    group.files.push(fileIndex);
-                }
-            }
-
-            archiveIndex.groups = groups;
-
-            const archive = new Archive(archiveIndex, config, {
-                store: this,
-                archive: this._mainArchive,
-                encryption: config.encryption ?? 'none',
-                compression: config.compression ?? 'none'
-            });
-
-            this.archives.set(archive.key, archive);
-        }
-
-        if(readFiles) {
-            for(const [ , archive ] of this.archives) {
-                await archive.read(false);
-            }
-
-            if(compress) {
-                this.archives.forEach(archive => archive.compress());
-            }
-        }
-
-        return this;
+        return this.encode();
     }
 
     public write(): void {
@@ -314,7 +294,7 @@ export class Store {
 
             for(const [ , archive ] of this.archives) {
                 try {
-                    await archive.validate(false);
+                    await archive.validateIndex(false);
                     await archive.saveIndexData(false);
                 } catch(error) {
                     logger.error(`Error indexing archive:`, error);
@@ -475,7 +455,7 @@ export class Store {
 
     public get js5MainIndex(): ByteBuffer {
         if(!this._js5MainIndex?.length || !this._js5MainArchiveData?.length) {
-            this.js5Decode();
+            this.decode();
         }
 
         return this._js5MainIndex;
@@ -483,7 +463,7 @@ export class Store {
 
     public get js5ArchiveIndexes(): Map<string, ByteBuffer> {
         if(!this._js5MainIndex?.length || !this._js5MainArchiveData?.length) {
-            this.js5Decode();
+            this.decode();
         }
 
         return this._js5ArchiveIndexes;
@@ -491,7 +471,7 @@ export class Store {
 
     public get js5MainArchiveData(): ByteBuffer {
         if(!this._js5MainIndex?.length || !this._js5MainArchiveData?.length) {
-            this.js5Decode();
+            this.decode();
         }
 
         return this._js5MainArchiveData;

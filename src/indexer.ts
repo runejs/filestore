@@ -2,13 +2,13 @@ import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 
-import { Store, StoreType } from './fs';
+import { Store, StoreFormat } from './fs';
 import { ScriptExecutor, ArgumentOptions } from './scripts';
 
 
 interface IndexerOptions {
     dir: string;
-    type: StoreType;
+    format: StoreFormat | 'flat' | 'js5';
     archive: string;
     build: number;
 }
@@ -19,9 +19,9 @@ const indexerArgumentOptions: ArgumentOptions = {
         alias: 'd', type: 'string', default: './',
         description: `The store root directory. Defaults to the current location.`
     },
-    type: {
-        alias: 't', type: 'string', default: 'unpacked', choices: [ 'unpacked', 'packed' ],
-        description: `The type of store to index, either 'unpacked' or 'packed'. Defaults to 'unpacked'.`
+    format: {
+        alias: 'f', type: 'string', default: 'unpacked', choices: [ 'unpacked', 'packed', 'flat', 'js5' ],
+        description: `The format of the store to index, either 'unpacked' (flat files) or 'packed' (JS5 format). Defaults to 'unpacked'.`
     },
     archive: {
         alias: 'a', type: 'string', default: 'main',
@@ -38,10 +38,17 @@ async function indexFiles(store: Store, args: IndexerOptions): Promise<void> {
     const argDebugString = args ? Array.from(Object.entries(args))
         .map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 
-    const { archive: archiveName, type } = args;
+    const { archive: archiveName } = args;
 
-    if(type === 'packed') {
-        store.js5Load();
+    let format = args.format;
+    if(format === 'js5') {
+        format = 'packed';
+    } else if(format === 'flat') {
+        format = 'unpacked';
+    }
+
+    if(format === 'packed') {
+        store.loadPackedStore();
     } else {
         const outputDir = store.outputPath;
         if(!existsSync(outputDir)) {
@@ -50,32 +57,33 @@ async function indexFiles(store: Store, args: IndexerOptions): Promise<void> {
     }
 
     if(archiveName === 'main') {
-        logger.info(`Indexing ${type} store with arguments:`, argDebugString);
+        logger.info(`Indexing ${format} store with arguments:`, argDebugString);
 
-        if(type === 'unpacked') {
+        if(format === 'unpacked') {
             await store.read();
-        } else if(type === 'packed') {
-            store.js5Decode(true);
+        } else if(format === 'packed') {
+            store.decode(true);
         }
 
-        store.js5Encode(true);
+        store.encode(true);
         store.compress(true);
 
         await store.saveIndexData(true, true, true);
     } else {
-        logger.info(`Indexing ${type} archive ${archiveName} with arguments:`, argDebugString);
+        logger.info(`Indexing ${format} archive ${archiveName} with arguments:`, argDebugString);
 
         const archive = store.find(archiveName);
 
-        if(type === 'unpacked') {
+        if(format === 'unpacked') {
             await archive.read(false);
-        } else if(type === 'packed') {
-            archive.js5Decode();
+        } else if(format === 'packed') {
+            archive.decode();
         }
 
-        archive.js5Encode(true);
+        archive.encode(true);
         archive.compress(true);
 
+        await store.saveIndexData(false, false, false);
         await archive.saveIndexData(true, true);
     }
 }
@@ -95,14 +103,11 @@ new ScriptExecutor().executeScript<IndexerOptions>(indexerArgumentOptions, async
 
     logger.destination(join(logDir, `index_${build}.log`));
 
-    const store = await Store.create(build, dir, {
-        readFiles: false,
-        compress: false
-    });
+    const store = await Store.create(build, dir);
 
     await indexFiles(store, args);
 
-    logger.boom.flush();
+    logger.boom.flushSync();
     logger.boom.end();
 
     const end = Date.now();

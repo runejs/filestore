@@ -202,5 +202,11 @@
         compression: 'gzip',
         versioned: false,
         build: 537
+    },
+    billboards: {
+        index: 29,
+        compression: 'gzip',
+        versioned: false,
+        build: 582
     }
 }

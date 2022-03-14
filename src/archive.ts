@@ -6,6 +6,7 @@ import { ArchiveFormat, FileState, FlatFile, Group } from './index';
 import { ArchiveIndexEntity } from './db';
 import { FileBreadcrumb, IndexedFile } from './indexed-file';
 import { ArchiveConfig } from './config';
+import { archiveFlags } from './config/archive-flags';
 
 
 export class Archive extends IndexedFile<ArchiveIndexEntity> {
@@ -50,25 +51,24 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
         const archiveData = this._data;
         const format = this.index.format = archiveData.get('byte', 'unsigned');
-        const filesNamed = (archiveData.get('byte', 'unsigned') & 0x01) !== 0;
-        const groupCount = this.index.groupCount = archiveData.get('short', 'unsigned');
+        const mainDataType = format >= ArchiveFormat.smart ? 'smart_int' : 'short';
+        this.index.version = format >= ArchiveFormat.versioned ? archiveData.get('int') : 0;
+        const flags = archiveFlags(archiveData.get('byte', 'unsigned'));
+        const groupCount = archiveData.get(mainDataType, 'unsigned');
 
         logger.info(`${groupCount} groups were found within the ${this.name} archive.`);
 
-        if(filesNamed !== this.config.filesNamed) {
-            logger.warn(`Archive file name flag mismatch; expected ${this.config.filesNamed} ` +
-                `but received ${filesNamed}!`);
-        }
-
-        const groupIndices: number[] = new Array(groupCount);
+        const groupKeys: number[] = new Array(groupCount);
+        const groupChildCounts: Map<number, number> = new Map<number, number>();
         let accumulator = 0;
 
+        // Group index keys
         for(let i = 0; i < groupCount; i++) {
-            const delta = archiveData.get('short', 'unsigned');
-            groupIndices[i] = accumulator += delta;
+            const delta = archiveData.get(mainDataType, 'unsigned');
+            groupKeys[i] = accumulator += delta;
             const group = new Group(this.indexService.validateGroup({
-                numericKey: groupIndices[i],
-                name: String(groupIndices[i]),
+                numericKey: groupKeys[i],
+                name: String(groupKeys[i]),
                 archive: this
             }), {
                 store: this.store,
@@ -76,45 +76,69 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             });
 
             group.setState(FileState.encoded);
-            this.set(groupIndices[i], group);
+            this.set(groupKeys[i], group);
         }
 
-        if(filesNamed) {
-            for(const groupIndex of groupIndices) {
+        // Group names
+        if(flags.groupNames) {
+            for(const groupIndex of groupKeys) {
                 const group = this.get(groupIndex);
                 group.nameHash = group.index.nameHash = archiveData.get('int');
                 group.name = group.index.name = this.store.findFileName(group.nameHash, String(group.nameHash));
             }
         }
 
-        /* read the crc values */
-        for(const groupIndex of groupIndices) {
-            const group = this.get(groupIndex);
+        // Compressed file data CRC32 checksums
+        for(const key of groupKeys) {
+            const group = this.get(key);
             group.crc32 = archiveData.get('int');
         }
 
-        /* read the version numbers */
-        for(const groupIndex of groupIndices) {
-            const group = this.get(groupIndex);
+        // Decompressed file data CRC32 checksums
+        if(flags.decompressedCrcs) {
+            for(const key of groupKeys) {
+                const decompressedCrc32 = archiveData.get('int');
+                // @TODO assign to group (requires changing existing 'crc32' to 'compressedCrc`)
+            }
+        }
+
+        // File data whirlpool digests
+        if(flags.whirlpoolDigests) {
+            for(const key of groupKeys) {
+                const whirlpoolDigest = new ByteBuffer(512);
+                archiveData.getBytes(whirlpoolDigest, 512);
+                // @TODO assign to group
+            }
+        }
+
+        // Group file sizes
+        if(flags.groupSizes) {
+            for(const key of groupKeys) {
+                const compressedSize = archiveData.get('int');
+                const decompressedSize = archiveData.get('int');
+                // @TODO assign to group (requires changing existing 'size' to 'compressedSize')
+            }
+        }
+
+        // Group version numbers
+        for(const key of groupKeys) {
+            const group = this.get(key);
             group.version = archiveData.get('int');
         }
 
-        /* read the child count */
-        const groupChildCounts: Map<number, number> = new Map<number, number>();
-
-        for(const groupIndex of groupIndices) {
-            // group file count
-            groupChildCounts.set(groupIndex, archiveData.get('short', 'unsigned'));
+        // Group file counts
+        for(const key of groupKeys) {
+            groupChildCounts.set(key, archiveData.get(mainDataType, 'unsigned'));
         }
 
-        /* read the file groupIndices */
-        for(const groupIndex of groupIndices) {
-            const group = this.get(groupIndex) as Group;
-            const fileCount = groupChildCounts.get(groupIndex);
+        // Grouped file index keys
+        for(const key of groupKeys) {
+            const group = this.get(key) as Group;
+            const fileCount = groupChildCounts.get(key);
 
             accumulator = 0;
             for(let i = 0; i < fileCount; i++) {
-                const delta = archiveData.get('short', 'unsigned');
+                const delta = archiveData.get(mainDataType, 'unsigned');
                 const childFileIndex = accumulator += delta;
                 group.set(childFileIndex, new FlatFile(this.indexService.validateFile({
                     numericKey: childFileIndex,
@@ -128,17 +152,17 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             }
         }
 
-        /* read the child name hashes */
-        if(filesNamed) {
-            for(const groupIndex of groupIndices) {
-                const fileGroup = this.get(groupIndex) as Group;
+        // Grouped file names
+        if(flags) {
+            for(const key of groupKeys) {
+                const fileGroup = this.get(key) as Group;
 
-                for(const [ , childFile ] of fileGroup.files) {
+                for(const [ , file ] of fileGroup.files) {
                     const nameHash = archiveData.get('int');
-                    if(childFile) {
-                        childFile.nameHash = childFile.index.nameHash = nameHash;
-                        childFile.name = childFile.index.name =
-                            this.store.findFileName(childFile.nameHash, String(childFile.nameHash));
+                    if(file) {
+                        file.nameHash = file.index.nameHash = nameHash;
+                        file.name = file.index.name =
+                            this.store.findFileName(file.nameHash, String(file.nameHash));
                     }
                 }
             }

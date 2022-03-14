@@ -4,6 +4,7 @@ import { IndexEntity } from './index-entity';
 import { StoreIndexEntity } from './store-index.entity';
 import { GroupIndexEntity } from './group-index.entity';
 import { FileState } from '../file-state';
+import { ArchiveFormat } from '../config';
 
 
 @Entity('archive_index')
@@ -16,8 +17,11 @@ export class ArchiveIndexEntity extends IndexEntity {
     @Column('integer', { name: 'group_count', nullable: false, default: 0 })
     groupCount: number = 0;
 
-    @Column('integer', { name: 'format', nullable: false, default: 5 })
-    format: number = 5;
+    @Column('integer', { name: 'format', nullable: false, default: ArchiveFormat.original })
+    format: number = ArchiveFormat.original;
+
+    @Column('integer', { nullable: false, default: 0 })
+    version: number = 0;
 
     @Column('text', { name: 'data_state', nullable: false })
     state: FileState;

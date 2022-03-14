@@ -130,6 +130,7 @@ export class IndexService {
         this.updateEntityIndex(archive);
 
         archiveIndex.format = archiveIndex.format || ArchiveFormat.original;
+        archiveIndex.version = archiveIndex.version || 0;
         archiveIndex.gameBuild = this.store.gameBuild;
         archiveIndex.state = archive.state || FileState.unloaded;
         archiveIndex.groupCount = archive.groups?.size ?? 0;
@@ -149,9 +150,10 @@ export class IndexService {
         let affected;
 
         if(existingIndex) {
-            const { name, size, sha256, crc32, data, state } = archiveIndex;
+            const { name, size, version, sha256, crc32, data, state } = archiveIndex;
             existingIndex.name = name;
             existingIndex.size = size;
+            existingIndex.version = version;
             existingIndex.sha256 = sha256;
             existingIndex.crc32 = crc32;
             existingIndex.data = data;
@@ -372,10 +374,10 @@ export class IndexService {
             file.nameHash = -1;
         }
 
-        if(index instanceof GroupIndexEntity || index instanceof FileIndexEntity) {
+        if(index instanceof ArchiveIndexEntity || index instanceof GroupIndexEntity || index instanceof FileIndexEntity) {
             index.version = file.version;
 
-            if(file.archive?.config?.versioned && file.modified) {
+            if(file.modified) {
                 index.version = index.version ? index.version + 1 : 1;
             }
         }

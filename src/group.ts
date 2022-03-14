@@ -4,7 +4,7 @@ import { ByteBuffer, logger } from '@runejs/common';
 
 import { FlatFile } from './flat-file';
 import { GroupIndexEntity } from './db';
-import { AdditionalFileProperties, IndexedFile } from './indexed-file';
+import { FileBreadcrumb, IndexedFile } from './indexed-file';
 import { FileState } from './file-state';
 import { isSet } from './util';
 
@@ -19,8 +19,8 @@ export class Group extends IndexedFile<GroupIndexEntity> {
 
     private _fileCount: number = 0;
 
-    public constructor(index: GroupIndexEntity, props?: Partial<AdditionalFileProperties>) {
-        super(index, props);
+    public constructor(index: GroupIndexEntity, breadcrumb?: Partial<FileBreadcrumb>) {
+        super(index, breadcrumb);
 
         if(isSet(index.stripes)) {
             this.stripes = index.stripes.split(',').map(n => Number(n));
@@ -195,20 +195,20 @@ export class Group extends IndexedFile<GroupIndexEntity> {
             this.setData(this.index.data, FileState.compressed);
         }
 
-        let indexedFiles = Array.isArray(this.index.files) ? this.index.files : await this.index.files;
+        let indexedFiles = await this.index.files;
 
         if(!indexedFiles?.length) {
             // Single file indexes are not stored to save on DB space and read/write times
             // So if a group has no children, assume it is a single-file group and create a single index for it
-            const { name, nameHash, version, size, crc32, sha256, stripes, stripeCount, archive } = this;
-            indexedFiles = this.index.files = [ this.indexService.verifyFileIndex({
-                numericKey: 0, name, nameHash, version, size, crc32, sha256, stripes, stripeCount, group: this, archive
+            const { name, nameHash, version, size, crc32, sha256, stripes, stripeCount, archive, state } = this;
+            indexedFiles = this.index.files = [ this.indexService.validateFile({
+                numericKey: 0, name, nameHash, version, size, crc32, sha256, stripes, stripeCount,
+                group: this, archive
             }) ];
         }
 
         let childFileCount = 1;
 
-        const groupName = this.index.name;
         const groupPath = this.path;
 
         if(this.archive.versioned) {
@@ -292,35 +292,6 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         } else {
             super.write();
         }
-    }
-
-    public override async validateIndex(validateFiles: boolean = true): Promise<void> {
-        super.validateIndex();
-
-        if(this.archive?.config?.versioned) {
-            if(this.modified) {
-                this.index.version = this.index.version ? this.index.version + 1 : 1;
-            }
-        }
-
-        this.index.nameHash = this.nameHash;
-
-        await this.store.indexService.verifyGroupIndex(this);
-
-        if(validateFiles) {
-            await this.validateFileIndexes();
-        }
-    }
-
-    public async validateFileIndexes(): Promise<void> {
-        const promises = new Array(this.files.size);
-        let idx = 0;
-
-        for(const [ , file ] of this.files) {
-            promises[idx++] = file.validateIndex();
-        }
-
-        await Promise.all(promises);
     }
 
     public has(fileIndex: string | number): boolean {

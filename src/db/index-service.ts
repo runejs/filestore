@@ -4,8 +4,8 @@ import { Connection, createConnection, Repository } from 'typeorm';
 
 import { logger } from '@runejs/common';
 
-import { Archive, FlatFile, Group, Store } from '../index';
-import { StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity } from './index';
+import { Archive, ArchiveFormat, FileState, FlatFile, Group, IndexedFile, IndexEntity, Store } from '../index';
+import { ArchiveIndexEntity, FileIndexEntity, GroupIndexEntity, StoreIndexEntity } from './index';
 
 
 const CHUNK_SIZE = 300; // 250
@@ -30,11 +30,11 @@ export class IndexService {
 
         this.connection = await createConnection({
             type: 'better-sqlite3',
-            database: join(indexPath, `index_${this.store.gameVersion}.sqlite3`),
+            database: join(indexPath, `index_${this.store.gameBuild}.sqlite3`),
             entities: [ StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity ],
             synchronize: true,
-            logging: [ 'error', 'warn' ],
-            // logging: 'all',
+            // logging: [ 'error', 'warn' ],
+            logging: 'all',
             name: 'index-service'
         });
     }
@@ -42,7 +42,7 @@ export class IndexService {
     public async getStoreIndex(): Promise<StoreIndexEntity | null> {
         return await this.storeRepo.findOne({
             where: {
-                gameVersion: this.store.gameVersion
+                gameBuild: this.store.gameBuild
             }
         }) || null;
     }
@@ -56,8 +56,8 @@ export class IndexService {
             update = false;
         }
 
-        if(!storeIndex.gameVersion) {
-            storeIndex.gameVersion = this.store.gameVersion;
+        if(!storeIndex.gameBuild) {
+            storeIndex.gameBuild = this.store.gameBuild;
         }
 
         if(!this.connection.isConnected) {
@@ -75,7 +75,7 @@ export class IndexService {
 
         if(update) {
             const updateResult = await this.storeRepo.update({
-                gameVersion: this.store.gameVersion
+                gameBuild: this.store.gameBuild
             }, storeIndex);
 
             if(!updateResult?.affected) {
@@ -88,12 +88,12 @@ export class IndexService {
             savedIndex = await this.storeRepo.save(storeIndex);
         }
 
-        if(savedIndex?.gameVersion !== this.store.gameVersion) {
-            logger.error(`Error saving store index ${this.store.gameVersion}.`);
+        if(savedIndex?.gameBuild !== this.store.gameBuild) {
+            logger.error(`Error saving store index ${this.store.gameBuild}.`);
             return null;
         }
 
-        logger.info(`Store index ${this.store.gameVersion} saved.`);
+        logger.info(`Store index ${this.store.gameBuild} saved.`);
 
         return savedIndex;
     }
@@ -104,7 +104,7 @@ export class IndexService {
         const key = typeof archive === 'number' ? archive : archive.numericKey;
         return await this.archiveRepo.findOne({
             where: {
-                key, gameVersion: this.store.gameVersion
+                key, gameBuild: this.store.gameBuild
             },
             relations: [ 'groups' ]
         }) || null;
@@ -113,48 +113,36 @@ export class IndexService {
     public async getArchiveIndexes(): Promise<ArchiveIndexEntity[]> {
         return await this.archiveRepo.find({
             where: {
-                gameVersion: this.store.gameVersion
+                gameBuild: this.store.gameBuild
             },
             order: {
                 key: 'ASC'
-            },
-            relations: [ 'groups' ]
+            }
         }) || [];
     }
 
-    public verifyArchiveIndex(archive: Archive | Partial<Archive>): ArchiveIndexEntity {
-        const { numericKey, name, size, crc32, sha256, state } = archive;
-
-        let archiveIndex: ArchiveIndexEntity;
-
-        if(archive.index) {
-            archiveIndex = archive.index;
-            archiveIndex.groupCount = archive.groups?.size ?? 0;
-            archiveIndex.format = archive.index.format;
-        } else {
-            archiveIndex = new ArchiveIndexEntity();
-            archiveIndex.key = numericKey;
+    public validateArchive(archive: Archive | Partial<Archive>): ArchiveIndexEntity {
+        const archiveIndex: ArchiveIndexEntity = archive.index ? archive.index : new ArchiveIndexEntity();
+        if(!archive.index) {
+            archive.index = archiveIndex;
         }
 
-        if(!archiveIndex.format) {
-            archiveIndex.format = 5;
-        }
+        this.updateEntityIndex(archive);
 
-        archiveIndex.gameVersion = this.store.gameVersion;
-        archiveIndex.name = name;
-        archiveIndex.size = size;
-        archiveIndex.crc32 = crc32;
-        archiveIndex.sha256 = sha256;
-        archiveIndex.state = state;
+        archiveIndex.format = archiveIndex.format || ArchiveFormat.original;
+        archiveIndex.gameBuild = this.store.gameBuild;
+        archiveIndex.state = archive.state || FileState.unloaded;
+        archiveIndex.groupCount = archive.groups?.size ?? 0;
 
         return archiveIndex;
     }
 
-    public async saveArchiveIndex(archiveIndex: ArchiveIndexEntity): Promise<ArchiveIndexEntity> {
+    public async saveArchiveIndex(archive: Archive): Promise<ArchiveIndexEntity> {
+        const archiveIndex = archive.index;
         const existingIndex = await this.archiveRepo.findOne({
             where: {
                 key: archiveIndex.key,
-                gameVersion: this.store.gameVersion
+                gameBuild: this.store.gameBuild
             }
         });
 
@@ -173,7 +161,7 @@ export class IndexService {
 
             const result = await this.archiveRepo.update({
                 key: archiveIndex.key,
-                gameVersion: this.store.gameVersion
+                gameBuild: this.store.gameBuild
             }, existingIndex);
 
             affected = result?.affected || 0;
@@ -202,7 +190,7 @@ export class IndexService {
         return await this.groupRepo.findOne({
             where: {
                 key, archiveKey,
-                gameVersion: this.store.gameVersion
+                gameBuild: this.store.gameBuild
             }
         }) || null;
     }
@@ -211,7 +199,7 @@ export class IndexService {
         return await this.groupRepo.find({
             where: {
                 archiveKey: archive.key,
-                gameVersion: this.store.gameVersion
+                gameBuild: this.store.gameBuild
             },
             order: {
                 key: 'ASC'
@@ -219,56 +207,42 @@ export class IndexService {
         }) || [];
     }
 
-    public verifyGroupIndex(group: Group | Partial<Group>): GroupIndexEntity {
-        const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, archive, files, state } = group;
+    public validateGroup(group: Group | Partial<Group>): GroupIndexEntity {
+        const { stripes, archive, files } = group;
 
-        let groupIndex: GroupIndexEntity;
-
-        if(group.index) {
-            groupIndex = group.index;
-        } else {
-            groupIndex = new GroupIndexEntity();
-            groupIndex.key = numericKey;
+        const groupIndex: GroupIndexEntity = group.index ? group.index : new GroupIndexEntity();
+        if(!group.index) {
+            group.index = groupIndex;
         }
 
-        groupIndex.gameVersion = this.store.gameVersion;
+        this.updateEntityIndex(group);
+
+        groupIndex.gameBuild = this.store.gameBuild;
         groupIndex.archiveKey = archive.numericKey;
-        groupIndex.name = name;
-        groupIndex.nameHash = nameHash;
-        groupIndex.version = version;
-        groupIndex.size = size;
-        groupIndex.crc32 = crc32;
-        groupIndex.sha256 = sha256;
+        groupIndex.state = group.state;
         groupIndex.stripes = stripes?.length ? stripes.join(',') : null;
         groupIndex.stripeCount = stripes?.length || 1;
         groupIndex.flatFile = (files?.size === 1 || archive.config.flatten);
-        groupIndex.state = state;
 
         return groupIndex;
     }
 
-    public async saveGroupIndex(group: Group): Promise<GroupIndexEntity> {
-        const groupIndex = {
-            ...group.index,
-            gameVersion: this.store.gameVersion,
-            archiveKey: group.archive.numericKey
-        };
-        delete groupIndex.files;
-        return await this.groupRepo.save(groupIndex);
+    public async saveGroupIndex(group: Group): Promise<void> {
+        if(!this.entityModified(group)) {
+            return;
+        }
+        await this.groupRepo.upsert(this.validateGroup(group), []);
     }
 
     public async saveGroupIndexes(groups: Group[]): Promise<void> {
-        const groupIndexes = groups.map(group => ({
-            ...group.index,
-            gameVersion: this.store.gameVersion,
-            archiveKey: group.archive.numericKey
-        }));
-        groupIndexes.forEach(g => {
-            delete g.files;
-        });
-        await this.groupRepo.save(groupIndexes, {
-            chunk: CHUNK_SIZE, reload: false, transaction: true, listeners: false
-        });
+        const groupIndexes = groups.filter(group => this.entityModified(group))
+            .map(group => this.validateGroup(group));
+
+        if(!groupIndexes.length) {
+            logger.info(`No groups were modified.`);
+        } else {
+            await this.groupRepo.upsert(groupIndexes, []);
+        }
     }
 
     public async getFileIndex(file: FlatFile): Promise<FileIndexEntity | null> {
@@ -277,7 +251,7 @@ export class IndexService {
                 key: file.numericKey,
                 groupKey: file.group.numericKey,
                 archiveKey: file.archive.numericKey,
-                gameVersion: this.store.gameVersion
+                gameBuild: this.store.gameBuild
             }
         }) || null;
     }
@@ -289,7 +263,7 @@ export class IndexService {
             return await this.fileRepo.find({
                 where: {
                     archiveKey: archiveOrGroup.key,
-                    gameVersion: this.store.gameVersion
+                    gameBuild: this.store.gameBuild
                 },
                 order: {
                     groupKey: 'ASC',
@@ -303,7 +277,7 @@ export class IndexService {
                 where: {
                     groupKey: archiveOrGroup.key,
                     archiveKey: archiveOrGroup.archiveKey,
-                    gameVersion: this.store.gameVersion
+                    gameBuild: this.store.gameBuild
                 },
                 order: {
                     key: 'ASC'
@@ -312,55 +286,130 @@ export class IndexService {
         }
     }
 
-    public verifyFileIndex(file: FlatFile | Partial<FlatFile>): FileIndexEntity {
-        const { numericKey, name, nameHash, version, size, crc32, sha256, stripes, group, archive, state } = file;
+    public validateFile(file: FlatFile | Partial<FlatFile>): FileIndexEntity {
+        const { size, stripes, group, archive } = file;
 
-        let fileIndex: FileIndexEntity;
-
-        if(file.index) {
-            fileIndex = file.index;
-        } else {
-            fileIndex = new FileIndexEntity();
-            fileIndex.key = numericKey;
+        const fileIndex: FileIndexEntity = file.index ? file.index : new FileIndexEntity();
+        if(!file.index) {
+            file.index = fileIndex;
         }
 
-        fileIndex.gameVersion = this.store.gameVersion;
+        this.updateEntityIndex(file);
+
+        fileIndex.gameBuild = this.store.gameBuild;
+        fileIndex.store = this.store.index;
         fileIndex.archiveKey = archive.numericKey;
+        fileIndex.archive = archive.index;
         fileIndex.groupKey = group.numericKey;
-        fileIndex.name = name;
-        fileIndex.nameHash = nameHash;
-        fileIndex.version = version;
-        fileIndex.size = size;
-        fileIndex.crc32 = crc32;
-        fileIndex.sha256 = sha256;
+        fileIndex.group = group.index;
         fileIndex.stripes = stripes?.join(',') || String(size);
         fileIndex.stripeCount = fileIndex.stripes?.length || 1;
-        fileIndex.state = state;
 
         return fileIndex;
     }
 
-    public async saveFileIndex(file: FlatFile): Promise<FileIndexEntity> {
-        const fileIndex = {
-            ...file.index,
-            gameVersion: this.store.gameVersion,
-            archiveKey: file.archive.numericKey,
-            groupKey: file.group.numericKey
-        };
-        return await this.fileRepo.save(fileIndex);
+    public async saveFileIndex(file: FlatFile): Promise<void> {
+        if(!this.entityModified(file)) {
+            return;
+        }
+        await this.fileRepo.upsert(this.validateFile(file), []);
     }
 
     public async saveFileIndexes(files: FlatFile[]): Promise<void> {
-        const flatFileIndexes = files.map(file => ({
-            ...file.index,
-            gameVersion: this.store.gameVersion,
-            archiveKey: file.archive.numericKey,
-            groupKey: file.group.numericKey
-        }));
+        const flatFileIndexes = files.filter(file => this.entityModified(file))
+            .map(file => this.validateFile(file));
 
-        await this.fileRepo.save(flatFileIndexes, {
-            chunk: CHUNK_SIZE, reload: false, transaction: true, listeners: false
-        });
+        if(!flatFileIndexes.length) {
+            logger.info(`No flat files were modified.`);
+        } else {
+            await this.fileRepo.upsert(flatFileIndexes, []);
+        }
+    }
+
+    public entityModified<T extends IndexEntity>(file: IndexedFile<T> | Partial<IndexedFile<T>>): boolean {
+        const index = file.index;
+
+        if(file.numericKey !== index.key || file.name !== index.name) {
+            return true;
+        }
+
+        if((index instanceof GroupIndexEntity || index instanceof FileIndexEntity) &&
+            (file instanceof Group || file instanceof FlatFile)) {
+            if(file.nameHash !== index.nameHash || file.version !== index.version) {
+                return true;
+            }
+
+            if(file.archive.numericKey !== index.archiveKey) {
+                return true;
+            }
+        }
+
+        if((index instanceof ArchiveIndexEntity || index instanceof GroupIndexEntity) &&
+            (file instanceof Archive || file instanceof Group)) {
+            if(file.state !== index.state) {
+                return true;
+            }
+        }
+
+        if(index instanceof FileIndexEntity && file instanceof FlatFile) {
+            if(file.group.numericKey !== index.groupKey) {
+                return true;
+            }
+        }
+
+        return file.size !== index.size || file.crc32 !== index.crc32 || file.sha256 !== index.sha256;
+    }
+
+    public updateEntityIndex<T extends IndexEntity>(file: IndexedFile<T> | Partial<IndexedFile<T>>): T {
+        const index = file.index;
+
+        if(!file.name && file.hasNameHash) {
+            file.name = file.hasNameHash ?
+                this.store.findFileName(file.nameHash, String(file.nameHash)) : file.key;
+        } else if(!file.hasNameHash && file.named) {
+            file.nameHash = this.store.hashFileName(file.name);
+        } else {
+            file.nameHash = -1;
+        }
+
+        if(index instanceof GroupIndexEntity || index instanceof FileIndexEntity) {
+            index.version = file.version;
+
+            if(file.archive?.config?.versioned && file.modified) {
+                index.version = index.version ? index.version + 1 : 1;
+            }
+        }
+
+        if(index.key === undefined || index.key === null) {
+            index.key = file.numericKey;
+        }
+
+        if(index.name !== file.name) {
+            index.name = file.name;
+        }
+
+        let dataModified = false;
+
+        if(index.size !== file.size) {
+            index.size = file.size;
+            dataModified = true;
+        }
+
+        if(index.crc32 !== file.crc32) {
+            index.crc32 = file.crc32;
+            dataModified = true;
+        }
+
+        if(index.sha256 !== file.sha256) {
+            index.sha256 = file.sha256;
+            dataModified = true;
+        }
+
+        if(dataModified || !index.data?.length) {
+            index.data = file.data?.length ? Buffer.from(file.data) : null;
+        }
+
+        return index;
     }
 
     public get loaded(): boolean {

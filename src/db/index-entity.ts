@@ -22,9 +22,6 @@ export abstract class IndexEntity {
     @Column('blob', { name: 'data', nullable: true, default: null })
     data: Buffer | null = null;
 
-    @Column('text', { name: 'state', nullable: false })
-    state: FileState;
-
     @CreateDateColumn()
     created: Date;
 

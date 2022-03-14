@@ -8,8 +8,8 @@ import { FileIndexEntity } from './file-index.entity';
 @Entity('store_index')
 export class StoreIndexEntity {
 
-    @PrimaryColumn('integer', { name: 'game_version', nullable: false, unique: true })
-    gameVersion: number;
+    @PrimaryColumn('text', { name: 'game_build', nullable: false, unique: true })
+    gameBuild: string;
 
     @OneToMany(() => ArchiveIndexEntity, archive => archive.store, { lazy: true })
     archives: Promise<ArchiveIndexEntity[]> | ArchiveIndexEntity[];

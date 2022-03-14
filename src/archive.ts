@@ -2,9 +2,9 @@ import { join } from 'path';
 import { existsSync, mkdirSync, rmSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 
-import { FileState, FlatFile, Group } from './index';
+import { ArchiveFormat, FileState, FlatFile, Group } from './index';
 import { ArchiveIndexEntity } from './db';
-import { AdditionalFileProperties, IndexedFile } from './indexed-file';
+import { FileBreadcrumb, IndexedFile } from './indexed-file';
 import { ArchiveConfig } from './config';
 
 
@@ -15,14 +15,13 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
     private _missingEncryptionKeys: number;
 
-    public constructor(index: ArchiveIndexEntity, config: ArchiveConfig, properties?: Partial<AdditionalFileProperties>) {
-        super(index, properties);
+    public constructor(index: ArchiveIndexEntity, config: ArchiveConfig, breadcrumb?: Partial<FileBreadcrumb>) {
+        super(index, breadcrumb);
 
         this.groups = new Map<string, Group>();
 
         config.filesNamed = config.filesNamed || false;
         config.versioned = config.versioned || false;
-        config.format = config.format || 5;
 
         this.config = config;
         this.encryption = this.config.encryption || 'none';
@@ -56,10 +55,6 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
         logger.info(`${groupCount} groups were found within the ${this.name} archive.`);
 
-        if(format !== this.config.format) {
-            logger.error(`Archive ${this.name} format mismatch; expected ${this.config.format} but received ${format}!`);
-        }
-
         if(filesNamed !== this.config.filesNamed) {
             logger.warn(`Archive file name flag mismatch; expected ${this.config.filesNamed} ` +
                 `but received ${filesNamed}!`);
@@ -71,7 +66,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         for(let i = 0; i < groupCount; i++) {
             const delta = archiveData.get('short', 'unsigned');
             groupIndices[i] = accumulator += delta;
-            const group = new Group(this.indexService.verifyGroupIndex({
+            const group = new Group(this.indexService.validateGroup({
                 numericKey: groupIndices[i],
                 name: String(groupIndices[i]),
                 archive: this
@@ -121,7 +116,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             for(let i = 0; i < fileCount; i++) {
                 const delta = archiveData.get('short', 'unsigned');
                 const childFileIndex = accumulator += delta;
-                group.set(childFileIndex, new FlatFile(this.indexService.verifyFileIndex({
+                group.set(childFileIndex, new FlatFile(this.indexService.validateFile({
                     numericKey: childFileIndex,
                     name: String(childFileIndex),
                     group, archive: this
@@ -169,21 +164,21 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             }
 
             if(successes) {
-                logger.info(`${groupCount} file(s) were found, ` +
+                logger.info(`${groupCount} groups(s) were found, ` +
                     `${successes} decompressed successfully.`);
             } else {
-                logger.info(`${groupCount} file(s) were found.`);
+                logger.info(`${groupCount} groups(s) were found.`);
             }
 
             if(failures) {
-                logger.error(`${failures} file(s) failed to decompress.`);
+                logger.error(`${failures} groups(s) failed to decompress.`);
             }
 
             if(this.missingEncryptionKeys) {
                 logger.error(`Missing ${this.missingEncryptionKeys} XTEA decryption key(s).`);
             }
         } else {
-            logger.info(`${groupCount} file(s) were found.`);
+            logger.info(`${groupCount} groups(s) were found.`);
         }
 
         this.setData(this._data, FileState.raw);
@@ -202,7 +197,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         const buffer = new ByteBuffer(1000 * 1000);
 
         // Write index file header
-        buffer.put(this.config.format ?? 5); // '5' for 'JS5' by default
+        buffer.put(this.index.format ?? ArchiveFormat.original);
         buffer.put(this.config.filesNamed ? 1 : 0);
         buffer.put(groupCount, 'short');
 
@@ -289,7 +284,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         logger.info(`Reading archive ${this.name}...`);
 
         // Read in all groups within the archive
-        const groupIndexes = Array.isArray(this.index.groups) ? this.index.groups : await this.index.groups;
+        const groupIndexes = await this.index.groups;
         for(const groupIndex of groupIndexes) {
             const group = new Group(groupIndex, {
                 store: this.store,
@@ -307,7 +302,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
             }
         }
 
-        logger.info(`${this.groups.size} file(s) were loaded from the ${this.name} archive.`);
+        logger.info(`${this.groups.size} groups(s) were loaded from the ${this.name} archive.`);
 
         this.encode();
 
@@ -341,55 +336,14 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         logger.info(`Archive ${this.name || this.key} written in ${(end - start) / 1000} seconds.`)
     }
 
-    public override async validateIndex(validateGroups: boolean = true, validateFiles: boolean = true): Promise<void> {
-        super.validateIndex();
-        await this.indexService.verifyArchiveIndex(this);
-
-        if(validateGroups) {
-            await this.validateGroups(false);
-        }
-
-        if(validateFiles) {
-            await this.validateFiles();
-        }
-    }
-
-    public async validateGroups(validateFiles: boolean = true): Promise<void> {
-        const promises = new Array(this.groups.size);
-        let idx = 0;
-
-        for(const [ , group ] of this.groups) {
-            promises[idx++] = group.validateIndex(false);
-        }
-
-        await Promise.all(promises);
-
-        if(validateFiles) {
-            await this.validateFiles();
-        }
-    }
-
-    public async validateFiles(): Promise<void> {
-        const promises = new Array(this.groups.size);
-        let idx = 0;
-
-        for(const [ , group ] of this.groups) {
-            promises[idx++] = group.validateFileIndexes();
-        }
-
-        await Promise.all(promises);
-    }
-
     public async saveIndexData(saveGroups: boolean = true, saveFiles: boolean = true): Promise<void> {
         if(!this.groups.size) {
             return;
         }
 
-        await this.validateIndex();
-
         logger.info(`Saving archive ${this.name} to index...`);
 
-        await this.indexService.saveArchiveIndex(this.index);
+        await this.indexService.saveArchiveIndex(this);
 
         if(saveGroups) {
             await this.saveGroupIndexes(saveFiles);

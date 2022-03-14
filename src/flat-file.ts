@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 
 import { FileIndexEntity } from './db';
-import { AdditionalFileProperties, IndexedFile } from './indexed-file';
+import { FileBreadcrumb, IndexedFile } from './indexed-file';
 import { FileState } from './file-state';
 import { isSet } from './util';
 
@@ -13,8 +13,8 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
     public stripes: number[] = [];
     public stripeCount: number = 1;
 
-    public constructor(index: FileIndexEntity, props?: Partial<AdditionalFileProperties>) {
-        super(index, props);
+    public constructor(index: FileIndexEntity, breadcrumb?: Partial<FileBreadcrumb>) {
+        super(index, breadcrumb);
 
         if(isSet(index.stripes)) {
             this.stripes = index.stripes.split(',').map(n => Number(n));
@@ -93,20 +93,6 @@ export class FlatFile extends IndexedFile<FileIndexEntity> {
 
         logger.error(`Error reading file data: ${filePath}`);
         return null;
-    }
-
-    public override async validateIndex(): Promise<void> {
-        super.validateIndex();
-
-        if(this.archive?.config?.versioned) {
-            if(this.modified) {
-                this.index.version = this.index.version ? this.index.version + 1 : 1;
-            }
-        }
-
-        this.index.nameHash = this.nameHash;
-
-        await this.store.indexService.verifyFileIndex(this);
     }
 
     public override get path(): string {

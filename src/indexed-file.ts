@@ -13,8 +13,7 @@ import { isSet } from './util';
 import { FileState } from './file-state';
 
 
-// @TODO refactor this out of existence
-export interface AdditionalFileProperties {
+export interface FileBreadcrumb {
     store: Store;
     archive: Archive;
     group: Group;
@@ -24,11 +23,11 @@ export interface AdditionalFileProperties {
 export abstract class IndexedFile<T extends IndexEntity> {
 
     public readonly key: string;
-    public readonly index: T;
     public readonly store: Store;
     public readonly archive: Archive;
     public readonly group: Group;
 
+    public index: T;
     public name: string = '';
     public nameHash: number = -1;
     public version: number = 0;
@@ -42,7 +41,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
     protected _data: ByteBuffer | null = null;
     protected _modified: boolean = false;
 
-    protected constructor(index: T, properties?: Partial<AdditionalFileProperties>) {
+    protected constructor(index: T, breadcrumb?: Partial<FileBreadcrumb>) {
         this.index = index;
         this.key = String(index.key);
 
@@ -58,12 +57,12 @@ export abstract class IndexedFile<T extends IndexEntity> {
         if(isSet(index.sha256)) {
             this.sha256 = index.sha256;
         }
-        if(isSet(index.state)) {
-            this.state = FileState[index.state];
+        if(isSet(index['state'])) {
+            this.state = FileState[index['state']];
         }
 
-        if(properties) {
-            const { store, archive, group } = properties;
+        if(breadcrumb) {
+            const { store, archive, group } = breadcrumb;
             
             if(isSet(store)) {
                 this.store = store;
@@ -346,14 +345,14 @@ export abstract class IndexedFile<T extends IndexEntity> {
             }
         }
 
-        const gameVersion = this.store.gameVersion ?? null;
+        const gameBuild = this.store.gameBuild ?? null;
 
-        // XTEA requires that we know which game version is running so that we pick the correct keystore file
-        if(!gameVersion) {
-            if(this.store && !this.store.gameVersionMissing) {
-                this.store.setGameVersionMissing();
-                logger.warn(`Game version must be supplied to decompress XTEA encrypted files.`,
-                    `Please provide the JS5 file store game version using the --version ### argument.`);
+        // XTEA requires that we know which game build is running so that we pick the correct keystore file
+        if(!gameBuild) {
+            if(this.store && !this.store.gameBuildMissing) {
+                this.store.setGameBuildMissing();
+                logger.warn(`Game build must be supplied to decompress XTEA encrypted files.`,
+                    `Please provide the game build using the --build argument.`);
             }
 
             this.setState(FileState.decrypted);
@@ -378,7 +377,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
 
         const readerIndex = this._data.readerIndex;
 
-        const keySet = keySets.find(keySet => keySet.gameVersion === gameVersion);
+        const keySet = keySets.find(keySet => keySet.gameBuild === gameBuild);
 
         if(Xtea.validKeys(keySet?.key)) {
             const dataCopy = this._data.clone();
@@ -397,29 +396,13 @@ export abstract class IndexedFile<T extends IndexEntity> {
                 this.setState(FileState.decrypted);
                 return dataCopy;
             } else {
-                logger.warn(`Invalid XTEA decryption keys found for file ${this.name || this.key} using game version ${gameVersion}.`);
+                logger.warn(`Invalid XTEA decryption keys found for file ${this.name || this.key} using game build ${gameBuild}.`);
             }
         } else {
-            // logger.warn(`No XTEA decryption keys found for file ${this.name || this.fileKey} using game version ${gameVersion}.`);
+            // logger.warn(`No XTEA decryption keys found for file ${this.name || this.fileKey} using game build ${gameBuild}.`);
         }
 
         return this._data;
-    }
-
-    public validateIndex(): void | Promise<void> {
-        if(!this.name && this.hasNameHash) {
-            this.name = this.hasNameHash ? this.store.findFileName(this.nameHash, String(this.nameHash)) : this.key;
-        } else if(!this.hasNameHash && this.named) {
-            this.nameHash = this.store.hashFileName(this.name);
-        } else {
-            this.nameHash = -1;
-        }
-
-        this.index.data = this.data?.toNodeBuffer() ?? null;
-        this.index.name = this.name;
-        this.index.size = this.size;
-        this.index.crc32 = this.crc32;
-        this.index.sha256 = this.sha256;
     }
 
     public read(compress?: boolean): ByteBuffer | null | Promise<ByteBuffer | null> {
@@ -431,8 +414,8 @@ export abstract class IndexedFile<T extends IndexEntity> {
     }
 
     public write(): void {
-        if(!this._data?.length) {
-            writeFileSync(this.outputPath, this.data.toNodeBuffer());
+        if(this._data?.length) {
+            writeFileSync(this.outputPath, Buffer.from(this._data));
         }
     }
 

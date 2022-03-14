@@ -10,7 +10,7 @@ interface IndexerOptions {
     dir: string;
     format: StoreFormat | 'flat' | 'js5';
     archive: string;
-    build: number;
+    build: string;
 }
 
 
@@ -28,8 +28,8 @@ const indexerArgumentOptions: ArgumentOptions = {
         description: `The archive to index. Defaults to 'main', which will index all store archives one by one. Specify an archive name to index a single archive.`
     },
     build: {
-        alias: 'b', type: 'number', default: 435,
-        description: `The game version that the store should belong to, also known as the game build number. Defaults to '435', a game build from late October, 2006.`
+        alias: 'b', type: 'string', default: '435',
+        description: `The game build (revision) that the store should belong to, also known as the game build number. Defaults to '435', a game build from late October, 2006.`
     }
 };
 

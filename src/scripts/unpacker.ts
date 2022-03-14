@@ -10,7 +10,7 @@ interface UnpackOptions {
     dir: string;
     debug: boolean;
     archive: string;
-    build: number;
+    build: string;
 }
 
 
@@ -24,8 +24,8 @@ const unpackerArgumentOptions: ArgumentOptions = {
         description: `The archive to index. Defaults to 'main', which will unpack and index all store archives one by one. Specify an archive name to unpack a single archive.`
     },
     build: {
-        alias: 'b', type: 'number', default: 435,
-        description: `The game version that the store should belong to, also known as the game build number. Defaults to '435', a game build from late October, 2006.`
+        alias: 'b', type: 'string', default: '435',
+        description: `The game build (revision) that the store should belong to, also known as the game build number. Defaults to '435', a game build from late October, 2006.`
     },
     debug: {
         type: 'boolean', default: false,

@@ -36,11 +36,11 @@ export class Store {
     private _outputPath: string;
     private _archiveConfig: { [key: string]: ArchiveConfig };
     private _encryptionKeys: Map<string, XteaKeys[]>;
-    private _gameVersion: number | undefined;
-    private _gameVersionMissing: boolean;
+    private _gameBuild: string;
+    private _gameBuildMissing: boolean;
 
-    protected constructor(gameVersion: number, path: string, outputPath?: string) {
-        this._gameVersion = gameVersion;
+    protected constructor(gameBuild: string, path: string, outputPath?: string) {
+        this._gameBuild = gameBuild;
         this._path = path;
         this._outputPath = outputPath ? outputPath : join(path, 'unpacked');
         this.indexService = new IndexService(this);
@@ -48,8 +48,8 @@ export class Store {
         Crc32.init();
     }
 
-    public static async create(gameVersion: number, path: string = './', options?: StoreOptions): Promise<Store> {
-        const store = new Store(gameVersion, path, options?.outputPath);
+    public static async create(gameBuild: string, path: string = './', options?: StoreOptions): Promise<Store> {
+        const store = new Store(gameBuild, path, options?.outputPath);
 
         await store.indexService.load();
 
@@ -57,7 +57,7 @@ export class Store {
 
         if(!store._index) {
             store._index = new StoreIndexEntity();
-            store._index.gameVersion = gameVersion;
+            store._index.gameBuild = gameBuild;
         }
 
         store.loadEncryptionKeys();
@@ -75,7 +75,7 @@ export class Store {
 
         const mainArchiveIndex = new ArchiveIndexEntity();
         mainArchiveIndex.key = 255;
-        mainArchiveIndex.gameVersion = gameVersion;
+        mainArchiveIndex.gameBuild = gameBuild;
         mainArchiveIndex.name = 'main';
         store._mainArchive = new Archive(mainArchiveIndex, mainArchiveConfig, { store });
 
@@ -91,7 +91,13 @@ export class Store {
             }
 
             if(config.build) {
-                if(gameVersion < config.build) {
+                let revision: number;
+                if(gameBuild.includes('_')) {
+                    revision = Number(gameBuild.substring(gameBuild.indexOf('_') + 1));
+                } else {
+                    revision = Number(gameBuild);
+                }
+                if(revision < config.build) {
                     logger.info(`Skipping archive ${name} as it is not available in this game build.`);
                     continue;
                 }
@@ -99,14 +105,22 @@ export class Store {
 
             let archiveIndex = archiveIndexes.find(a => a?.key === config.index);
             if(!archiveIndex) {
-                archiveIndex = store.indexService.verifyArchiveIndex({
+                archiveIndex = store.indexService.validateArchive({
                     numericKey: config.index,
                     name,
-                    nameHash: store.hashFileName(name)
+                    nameHash: store.hashFileName(name),
+                    config
                 });
             }
 
-            const groups = await archiveIndex.groups;
+            const archive = new Archive(archiveIndex, config, {
+                store, archive: store._mainArchive
+            });
+
+            store.archives.set(archive.key, archive);
+
+            // Bulk-fetch the archive's groups
+            const groups = archiveIndex.groups = await store.indexService.getGroupIndexes(archiveIndex);
 
             // Bulk-fetch the archive's files and sort them into the appropriate groups
             const archiveFileIndexes = await store.indexService.getFileIndexes(archiveIndex);
@@ -122,14 +136,6 @@ export class Store {
                     group.files.push(fileIndex);
                 }
             }
-
-            archiveIndex.groups = groups;
-
-            const archive = new Archive(archiveIndex, config, {
-                store, archive: store._mainArchive
-            });
-
-            store.archives.set(archive.key, archive);
         }
 
         return store;
@@ -192,7 +198,7 @@ export class Store {
             this._js5ArchiveIndexes.set(index, new ByteBuffer(readFileSync(join(js5StorePath, fileName))));
         }
 
-        logger.info(`JS5 store loaded for game version ${this.gameVersion}.`);
+        logger.info(`Packed store loaded for game build ${this.gameBuild}.`);
     }
 
     public pack(): void {
@@ -294,7 +300,6 @@ export class Store {
 
             for(const [ , archive ] of this.archives) {
                 try {
-                    await archive.validateIndex(false);
                     await archive.saveIndexData(false);
                 } catch(error) {
                     logger.error(`Error indexing archive:`, error);
@@ -308,7 +313,6 @@ export class Store {
 
             for(const [ , archive ] of this.archives) {
                 try {
-                    await archive.validateGroups(false);
                     await archive.saveGroupIndexes(false);
                 } catch(error) {
                     logger.error(`Error indexing group:`, error);
@@ -322,7 +326,6 @@ export class Store {
 
             for(const [ , archive ] of this.archives) {
                 try {
-                    await archive.validateFiles();
                     await archive.saveFlatFileIndexes();
                 } catch(error) {
                     logger.error(`Error indexing flat file:`, error);
@@ -379,8 +382,8 @@ export class Store {
             return null;
         }
 
-        if(this.gameVersion !== undefined) {
-            return keySets.find(keySet => keySet.gameVersion === this.gameVersion) ?? null;
+        if(this.gameBuild !== undefined) {
+            return keySets.find(keySet => keySet.gameBuild === this.gameBuild) ?? null;
         }
 
         return keySets;
@@ -445,8 +448,8 @@ export class Store {
         }
     }
 
-    public setGameVersionMissing(): void {
-        this._gameVersionMissing = true;
+    public setGameBuildMissing(): void {
+        this._gameBuildMissing = true;
     }
 
     public get archiveCount(): number {
@@ -505,8 +508,8 @@ export class Store {
         return this._outputPath;
     }
 
-    public get gameVersion(): number | undefined {
-        return this._gameVersion;
+    public get gameBuild(): string {
+        return this._gameBuild;
     }
 
     public get archiveConfig(): { [p: string]: ArchiveConfig } {
@@ -517,7 +520,7 @@ export class Store {
         return this._encryptionKeys;
     }
 
-    public get gameVersionMissing(): boolean {
-        return this._gameVersionMissing;
+    public get gameBuildMissing(): boolean {
+        return this._gameBuildMissing;
     }
 }

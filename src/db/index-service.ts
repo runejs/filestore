@@ -33,8 +33,8 @@ export class IndexService {
             database: join(indexPath, `index_${this.store.gameBuild}.sqlite3`),
             entities: [ StoreIndexEntity, ArchiveIndexEntity, GroupIndexEntity, FileIndexEntity ],
             synchronize: true,
-            // logging: [ 'error', 'warn' ],
-            logging: 'all',
+            logging: [ 'error', 'warn' ],
+            // logging: 'all',
             name: 'index-service'
         });
     }
@@ -240,10 +240,14 @@ export class IndexService {
         const groupIndexes = groups.filter(group => this.entityModified(group))
             .map(group => this.validateGroup(group));
 
+        groupIndexes.forEach(i => delete i.files);
+
         if(!groupIndexes.length) {
             logger.info(`No groups were modified.`);
         } else {
-            await this.groupRepo.upsert(groupIndexes, []);
+            await this.groupRepo.save(groupIndexes, {
+                chunk: CHUNK_SIZE, reload: false
+            });
         }
     }
 
@@ -324,7 +328,9 @@ export class IndexService {
         if(!flatFileIndexes.length) {
             logger.info(`No flat files were modified.`);
         } else {
-            await this.fileRepo.upsert(flatFileIndexes, []);
+            await this.fileRepo.save(flatFileIndexes, {
+                chunk: CHUNK_SIZE, reload: false
+            });
         }
     }
 

@@ -128,7 +128,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
 
         // Group file counts
         for(const key of groupKeys) {
-            groupChildCounts.set(key, archiveData.get(mainDataType, 'unsigned'));
+            groupChildCounts.set(key, archiveData.get('short', 'unsigned'));
         }
 
         // Grouped file index keys
@@ -153,7 +153,7 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         }
 
         // Grouped file names
-        if(flags) {
+        if(flags.groupNames) {
             for(const key of groupKeys) {
                 const fileGroup = this.get(key) as Group;
 

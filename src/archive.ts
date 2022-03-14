@@ -169,33 +169,12 @@ export class Archive extends IndexedFile<ArchiveIndexEntity> {
         }
 
         if(decodeGroups) {
-            let successes = 0;
-            let failures = 0;
-
             for(const [ , group ] of this.groups) {
                 try {
                     group.decode();
-
-                    if(group.data?.length && group.state === FileState.raw) {
-                        successes++;
-                    } else {
-                        failures++;
-                    }
                 } catch(error) {
                     logger.error(error);
-                    failures++;
                 }
-            }
-
-            if(successes) {
-                logger.info(`${groupCount} groups(s) were found, ` +
-                    `${successes} decompressed successfully.`);
-            } else {
-                logger.info(`${groupCount} groups(s) were found.`);
-            }
-
-            if(failures) {
-                logger.error(`${failures} groups(s) failed to decompress.`);
             }
 
             if(this.missingEncryptionKeys) {

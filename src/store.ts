@@ -98,7 +98,7 @@ export class Store {
                     revision = Number(gameBuild);
                 }
                 if(revision < config.build) {
-                    logger.info(`Skipping archive ${name} as it is not available in this game build.`);
+                    // logger.info(`Skipping archive ${name} as it is not available in this game build.`);
                     continue;
                 }
             }

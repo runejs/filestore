@@ -117,7 +117,6 @@
         index: 14,
         compression: 'gzip',
         versioned: true,
-        contentType: '.ogg',
         build: 451
     },
     midi_instruments: {
@@ -125,5 +124,83 @@
         compression: 'gzip',
         versioned: false,
         build: 451
+    },
+    config_loc: {
+        index: 16,
+        compression: 'gzip',
+        versioned: false,
+        build: 489
+    },
+    config_enum: {
+        index: 17,
+        compression: 'gzip',
+        versioned: false,
+        build: 489
+    },
+    config_npc: {
+        index: 18,
+        compression: 'gzip',
+        versioned: false,
+        build: 489
+    },
+    config_obj: {
+        index: 19,
+        compression: 'gzip',
+        versioned: false,
+        build: 489
+    },
+    config_seq: {
+        index: 20,
+        compression: 'gzip',
+        versioned: false,
+        build: 489
+    },
+    config_spot: {
+        index: 21,
+        compression: 'gzip',
+        versioned: false,
+        build: 489
+    },
+    config_var_bit: {
+        index: 22,
+        compression: 'gzip',
+        versioned: false,
+        build: 489
+    },
+    worldmapdata: {
+        index: 23,
+        compression: 'gzip',
+        versioned: false,
+        build: 493
+    },
+    quickchat: {
+        index: 24,
+        compression: 'gzip',
+        versioned: false,
+        build: 498
+    },
+    quickchat_global: {
+        index: 25,
+        compression: 'gzip',
+        versioned: false,
+        build: 498
+    },
+    materials: {
+        index: 26,
+        compression: 'gzip',
+        versioned: false,
+        build: 500
+    },
+    config_particle: {
+        index: 27,
+        compression: 'gzip',
+        versioned: false,
+        build: 523
+    },
+    defaults: {
+        index: 28,
+        compression: 'gzip',
+        versioned: false,
+        build: 537
     }
 }

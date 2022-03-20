@@ -328,8 +328,9 @@ export class IndexService {
         if(!flatFileIndexes.length) {
             logger.info(`No flat files were modified.`);
         } else {
+            logger.info(`${flatFileIndexes.length} flat files were modified.`);
             await this.fileRepo.save(flatFileIndexes, {
-                chunk: CHUNK_SIZE, reload: false
+                chunk: CHUNK_SIZE, reload: false, transaction: false, listeners: false
             });
         }
     }
@@ -355,7 +356,7 @@ export class IndexService {
         if((index instanceof ArchiveIndexEntity || index instanceof GroupIndexEntity) &&
             (file instanceof Archive || file instanceof Group)) {
             if(file.state !== index.state) {
-                return true;
+                // return true;
             }
         }
 

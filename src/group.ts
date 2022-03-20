@@ -34,6 +34,14 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         if(isSet(index.nameHash)) {
             this.nameHash = index.nameHash;
         }
+
+        if(this.archive.config.groupNames) {
+            const nameEntries = Object.entries(this.archive.config.groupNames);
+            const namedEntry = nameEntries.find(entry => entry[1] === this.numericKey) || null;
+            if(namedEntry) {
+                this.name = namedEntry[0];
+            }
+        }
     }
 
     public override decode(): ByteBuffer | null {

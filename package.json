@@ -2,6 +2,8 @@
     "name": "@runejs/store",
     "version": "1.0.0-beta.1",
     "description": "Tools for managing and indexing the asset file store used with RuneJS.",
+    "author": "Kikorono",
+    "license": "GPL-3.0",
     "main": "./index.js",
     "types": "./index.d.ts",
     "exports": {
@@ -11,7 +13,9 @@
         "./scripts": "./scripts/index.js",
         "./util": "./util/index.js",
         "./indexer": "./scripts/indexer.js",
-        "./unpacker": "./scripts/unpacker.js"
+        "./unpacker": "./scripts/unpacker.js",
+        "./content": "./content/index.js",
+        "./content/models": "./content/models/index.js"
     },
     "scripts": {
         "build": "tsc",
@@ -41,8 +45,6 @@
         "cache",
         "js5"
     ],
-    "author": "Kikorono",
-    "license": "GPL-3.0",
     "bugs": {
         "url": "https://github.com/runejs/store/issues"
     },

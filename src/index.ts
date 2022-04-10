@@ -7,4 +7,4 @@ export * from './file-state';
 export * from './util';
 export * from './db';
 export * from './config';
-
+export * from './content/models';

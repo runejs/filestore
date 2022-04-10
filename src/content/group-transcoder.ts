@@ -1,5 +1,6 @@
 import { ByteBuffer } from '@runejs/common';
 import { Archive } from '../archive';
+import { Group } from '../group';
 
 
 export abstract class GroupTranscoder<T = ByteBuffer> {
@@ -11,8 +12,16 @@ export abstract class GroupTranscoder<T = ByteBuffer> {
         this.archive = archive;
     }
 
-    public abstract decodeGroup(groupKey: number): T | null;
+    public abstract decodeGroup(groupKeyOrName: number | string): T | null;
 
-    public abstract encodeGroup(groupKey: number): ByteBuffer | null;
+    public abstract encodeGroup(groupKeyOrName: number | string): ByteBuffer | null;
+
+    protected findGroup(groupKeyOrName: number | string): Group | null {
+        if(typeof groupKeyOrName === 'string') {
+            return (this.archive.find(groupKeyOrName) as Group) || null;
+        } else {
+            return this.archive.get(groupKeyOrName) || null;
+        }
+    }
 
 }

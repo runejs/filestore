@@ -16,6 +16,8 @@ export class Rs2ModelTranscoder extends GroupTranscoder<Rs2Model> {
         }
 
         const model = new Rs2Model(groupKey);
+        this.decodedGroups.set(groupKey, model);
+
         const modelData = group.data;
         const vertexDirectionOffsetBuffer = modelData.clone();
         const xDataOffsetBuffer = modelData.clone();

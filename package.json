@@ -1,6 +1,6 @@
 {
     "name": "@runejs/store",
-    "version": "1.0.0-beta.1",
+    "version": "1.0.0-beta.2",
     "description": "Tools for managing and indexing the asset file store used with RuneJS.",
     "author": "Kikorono",
     "license": "GPL-3.0",
@@ -16,7 +16,8 @@
         "./unpacker": "./scripts/unpacker.js",
         "./content": "./content/index.js",
         "./content/maps": "./content/maps/index.js",
-        "./content/models": "./content/models/index.js"
+        "./content/models": "./content/models/index.js",
+        "./content/sprites": "./content/sprites/index.js"
     },
     "scripts": {
         "build": "tsc",

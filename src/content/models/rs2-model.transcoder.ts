@@ -5,30 +5,33 @@ import { Rs2Model } from './rs2-model';
 
 export class Rs2ModelTranscoder extends GroupTranscoder<Rs2Model> {
 
-    public override decodeGroup(groupKey: number): Rs2Model | null {
-        if(this.decodedGroups?.has(groupKey)) {
-            return this.decodedGroups.get(groupKey);
-        }
-
-        const group = this.archive?.get(groupKey);
+    override decodeGroup(groupKey: number): Rs2Model | null;
+    override decodeGroup(groupName: string): Rs2Model | null;
+    override decodeGroup(groupKeyOrName: number | string): Rs2Model | null {
+        const group = this.findGroup(groupKeyOrName);
         if(!group) {
             return null;
+        }
+
+        const { numericKey: groupKey, data: fileData } = group;
+
+        if(this.decodedGroups?.has(groupKey)) {
+            return this.decodedGroups.get(groupKey);
         }
 
         const model = new Rs2Model(groupKey);
         this.decodedGroups.set(groupKey, model);
 
-        const modelData = group.data;
-        const vertexDirectionOffsetBuffer = modelData.clone();
-        const xDataOffsetBuffer = modelData.clone();
-        const yDataOffsetBuffer = modelData.clone();
-        const zDataOffsetBuffer = modelData.clone();
-        const vertexSkinOffsetBuffer = modelData.clone();
+        const vertexDirectionOffsetBuffer = fileData.clone();
+        const xDataOffsetBuffer = fileData.clone();
+        const yDataOffsetBuffer = fileData.clone();
+        const zDataOffsetBuffer = fileData.clone();
+        const vertexSkinOffsetBuffer = fileData.clone();
 
         let useFaceTypes = false;
         let useFaceTextures = false;
 
-        vertexDirectionOffsetBuffer.readerIndex = modelData.length - 18;
+        vertexDirectionOffsetBuffer.readerIndex = fileData.length - 18;
         model.vertexCount = vertexDirectionOffsetBuffer.get('short', 'U');
         model.faceCount = vertexDirectionOffsetBuffer.get('short', 'U');
         model.texturedFaceCount = vertexDirectionOffsetBuffer.get('byte', 'u');
@@ -304,8 +307,10 @@ export class Rs2ModelTranscoder extends GroupTranscoder<Rs2Model> {
         return model;
     }
 
-    public override encodeGroup(groupKey: number): ByteBuffer | null {
-        const group = this.archive?.get(groupKey);
+    override encodeGroup(groupKey: number): ByteBuffer | null;
+    override encodeGroup(groupName: string): ByteBuffer | null;
+    override encodeGroup(groupKeyOrName: number | string): ByteBuffer | null {
+        const group = this.findGroup(groupKeyOrName);
         if(!group) {
             return null;
         }

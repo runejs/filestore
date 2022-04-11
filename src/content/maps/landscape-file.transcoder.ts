@@ -5,14 +5,19 @@ import { ByteBuffer } from '@runejs/common';
 
 export class LandscapeFileTranscoder extends GroupTranscoder<LandscapeFile> {
 
-    public override decodeGroup(groupKey: number): LandscapeFile | null;
-    public override decodeGroup(groupName: string): LandscapeFile | null;
-    public override decodeGroup(groupKeyOrName: number | string): LandscapeFile | null {
+    override decodeGroup(groupKey: number): LandscapeFile | null;
+    override decodeGroup(groupName: string): LandscapeFile | null;
+    override decodeGroup(groupKeyOrName: number | string): LandscapeFile | null {
+        const group = this.findGroup(groupKeyOrName);
+        if(!group) {
+            return null;
+        }
+
         const {
             numericKey: landscapeFileKey,
             name: landscapeFileName,
             data: fileData
-        } = this.findGroup(groupKeyOrName);
+        } = group;
 
         const landscapeFile = new LandscapeFile(landscapeFileKey, landscapeFileName);
         this.decodedGroups.set(landscapeFileKey, landscapeFile);
@@ -56,9 +61,9 @@ export class LandscapeFileTranscoder extends GroupTranscoder<LandscapeFile> {
         return landscapeFile;
     }
 
-    public override encodeGroup(groupKey: number): ByteBuffer | null;
-    public override encodeGroup(groupName: string): ByteBuffer | null;
-    public override encodeGroup(groupKeyOrName: number | string): ByteBuffer | null {
+    override encodeGroup(groupKey: number): ByteBuffer | null;
+    override encodeGroup(groupName: string): ByteBuffer | null;
+    override encodeGroup(groupKeyOrName: number | string): ByteBuffer | null {
         const group = this.findGroup(groupKeyOrName);
         const decodedGroup = this.decodedGroups.get(group.numericKey) || null;
 

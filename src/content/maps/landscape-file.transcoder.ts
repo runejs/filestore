@@ -1,5 +1,5 @@
 import { GroupTranscoder } from '../group-transcoder';
-import { LandscapeFile } from './landscape-file';
+import { LandscapeFile, LandscapeObject } from './landscape-file';
 import { ByteBuffer } from '@runejs/common';
 
 
@@ -8,14 +8,51 @@ export class LandscapeFileTranscoder extends GroupTranscoder<LandscapeFile> {
     public override decodeGroup(groupKey: number): LandscapeFile | null;
     public override decodeGroup(groupName: string): LandscapeFile | null;
     public override decodeGroup(groupKeyOrName: number | string): LandscapeFile | null {
-        const group = this.findGroup(groupKeyOrName);
-        const landscapeFileKey = group.numericKey;
-        const landscapeFileName = group.name;
+        const {
+            numericKey: landscapeFileKey,
+            name: landscapeFileName,
+            data: fileData
+        } = this.findGroup(groupKeyOrName);
+
         const landscapeFile = new LandscapeFile(landscapeFileKey, landscapeFileName);
         this.decodedGroups.set(landscapeFileKey, landscapeFile);
 
-        // @todo decode the binary file data
-        
+        let gameObjectKey = -1;
+        let objectKeyLoop = true;
+
+        while(objectKeyLoop) {
+            const objectKeyAccumulator = fileData.get('smart_short');
+
+            if(objectKeyAccumulator === 0) {
+                objectKeyLoop = false;
+                break;
+            }
+
+            gameObjectKey += objectKeyAccumulator;
+            let objectCoords = 0;
+
+            let objectLocationsLoop = true;
+
+            while(objectLocationsLoop) {
+                const objectCoordsAccumulator = fileData.get('smart_short');
+
+                if(objectCoordsAccumulator === 0) {
+                    objectLocationsLoop = false;
+                    break;
+                }
+
+                objectCoords += objectCoordsAccumulator - 1;
+
+                const objectMetadata = fileData.get('byte', 'u');
+                const mapWorldX = (landscapeFile.x & 0xff) * 64;
+                const mapWorldY = landscapeFile.y * 64;
+
+                landscapeFile.objects.push(new LandscapeObject(gameObjectKey,
+                    (objectCoords >> 6 & 0x3f) + mapWorldX, (objectCoords & 0x3f) + mapWorldY,
+                    objectCoords >> 12 & 0x3, objectMetadata >> 2, objectMetadata & 0x3));
+            }
+        }
+
         return landscapeFile;
     }
 

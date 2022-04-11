@@ -15,6 +15,7 @@
         "./indexer": "./scripts/indexer.js",
         "./unpacker": "./scripts/unpacker.js",
         "./content": "./content/index.js",
+        "./content/maps": "./content/maps/index.js",
         "./content/models": "./content/models/index.js"
     },
     "scripts": {

@@ -13,8 +13,7 @@ export class MapTileData {
     static initArray<T extends number[][][] | TileDataArray>(): T {
         return new Array(4)
             .map(() => new Array(64)
-                .map(() => new Array(64)
-                    .fill(0))) as unknown as T;
+                .map(() => new Array(64))) as unknown as T;
     }
 
 }

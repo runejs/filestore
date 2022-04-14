@@ -1,9 +1,9 @@
-import { GroupTranscoder } from '../group-transcoder';
+import { ArchiveTranscoder } from '../archive-transcoder';
 import { Sprite } from './sprite';
 import { ByteBuffer } from '@runejs/common';
 
 
-export class SpriteTranscoder extends GroupTranscoder<Sprite[]> {
+export class SpriteTranscoder extends ArchiveTranscoder<Sprite[]> {
 
     override decodeGroup(groupKey: number): Sprite[] | null;
     override decodeGroup(groupName: string): Sprite[] | null;

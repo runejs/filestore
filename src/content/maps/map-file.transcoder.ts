@@ -1,13 +1,13 @@
-import { GroupTranscoder } from '../group-transcoder';
+import { ArchiveTranscoder } from '../archive-transcoder';
 import { MapFile } from './map-file';
 import { ByteBuffer } from '@runejs/common';
 
 
-export class MapFileTranscoder extends GroupTranscoder<MapFile> {
+export class MapFileTranscoder extends ArchiveTranscoder<MapFile> {
 
-    public override decodeGroup(groupKey: number): MapFile | null;
-    public override decodeGroup(groupName: string): MapFile | null;
-    public override decodeGroup(groupKeyOrName: number | string): MapFile | null {
+    override decodeGroup(groupKey: number): MapFile | null;
+    override decodeGroup(groupName: string): MapFile | null;
+    override decodeGroup(groupKeyOrName: number | string): MapFile | null {
         const {
             numericKey: mapFileKey,
             name: mapFileName,
@@ -51,9 +51,9 @@ export class MapFileTranscoder extends GroupTranscoder<MapFile> {
         return mapFile;
     }
 
-    public override encodeGroup(groupKey: number): ByteBuffer | null;
-    public override encodeGroup(groupName: string): ByteBuffer | null;
-    public override encodeGroup(groupKeyOrName: number | string): ByteBuffer | null {
+    override encodeGroup(groupKey: number): ByteBuffer | null;
+    override encodeGroup(groupName: string): ByteBuffer | null;
+    override encodeGroup(groupKeyOrName: number | string): ByteBuffer | null {
         const group = this.findGroup(groupKeyOrName);
         const decodedGroup = this.decodedGroups.get(group.numericKey) || null;
 

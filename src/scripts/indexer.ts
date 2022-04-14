@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
-import { logger } from '@runejs/common';
+import { fileTarget, logger, prettyPrintTarget } from '@runejs/common';
 
 import { Store, StoreFormat } from '../index';
 import { ScriptExecutor, ArgumentOptions } from './index';
@@ -101,14 +101,14 @@ new ScriptExecutor().executeScript<IndexerOptions>(indexerArgumentOptions, async
         mkdirSync(logDir, { recursive: true });
     }
 
-    logger.destination(join(logDir, `index_${build}.log`));
+    logger.setTargets([
+        prettyPrintTarget(), 
+        fileTarget(join(logDir, `index_${ build }.log`))
+    ]);
 
     const store = await Store.create(build, dir);
 
     await indexFiles(store, args);
-
-    logger.boom.flushSync();
-    logger.boom.end();
 
     const end = Date.now();
     logger.info(`Indexing completed in ${(end - start) / 1000} seconds.`);

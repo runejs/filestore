@@ -17,11 +17,12 @@
         "./content": "./content/index.js",
         "./content/maps": "./content/maps/index.js",
         "./content/models": "./content/models/index.js",
-        "./content/sprites": "./content/sprites/index.js"
+        "./content/sprites": "./content/sprites/index.js",
+        "./content/textures": "./content/textures/index.js"
     },
     "scripts": {
         "build": "tsc",
-        "start": "ts-node-dev src/dev.ts",
+        "start": "ts-node-dev src/scripts/dev.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
         "unpack": "ts-node-dev --max-old-space-size=2048 src/scripts/unpacker.ts",
@@ -52,35 +53,37 @@
     },
     "homepage": "https://github.com/runejs/store#readme",
     "peerDependencies": {
-        "@runejs/common": "2.0.2-beta.2",
+        "@runejs/common": "~3.0.0-beta.1",
         "graceful-fs": ">=4.2.0",
         "tslib": ">=2.3.0",
-        "typescript": ">=4.5.0"
+        "typescript": ">=4.6.0"
     },
     "dependencies": {
-        "@runejs/common": "2.0.2-beta.2",
-        "graceful-fs": "^4.2.0",
-        "json5": "^2.2.0",
-        "reflect-metadata": "^0.1.13",
-        "sqlite": "^4.0.25",
-        "tslib": "^2.3.1",
-        "typeorm": "^0.2.44",
-        "yargs": "^17.3.1"
+        "@runejs/common": "~3.0.0-beta.2",
+        "better-sqlite3": "~7.5.1",
+        "graceful-fs": ">=4.2.0",
+        "json5": "~2.2.1",
+        "reflect-metadata": "~0.1.13",
+        "sqlite": "~4.0.25",
+        "tslib": ">=2.3.0",
+        "typeorm": "~0.3.6",
+        "yargs": "~17.4.1"
     },
     "devDependencies": {
-        "@runejs/eslint-config": "^1.1.0",
-        "@types/graceful-fs": "^4.1.5",
-        "@types/node": "^16.11.26",
-        "@types/yargs": "^17.0.9",
-        "@typescript-eslint/eslint-plugin": "^5.14.0",
-        "@typescript-eslint/parser": "^5.14.0",
-        "better-sqlite3": "^7.5.0",
-        "copyfiles": "^2.4.1",
-        "eslint": "^8.11.0",
-        "rimraf": "^3.0.2",
-        "source-map-support": "^0.5.21",
-        "ts-node-dev": "^1.1.8",
-        "typescript": "^4.5.5"
+        "@runejs/eslint-config": "~1.1.0",
+        "@types/better-sqlite3": "~7.5.0",
+        "@types/graceful-fs": "~4.1.5",
+        "@types/node": "~16.11.26",
+        "@types/yargs": "~17.0.9",
+        "@typescript-eslint/eslint-plugin": "~5.14.0",
+        "@typescript-eslint/parser": "~5.14.0",
+        "copyfiles": "~2.4.1",
+        "eslint": "~8.11.0",
+        "rimraf": "~3.0.2",
+        "source-map-support": "~0.5.21",
+        "ts-node": "^10.7.0",
+        "ts-node-dev": "~1.1.8",
+        "typescript": "~4.6.3"
     },
     "eslintConfig": {
         "extends": [

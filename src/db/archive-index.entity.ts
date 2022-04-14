@@ -12,27 +12,27 @@ import { ArchiveFormat } from '../config';
 export class ArchiveIndexEntity extends IndexEntity {
 
     @PrimaryColumn('text', { name: 'game_build', nullable: false, unique: false })
-    gameBuild: string;
+        gameBuild: string;
 
     @Column('integer', { name: 'group_count', nullable: false, default: 0 })
-    groupCount: number = 0;
+        groupCount: number = 0;
 
     @Column('integer', { name: 'format', nullable: false, default: ArchiveFormat.original })
-    format: number = ArchiveFormat.original;
+        format: number = ArchiveFormat.original;
 
     @Column('integer', { nullable: false, default: 0 })
-    version: number = 0;
+        version: number = 0;
 
     @Column('text', { name: 'data_state', nullable: false })
-    state: FileState;
+        state: FileState;
 
     @ManyToOne(() => StoreIndexEntity, async store => store.archives,
-        { primary: true, onDelete: 'CASCADE' })
+        { onDelete: 'CASCADE' })
     @JoinColumn({ name: 'game_build', referencedColumnName: 'gameBuild' })
-    store: StoreIndexEntity;
+        store: StoreIndexEntity;
 
     @OneToMany(() => GroupIndexEntity, group => group.archive,
         { cascade: true, lazy: true })
-    groups: Promise<GroupIndexEntity[]> | GroupIndexEntity[];
+        groups: Promise<GroupIndexEntity[]> | GroupIndexEntity[];
 
 }

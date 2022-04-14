@@ -1,9 +1,9 @@
-import { GroupTranscoder } from '../group-transcoder';
+import { ArchiveTranscoder } from '../archive-transcoder';
 import { LandscapeFile, LandscapeObject } from './landscape-file';
 import { ByteBuffer } from '@runejs/common';
 
 
-export class LandscapeFileTranscoder extends GroupTranscoder<LandscapeFile> {
+export class LandscapeFileTranscoder extends ArchiveTranscoder<LandscapeFile> {
 
     override decodeGroup(groupKey: number): LandscapeFile | null;
     override decodeGroup(groupName: string): LandscapeFile | null;

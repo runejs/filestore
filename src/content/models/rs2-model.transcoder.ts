@@ -1,9 +1,9 @@
-import { GroupTranscoder } from '../group-transcoder';
+import { ArchiveTranscoder } from '../archive-transcoder';
 import { ByteBuffer, logger } from '@runejs/common';
 import { Rs2Model } from './rs2-model';
 
 
-export class Rs2ModelTranscoder extends GroupTranscoder<Rs2Model> {
+export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
 
     override decodeGroup(groupKey: number): Rs2Model | null;
     override decodeGroup(groupName: string): Rs2Model | null;

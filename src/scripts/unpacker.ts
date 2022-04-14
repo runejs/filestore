@@ -1,6 +1,6 @@
 import { join } from 'path';
 import { existsSync, readdirSync, statSync, mkdirSync } from 'graceful-fs';
-import { logger } from '@runejs/common';
+import { logger, prettyPrintTarget, fileTarget } from '@runejs/common';
 
 import { Store } from '../index';
 import { ScriptExecutor, ArgumentOptions } from './index';
@@ -98,7 +98,10 @@ new ScriptExecutor().executeScript<UnpackOptions>(unpackerArgumentOptions, async
         mkdirSync(logDir, { recursive: true });
     }
 
-    logger.destination(join(logDir, `unpack_${ build }.log`));
+    logger.setTargets([
+        prettyPrintTarget(), 
+        fileTarget(join(logDir, `unpack_${ build }.log`))
+    ]);
 
     const store = await Store.create(build, dir);
 
@@ -117,9 +120,6 @@ new ScriptExecutor().executeScript<UnpackOptions>(unpackerArgumentOptions, async
             await unpackFiles(store, args);
         }
     }
-
-    logger.boom.flushSync();
-    logger.boom.end();
 
     const end = Date.now();
     logger.info(`Unpacking completed in ${(end - start) / 1000} seconds.`);

@@ -9,13 +9,13 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
     override decodeGroup(groupName: string): Rs2Model | null;
     override decodeGroup(groupKeyOrName: number | string): Rs2Model | null {
         const group = this.findGroup(groupKeyOrName);
-        if(!group) {
+        if (!group) {
             return null;
         }
 
         const { numericKey: groupKey, data: fileData } = group;
 
-        if(this.decodedGroups?.has(groupKey)) {
+        if (this.decodedGroups?.has(groupKey)) {
             return this.decodedGroups.get(groupKey);
         }
 
@@ -54,27 +54,27 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
         offset += model.faceCount;
 
         const facePrioritiesOffset = offset;
-        if(modelPriority == 255) {
+        if (modelPriority == 255) {
             offset += model.faceCount;
         }
 
         const faceSkinsOffset = offset;
-        if(hasFaceSkins == 1) {
+        if (hasFaceSkins == 1) {
             offset += model.faceCount;
         }
 
         const faceTypesOffset = offset;
-        if(hasFaceTypes == 1) {
+        if (hasFaceTypes == 1) {
             offset += model.faceCount;
         }
 
         const vertexSkinsOffset = offset;
-        if(hasVertexSkins == 1) {
+        if (hasVertexSkins == 1) {
             offset += model.vertexCount;
         }
 
         const faceAlphasOffset = offset;
-        if(hasFaceAlphas == 1) {
+        if (hasFaceAlphas == 1) {
             offset += model.faceCount;
         }
 
@@ -98,29 +98,29 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
         model.faceIndicesB = new Uint16Array(model.faceCount);
         model.faceIndicesC = new Uint16Array(model.faceCount);
 
-        if(model.texturedFaceCount > 0) {
+        if (model.texturedFaceCount > 0) {
             model.texturedFaceTypes = new Uint8Array(model.texturedFaceCount);
             model.texturedFaceIndicesA = new Uint16Array(model.texturedFaceCount);
             model.texturedFaceIndicesB = new Uint16Array(model.texturedFaceCount);
             model.texturedFaceIndicesC = new Uint16Array(model.texturedFaceCount);
         }
-        if(hasVertexSkins == 1) {
+        if (hasVertexSkins == 1) {
             model.vertexSkins = new Array(model.texturedFaceCount);
         }
-        if(hasFaceTypes == 1) {
+        if (hasFaceTypes == 1) {
             model.faceTypes = new Uint32Array(model.faceCount);
             model.texturedFaceTypeIndices = new Int8Array(model.faceCount);
             model.faceTextures = new Int8Array(model.faceCount);
         }
-        if(modelPriority == 255) {
+        if (modelPriority == 255) {
             model.facePriorities = new Uint8Array(model.faceCount);
         } else {
             model.facePriority = modelPriority & 128;
         }
-        if(hasFaceAlphas == 1) {
+        if (hasFaceAlphas == 1) {
             model.faceAlphas = new Uint8Array(model.faceCount);
         }
-        if(hasFaceSkins == 1) {
+        if (hasFaceSkins == 1) {
             model.faceSkins = new Array(model.faceCount);
         }
 
@@ -135,10 +135,10 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
         let baseOffsetY = 0;
         let baseOffsetZ = 0;
 
-        for(let i = 0; i < model.vertexCount; i++) {
+        for (let i = 0; i < model.vertexCount; i++) {
             const mask = vertexDirectionOffsetBuffer.get('byte', 'u');
             let xOffset = 0;
-            if((mask & 0x1) != 0) {
+            if ((mask & 0x1) != 0) {
                 try {
                     xOffset = xDataOffsetBuffer.get('smart_short', 'u');
                 } catch {
@@ -147,7 +147,7 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
             }
 
             let yOffset = 0;
-            if((mask & 0x2) != 0) {
+            if ((mask & 0x2) != 0) {
                 try {
                     yOffset = yDataOffsetBuffer.get('smart_short', 'u');
                 } catch {
@@ -156,7 +156,7 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
             }
 
             let zOffset = 0;
-            if((mask & 0x4) != 0) {
+            if ((mask & 0x4) != 0) {
                 try {
                     zOffset = zDataOffsetBuffer.get('smart_short', 'u');
                 } catch {
@@ -170,7 +170,7 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
             baseOffsetX = model.verticesX[i];
             baseOffsetY = model.verticesY[i];
             baseOffsetZ = model.verticesZ[i];
-            if(hasVertexSkins == 1) {
+            if (hasVertexSkins == 1) {
                 model.vertexSkins[i] = vertexSkinOffsetBuffer.get('byte', 'u');
             }
         }
@@ -180,22 +180,22 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
         yDataOffsetBuffer.readerIndex = facePrioritiesOffset;
         zDataOffsetBuffer.readerIndex = faceAlphasOffset;
         vertexSkinOffsetBuffer.readerIndex = faceSkinsOffset;
-        for(let i = 0; i < model.faceCount; i++) {
+        for (let i = 0; i < model.faceCount; i++) {
             model.faceColors[i] = vertexDirectionOffsetBuffer.get('short', 'u');
-            if(hasFaceTypes == 1) {
+            if (hasFaceTypes == 1) {
                 const mask = xDataOffsetBuffer.get('BYTE', 'u');
-                if((mask & 0x1) == 1) {
+                if ((mask & 0x1) == 1) {
                     model.faceTypes[i] = 1;
                     useFaceTypes = true;
                 } else {
                     model.faceTypes[i] = 0;
                 }
 
-                if((mask & 0x2) == 2) {
+                if ((mask & 0x2) == 2) {
                     model.texturedFaceTypeIndices[i] = mask >> 2;
                     model.faceTextures[i] = model.faceColors[i];
                     model.faceColors[i] = 127;
-                    if(model.faceTextures[i] != -1) {
+                    if (model.faceTextures[i] != -1) {
                         useFaceTextures = true;
                     }
                 } else {
@@ -204,13 +204,13 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
                 }
             }
 
-            if(modelPriority == 255) {
+            if (modelPriority == 255) {
                 model.facePriorities[i] = yDataOffsetBuffer.get('byte', 'u');
             }
-            if(hasFaceAlphas == 1) {
+            if (hasFaceAlphas == 1) {
                 model.faceAlphas[i] = zDataOffsetBuffer.get('byte', 'u');
             }
-            if(hasFaceSkins == 1) {
+            if (hasFaceSkins == 1) {
                 model.faceSkins[i] = vertexSkinOffsetBuffer.get('byte', 'u');
             }
         }
@@ -224,9 +224,9 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
         let accumulator = 0;
         let oldTrianglePointOffsetX;
 
-        for(let i = 0; i < model.faceCount; i++) {
+        for (let i = 0; i < model.faceCount; i++) {
             const type = xDataOffsetBuffer.get('byte', 'u');
-            switch(type) {
+            switch (type) {
                 case 1:
                     lastA = vertexDirectionOffsetBuffer.get('smart_short', 'u') + accumulator;
                     accumulator = lastA;
@@ -268,18 +268,18 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
         }
 
         vertexDirectionOffsetBuffer.readerIndex = faceMappingsOffset;
-        for(let i = 0; i < model.texturedFaceCount; i++) {
+        for (let i = 0; i < model.texturedFaceCount; i++) {
             model.texturedFaceIndicesA[i] = vertexDirectionOffsetBuffer.get('short', 'u');
             model.texturedFaceIndicesB[i] = vertexDirectionOffsetBuffer.get('short', 'u');
             model.texturedFaceIndicesC[i] = vertexDirectionOffsetBuffer.get('short', 'u');
         }
 
-        if(model.texturedFaceTypeIndices != null) {
+        if (model.texturedFaceTypeIndices != null) {
             let useTexturedFaceTypeIndices = false;
-            for(let face = 0; face < model.faceCount; face++) {
+            for (let face = 0; face < model.faceCount; face++) {
                 const texturedFaceTypeIndex = model.texturedFaceTypeIndices[face] & 0xff;
-                if(texturedFaceTypeIndex != 255) {
-                    if((model.texturedFaceIndicesA[texturedFaceTypeIndex] & 0xffff) ===
+                if (texturedFaceTypeIndex != 255) {
+                    if ((model.texturedFaceIndicesA[texturedFaceTypeIndex] & 0xffff) ===
                         model.faceIndicesA[face] &&
                         (model.texturedFaceIndicesB[texturedFaceTypeIndex] & 0xffff) ===
                         model.faceIndicesB[face] &&
@@ -292,15 +292,15 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
                 }
             }
 
-            if(!useTexturedFaceTypeIndices) {
+            if (!useTexturedFaceTypeIndices) {
                 model.texturedFaceTypeIndices = null;
             }
         }
 
-        if(!useFaceTextures) {
+        if (!useFaceTextures) {
             model.faceTextures = null;
         }
-        if(!useFaceTypes) {
+        if (!useFaceTypes) {
             model.faceTypes = null;
         }
 
@@ -311,7 +311,7 @@ export class Rs2ModelTranscoder extends ArchiveTranscoder<Rs2Model> {
     override encodeGroup(groupName: string): ByteBuffer | null;
     override encodeGroup(groupKeyOrName: number | string): ByteBuffer | null {
         const group = this.findGroup(groupKeyOrName);
-        if(!group) {
+        if (!group) {
             return null;
         }
 

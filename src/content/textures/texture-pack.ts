@@ -1,4 +1,4 @@
-import { Texture } from "./texture";
+import { Texture } from './texture';
 
 
 export interface TexturePack {

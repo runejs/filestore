@@ -16,13 +16,13 @@ export class TextureTranscoder extends ArchiveTranscoder<TexturePack, Texture> {
 
     override decodeFlatFile(groupKeyOrName: string | number, flatFileKey: number): Texture | null {
         const group = this.findGroup(groupKeyOrName);
-        if(!group?.files?.size) {
+        if (!group?.files?.size) {
             logger.error(`Group ${groupKeyOrName} is empty.`);
             return null;
         }
 
         const file = group.get(flatFileKey);
-        if(!file?.data?.length) {
+        if (!file?.data?.length) {
             logger.error(`File ${flatFileKey} is empty in group ${groupKeyOrName}.`);
             return null;
         }
@@ -36,34 +36,34 @@ export class TextureTranscoder extends ArchiveTranscoder<TexturePack, Texture> {
         
         const spriteCount = fileData.get('byte', 'u');
 
-        if(spriteCount < 1 || spriteCount > 4) {
+        if (spriteCount < 1 || spriteCount > 4) {
             logger.error(`Invalid texture sprite count: ${spriteCount}`);
             return null;
         }
 
         texture.spriteKeys = new Array<number>(spriteCount);
 
-        for(let i = 0; i < spriteCount; i++) {
+        for (let i = 0; i < spriteCount; i++) {
             texture.spriteKeys[i] = fileData.get('short', 'u');
         }
 
-        if(spriteCount > 1) {
+        if (spriteCount > 1) {
             texture.renderTypes = new Array<number>(spriteCount - 1);
-            for(let i = 0; i < spriteCount - 1; i++) {
+            for (let i = 0; i < spriteCount - 1; i++) {
                 texture.renderTypes[i] = fileData.get('byte', 'u');
             }
         }
 
-        if(spriteCount > 1) {
+        if (spriteCount > 1) {
             texture.anIntArray2138 = new Array<number>(spriteCount - 1);
-            for(let i = 0; i < spriteCount - 1; i++) {
+            for (let i = 0; i < spriteCount - 1; i++) {
                 texture.anIntArray2138[i] = fileData.get('byte', 'u');
             }
         }
 
         texture.colors = new Array<number>(spriteCount);
 
-        for(let i = 0; i < spriteCount; i++) {
+        for (let i = 0; i < spriteCount; i++) {
             texture.colors[i] = fileData.get('int');
         }
 

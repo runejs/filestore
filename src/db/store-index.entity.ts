@@ -9,24 +9,24 @@ import { FileIndexEntity } from './file-index.entity';
 export class StoreIndexEntity {
 
     @PrimaryColumn('text', { name: 'game_build', nullable: false, unique: true })
-    gameBuild: string;
+        gameBuild: string;
 
     @OneToMany(() => ArchiveIndexEntity, archive => archive.store, { lazy: true })
-    archives: Promise<ArchiveIndexEntity[]> | ArchiveIndexEntity[];
+        archives: Promise<ArchiveIndexEntity[]> | ArchiveIndexEntity[];
 
     @OneToMany(() => GroupIndexEntity, group => group.store, { lazy: true })
-    groups: Promise<GroupIndexEntity[]> | GroupIndexEntity[];
+        groups: Promise<GroupIndexEntity[]> | GroupIndexEntity[];
 
     @OneToMany(() => FileIndexEntity, file => file.store, { lazy: true })
-    files: Promise<FileIndexEntity[]> | FileIndexEntity[];
+        files: Promise<FileIndexEntity[]> | FileIndexEntity[];
 
     @Column('blob', { name: 'data', nullable: true, default: null })
-    data: Buffer | null = null;
+        data: Buffer | null = null;
 
     @CreateDateColumn()
-    created: Date;
+        created: Date;
 
     @UpdateDateColumn()
-    updated: Date;
+        updated: Date;
 
 }

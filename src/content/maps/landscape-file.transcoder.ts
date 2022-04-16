@@ -9,7 +9,7 @@ export class LandscapeFileTranscoder extends ArchiveTranscoder<LandscapeFile> {
     override decodeGroup(groupName: string): LandscapeFile | null;
     override decodeGroup(groupKeyOrName: number | string): LandscapeFile | null {
         const group = this.findGroup(groupKeyOrName);
-        if(!group) {
+        if (!group) {
             return null;
         }
 
@@ -25,10 +25,10 @@ export class LandscapeFileTranscoder extends ArchiveTranscoder<LandscapeFile> {
         let gameObjectKey = -1;
         let objectKeyLoop = true;
 
-        while(objectKeyLoop) {
+        while (objectKeyLoop) {
             const objectKeyAccumulator = fileData.get('smart_short');
 
-            if(objectKeyAccumulator === 0) {
+            if (objectKeyAccumulator === 0) {
                 objectKeyLoop = false;
                 break;
             }
@@ -38,10 +38,10 @@ export class LandscapeFileTranscoder extends ArchiveTranscoder<LandscapeFile> {
 
             let objectLocationsLoop = true;
 
-            while(objectLocationsLoop) {
+            while (objectLocationsLoop) {
                 const objectCoordsAccumulator = fileData.get('smart_short');
 
-                if(objectCoordsAccumulator === 0) {
+                if (objectCoordsAccumulator === 0) {
                     objectLocationsLoop = false;
                     break;
                 }

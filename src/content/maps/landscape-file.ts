@@ -37,14 +37,14 @@ export class LandscapeFile {
 
     set name(value: string) {
         this._name = value;
-        if(value && value.includes('_')) {
+        if (value && value.includes('_')) {
             const [ x, y ] = value.substring(1)
                 .split('_')
                 .map(s => Number(s));
-            if(x !== undefined && x !== null && !isNaN(x)) {
+            if (x !== undefined && x !== null && !isNaN(x)) {
                 this.x = x;
             }
-            if(y !== undefined && y !== null && !isNaN(y)) {
+            if (y !== undefined && y !== null && !isNaN(y)) {
                 this.y = y;
             }
         }

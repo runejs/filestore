@@ -25,9 +25,10 @@
         "start": "ts-node-dev src/scripts/dev.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
-        "unpack": "ts-node-dev --max-old-space-size=2048 src/scripts/unpacker.ts",
+        "cli": "ts-node src/scripts/cli.ts",
+        "unpack": "ts-node-dev --max-old-space-size=2048 src/scripts/cli.ts unpack",
         "unpacker": "npm run unpack",
-        "index": "ts-node-dev --max-old-space-size=2048 src/scripts/indexer.ts",
+        "index": "ts-node-dev --max-old-space-size=2048 src/scripts/cli.ts index",
         "indexer": "npm run index",
         "copy-documents": "copyfiles package.json README.md .npmignore LICENSE lib",
         "package": "rimraf lib && npm i && npm run build && npm run copy-documents && cd lib && npm publish --dry-run",
@@ -70,7 +71,7 @@
         "yargs": "~17.4.1"
     },
     "devDependencies": {
-        "@runejs/eslint-config": "~1.1.0",
+        "@runejs/eslint-config": "~2.0.0",
         "@types/better-sqlite3": "~7.5.0",
         "@types/graceful-fs": "~4.1.5",
         "@types/node": "~16.11.26",

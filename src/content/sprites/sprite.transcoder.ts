@@ -9,7 +9,7 @@ export class SpriteTranscoder extends ArchiveTranscoder<Sprite[]> {
     override decodeGroup(groupName: string): Sprite[] | null;
     override decodeGroup(groupKeyOrName: number | string): Sprite[] | null {
         const group = this.findGroup(groupKeyOrName);
-        if(!group) {
+        if (!group) {
             return null;
         }
 
@@ -30,7 +30,7 @@ export class SpriteTranscoder extends ArchiveTranscoder<Sprite[]> {
         const height = fileData.get('short', 'u');
         const paletteLength = fileData.get('byte', 'u') + 1;
 
-        for(let i = 0; i < spriteCount; i++) {
+        for (let i = 0; i < spriteCount; i++) {
             const sprite = sprites[i] = new Sprite();
             sprite.spritePackKey = spritePackKey;
             sprite.spritePackName = spritePackName;
@@ -39,33 +39,33 @@ export class SpriteTranscoder extends ArchiveTranscoder<Sprite[]> {
             sprite.height = height;
         }
 
-        for(let i = 0; i < spriteCount; i++) {
+        for (let i = 0; i < spriteCount; i++) {
             sprites[i].offsetX = fileData.get('short', 'u');
         }
-        for(let i = 0; i < spriteCount; i++) {
+        for (let i = 0; i < spriteCount; i++) {
             sprites[i].offsetY = fileData.get('short', 'u');
         }
-        for(let i = 0; i < spriteCount; i++) {
+        for (let i = 0; i < spriteCount; i++) {
             sprites[i].width = fileData.get('short', 'u');
         }
-        for(let i = 0; i < spriteCount; i++) {
+        for (let i = 0; i < spriteCount; i++) {
             sprites[i].height = fileData.get('short', 'u');
         }
 
         fileData.readerIndex = (fileData.length - 7 - spriteCount * 8 - (paletteLength - 1) * 3);
         const palette: number[] = new Array(paletteLength);
 
-        for(let i = 1; i < paletteLength; i++) {
+        for (let i = 1; i < paletteLength; i++) {
             palette[i] = fileData.get('int24');
 
-            if(palette[i] === 0) {
+            if (palette[i] === 0) {
                 palette[i] = 1;
             }
         }
 
         fileData.readerIndex = 0;
 
-        for(let i = 0; i < spriteCount; i++) {
+        for (let i = 0; i < spriteCount; i++) {
             const sprite = sprites[i];
             const spriteWidth = sprite.width;
             const spriteHeight = sprite.height;
@@ -76,33 +76,33 @@ export class SpriteTranscoder extends ArchiveTranscoder<Sprite[]> {
 
             const flags = fileData.get('byte', 'u');
 
-            if((flags & 0b01) === 0) {
-                for(let j = 0; j < dimension; j++) {
+            if ((flags & 0b01) === 0) {
+                for (let j = 0; j < dimension; j++) {
                     pixelPaletteIndexes[j] = fileData.get('byte');
                 }
             } else {
-                for(let x = 0; x < spriteWidth; x++) {
-                    for(let y = 0; y < spriteHeight; y++) {
+                for (let x = 0; x < spriteWidth; x++) {
+                    for (let y = 0; y < spriteHeight; y++) {
                         pixelPaletteIndexes[spriteWidth * y + x] = fileData.get('byte');
                     }
                 }
             }
 
-            if((flags & 0b10) === 0) {
-                for(let j = 0; j < dimension; j++) {
+            if ((flags & 0b10) === 0) {
+                for (let j = 0; j < dimension; j++) {
                     const index = pixelPaletteIndexes[j];
-                    if(index !== 0) {
+                    if (index !== 0) {
                         pixelAlphas[j] = 0xff;
                     }
                 }
             } else {
-                if((flags & 0b01) === 0) {
-                    for(let j = 0; j < dimension; j++) {
+                if ((flags & 0b01) === 0) {
+                    for (let j = 0; j < dimension; j++) {
                         pixelAlphas[j] = fileData.get('byte');
                     }
                 } else {
-                    for(let x = 0; x < spriteWidth; x++) {
-                        for(let y = 0; y < spriteHeight; y++) {
+                    for (let x = 0; x < spriteWidth; x++) {
+                        for (let y = 0; y < spriteHeight; y++) {
                             pixelAlphas[spriteWidth * y + x] = fileData.get('byte');
                         }
                     }
@@ -112,7 +112,7 @@ export class SpriteTranscoder extends ArchiveTranscoder<Sprite[]> {
             sprite.pixelIdx = pixelPaletteIndexes;
             sprite.pixels = new Array(dimension);
 
-            for(let j = 0; j < dimension; j++) {
+            for (let j = 0; j < dimension; j++) {
                 const index = pixelPaletteIndexes[j] & 0xff;
                 sprite.pixels[j] = palette[index] | (pixelAlphas[j] << 24);
             }

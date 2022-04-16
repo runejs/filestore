@@ -55,7 +55,7 @@ export abstract class ArchiveTranscoder<G = ByteBuffer, F = any> implements IArc
     }
 
     protected findGroup(groupKeyOrName: number | string): Group | null {
-        if(typeof groupKeyOrName === 'string') {
+        if (typeof groupKeyOrName === 'string') {
             return (this.archive.find(groupKeyOrName) as Group) || null;
         } else {
             return this.archive.get(groupKeyOrName) || null;

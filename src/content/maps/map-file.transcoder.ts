@@ -17,28 +17,28 @@ export class MapFileTranscoder extends ArchiveTranscoder<MapFile> {
         const mapFile = new MapFile(mapFileKey, mapFileName);
         this.decodedGroups.set(mapFileKey, mapFile);
 
-        for(let level = 0; level < 4; level++) {
-            for(let x = 0; x < 64; x++) {
-                for(let y = 0; y < 64; y++) {
+        for (let level = 0; level < 4; level++) {
+            for (let x = 0; x < 64; x++) {
+                for (let y = 0; y < 64; y++) {
                     mapFile.tiles.settings[level][x][y] = 0;
 
                     let runLoop = true;
 
-                    while(runLoop) {
+                    while (runLoop) {
                         const dataOpcode = fileData.get('byte', 'UNSIGNED');
 
-                        if(dataOpcode === 0) {
+                        if (dataOpcode === 0) {
                             runLoop = false;
                             break;
-                        } else if(dataOpcode === 1) {
+                        } else if (dataOpcode === 1) {
                             mapFile.tiles.heights[level][x][y] = fileData.get('byte', 'u');
                             runLoop = false;
                             break;
-                        } else if(dataOpcode <= 49) {
+                        } else if (dataOpcode <= 49) {
                             mapFile.tiles.overlayIds[level][x][y] = fileData.get('byte');
                             mapFile.tiles.overlayPaths[level][x][y] = (dataOpcode - 2) / 4;
                             mapFile.tiles.overlayOrientations[level][x][y] = dataOpcode - 2 & 3;
-                        } else if(dataOpcode <= 81) {
+                        } else if (dataOpcode <= 81) {
                             mapFile.tiles.settings[level][x][y] = dataOpcode - 49;
                         } else {
                             mapFile.tiles.underlayIds[level][x][y] = dataOpcode - 81;

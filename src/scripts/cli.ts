@@ -3,6 +3,7 @@ import yargs from 'yargs/yargs';
 import { ArgumentsCamelCase, Options } from 'yargs';
 import { IndexerOptions, indexFiles } from './indexer';
 import { unpackFiles, UnpackOptions as UnpackerOptions } from './unpacker';
+import { dev } from './dev';
 
 
 function cmd<T>(
@@ -61,4 +62,10 @@ cmd<UnpackerOptions>('unpack', 'unpack and index all files within a file store',
     }
 }, async (argv) => {
     await unpackFiles(argv);
+});
+
+
+cmd('dev', 'run the package development script', {
+}, async () => {
+    await dev();
 });

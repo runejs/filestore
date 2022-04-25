@@ -32,7 +32,7 @@ export abstract class ArchiveTranscoder<G = ByteBuffer, F = any> implements IArc
     readonly decodedGroups = new Map<number, G>();
     readonly decodedFlatFiles = new Map<number, F[]>();
 
-    protected constructor(archive: Archive) {
+    constructor(archive: Archive) {
         this.archive = archive;
     }
 

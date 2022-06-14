@@ -23,6 +23,7 @@
     "scripts": {
         "build": "tsc",
         "start": "ts-node-dev src/scripts/dev.ts",
+        "http": "ts-node-dev src/http/server.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
         "cli": "ts-node src/scripts/cli.ts",
@@ -60,8 +61,9 @@
         "typescript": ">=4.6.0"
     },
     "dependencies": {
-        "@runejs/common": "~3.0.0-beta.2",
+        "@runejs/common": "~3.0.0-beta.1",
         "better-sqlite3": "~7.5.1",
+        "express": "^4.18.1",
         "graceful-fs": ">=4.2.0",
         "json5": "~2.2.1",
         "reflect-metadata": "~0.1.13",
@@ -73,6 +75,7 @@
     "devDependencies": {
         "@runejs/eslint-config": "~2.0.0",
         "@types/better-sqlite3": "~7.5.0",
+        "@types/express": "^4.17.13",
         "@types/graceful-fs": "~4.1.5",
         "@types/node": "~16.11.26",
         "@types/yargs": "~17.0.9",

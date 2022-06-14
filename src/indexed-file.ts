@@ -372,7 +372,7 @@ export abstract class IndexedFile<T extends IndexEntity> {
 
         this._data.readerIndex = 0;
 
-        this.compression = getCompressionMethod(this._data.get('byte', 'unsigned'));
+        this._data.get('byte', 'unsigned'); // compression byte
         const compressedLength = this._data.get('int', 'unsigned');
 
         const readerIndex = this._data.readerIndex;

@@ -1,6 +1,7 @@
 import express from 'express';
 import { fileTarget, logger, prettyPrintTarget } from '@runejs/common';
 import { Store } from '../store';
+import { Gzip } from '@runejs/common/compress';
 
 
 logger.setTargets([
@@ -40,7 +41,7 @@ app.get('/archives/:archiveKey/groups/:groupKey', (req, res, next) => {
             throw new Error(`Group ${groupKey} was not found within Archive ${archiveKey}.`);
         }
 
-        const data = group.data.toNodeBuffer();
+        const data = group.data;
         // const data = group.index.data;
 
         if(archiveKey === '8') {
@@ -48,12 +49,14 @@ app.get('/archives/:archiveKey/groups/:groupKey', (req, res, next) => {
             logger.info(JSON.stringify(data).slice(0, 100));
         }
 
+        const gzippedData = Gzip.compress(data).toNodeBuffer();
+
         res.writeHead(200, {
             'Content-Type': 'arraybuffer',
-            'Content-Length': data.length,
+            'Content-Length': gzippedData.length,
         });
 
-        res.end(data);
+        res.end(gzippedData);
     } catch (error) {
         next(error);
     }

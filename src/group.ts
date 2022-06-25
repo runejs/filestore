@@ -315,6 +315,11 @@ export class Group extends IndexedFile<GroupIndexEntity> {
         this._fileCount = this.files.size;
     }
 
+    find(fileName: string): FlatFile | null {
+        const children = Array.from(this.files.values());
+        return children.find(child => child?.name === fileName) ?? null;
+    }
+
     override get path(): string {
         const archivePath = this.archive?.path || null;
         if (!archivePath) {

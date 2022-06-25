@@ -2,6 +2,7 @@ import express from 'express';
 import { fileTarget, logger, prettyPrintTarget } from '@runejs/common';
 import { Store } from '../store';
 import { Gzip } from '@runejs/common/compress';
+import { Group } from '../group';
 
 
 logger.setTargets([
@@ -21,12 +22,55 @@ app.use((req, res, next) => {
     next();
 });
 
+app.get('/archives/:archiveKey/groups/:groupKey/files/:fileKey', (req, res, next) => {
+    const { archiveKey, groupKey, fileKey } = req.params;
+    logger.info(`/archives/${archiveKey}/groups/${groupKey}/files/${fileKey}`);
+
+    let groupName = null;
+    if (!/^\d*$/.test(groupKey)) {
+        groupName = groupKey;
+    }
+
+    let fileName = null;
+    if (!/^\d*$/.test(fileKey)) {
+        fileName = fileKey;
+    }
+
+    try {
+        const archive = store.get(archiveKey);
+        if (!archive) {
+            throw new Error(`Archive ${archiveKey} was not found.`);
+        }
+
+        const group = (groupName ? archive.find(groupName) : archive.get(groupKey)) as Group;
+        if (!group) {
+            throw new Error(`Group ${groupKey} was not found within Archive ${archiveKey}.`);
+        }
+
+        const file = fileName ? group.find(fileName) : group.get(fileKey);
+        if (!file) {
+            throw new Error(`File ${groupKey}:${fileKey} was not found within Archive ${archiveKey}.`);
+        }
+
+        const gzippedData = Gzip.compress(file.data).toNodeBuffer();
+
+        res.writeHead(200, {
+            'Content-Type': 'arraybuffer',
+            'Content-Length': gzippedData.length,
+        });
+
+        res.end(gzippedData);
+    } catch (error) {
+        next(error);
+    }
+});
+
 app.get('/archives/:archiveKey/groups/:groupKey', (req, res, next) => {
     const { archiveKey, groupKey } = req.params;
     logger.info(`/archives/${archiveKey}/groups/${groupKey}`);
 
     let groupName = null;
-    if (!/^[0-9]*$/.test(groupKey)) {
+    if (!/^\d*$/.test(groupKey)) {
         groupName = groupKey;
     }
 
@@ -41,15 +85,7 @@ app.get('/archives/:archiveKey/groups/:groupKey', (req, res, next) => {
             throw new Error(`Group ${groupKey} was not found within Archive ${archiveKey}.`);
         }
 
-        const data = group.data;
-        // const data = group.index.data;
-
-        if(archiveKey === '8') {
-            logger.info(`archive compression = ${ archive.compression }, group compression = ${ group.compression }`);
-            logger.info(JSON.stringify(data).slice(0, 100));
-        }
-
-        const gzippedData = Gzip.compress(data).toNodeBuffer();
+        const gzippedData = Gzip.compress(group.data).toNodeBuffer();
 
         res.writeHead(200, {
             'Content-Type': 'arraybuffer',

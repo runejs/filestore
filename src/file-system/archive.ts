@@ -1,19 +1,18 @@
 import { FileBase } from './file-base';
 import { FileStore } from './file-store';
-import { FileType } from './file-type';
 import { Group } from './group';
 
 
 export class Archive extends FileBase {
 
-    readonly children: Map<string, Group>;
+    readonly groups: Map<string, Group>;
 
     constructor(
         fileStore: FileStore,
         key: number,
     ) {
         super(fileStore, key, -1, 'ARCHIVE');
-        this.children = new Map<string, Group>();
+        this.groups = new Map<string, Group>();
     }
 
     js5Unpack(): Buffer | null {
@@ -40,16 +39,16 @@ export class Archive extends FileBase {
         return this.fileStore.js5.encodeArchive(this);
     }
 
-    getChild(groupIndex: number): Group {
-        return this.children.get(String(groupIndex)) || null;
+    getGroup(groupIndex: number): Group | null {
+        return this.groups.get(String(groupIndex)) || null;
     }
 
-    setChild(groupIndex: number, group: Group): void {
-        this.children.set(String(groupIndex), group);
+    setGroup(groupIndex: number, group: Group): void {
+        this.groups.set(String(groupIndex), group);
     }
 
-    findChild(groupName: string): Group {
-        return Array.from(this.children.values()).find(
+    findGroup(groupName: string): Group | null {
+        return Array.from(this.groups.values()).find(
             group => group?.index?.name === groupName
         ) || null;
     }

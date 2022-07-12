@@ -7,6 +7,8 @@ import { FileStore } from './file-store';
 import { ArchiveFormat } from '../config';
 import { archiveFlags } from '../config/archive-flags';
 import { FlatFile } from './flat-file';
+import { join } from 'path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
 
 
 export class JS5 {
@@ -19,6 +21,60 @@ export class JS5 {
 
     constructor(fileStore: FileStore) {
         this.fileStore = fileStore;
+    }
+
+    loadJS5Store(): void {
+        const js5StorePath = join(this.fileStore.fileStorePath, 'js5');
+
+        if (!existsSync(js5StorePath)) {
+            throw new Error(`${js5StorePath} could not be found.`);
+        }
+
+        const stats = statSync(js5StorePath);
+        if (!stats?.isDirectory()) {
+            throw new Error(`${js5StorePath} is not a valid directory.`);
+        }
+
+        const storeFileNames = readdirSync(js5StorePath);
+        const dataFile = 'main_file_cache.dat2';
+        const mainIndexFile = 'main_file_cache.idx255';
+
+        if (storeFileNames.indexOf(dataFile) === -1) {
+            throw new Error(`The main ${dataFile} data file could not be found.`);
+        }
+
+        if (storeFileNames.indexOf(mainIndexFile) === -1) {
+            throw new Error(`The main ${mainIndexFile} index file could not be found.`);
+        }
+
+        const indexFilePrefix = 'main_file_cache.idx';
+        const dataFilePath = join(js5StorePath, dataFile);
+        const mainIndexFilePath = join(js5StorePath, mainIndexFile);
+
+        this.mainArchiveData = new ByteBuffer(readFileSync(dataFilePath));
+        this.mainIndex = new ByteBuffer(readFileSync(mainIndexFilePath));
+        this.archiveIndexes = new Map<string, ByteBuffer>();
+
+        for (const fileName of storeFileNames) {
+            if (!fileName?.length || fileName === mainIndexFile || fileName === dataFile) {
+                continue;
+            }
+
+            if (!fileName.startsWith(indexFilePrefix)) {
+                continue;
+            }
+
+            const index = fileName.substring(fileName.indexOf('.idx') + 4);
+            const numericIndex = Number(index);
+
+            if (isNaN(numericIndex)) {
+                logger.error(`Index file ${fileName} does not have a valid extension.`);
+            }
+
+            this.archiveIndexes.set(index, new ByteBuffer(readFileSync(join(js5StorePath, fileName))));
+        }
+
+        logger.info(`JS5 store loaded for game build ${this.fileStore.gameBuild}.`);
     }
 
     unpack(file: Group | Archive): Buffer | null {
@@ -293,142 +349,10 @@ export class JS5 {
         return fileDetails.data;
     }
 
-    async decodeArchive(archive: Archive): Promise<void> {
-        const archiveDetails = archive.index;
-
-        if (archiveDetails.key === 255) {
-            return;
-        }
-
-        const archiveName = archiveDetails.name;
-
-        logger.info(`Decoding archive ${archiveName}...`);
-
-        if (!archiveDetails.data) {
-            this.decompress(archive);
-
-            if (!archiveDetails.data) {
-                logger.error(`Unable to decode archive ${archiveName}.`);
-                return;
-            }
-        }
-
-        // logger.info(`Archive ${archiveName} checksum: ${this.crc32}`);
-
-        const archiveData = new ByteBuffer(archiveDetails.data);
-        const format = archiveDetails.archiveFormat = archiveData.get('byte', 'unsigned');
-        const mainDataType = format >= ArchiveFormat.smart ? 'smart_int' : 'short';
-        archiveDetails.version = format >= ArchiveFormat.versioned ? archiveData.get('int') : 0;
-        const flags = archiveFlags(archiveData.get('byte', 'unsigned'));
-        const groupCount = archiveData.get(mainDataType, 'unsigned');
-        const groups: Group[] = new Array(groupCount);
-        let missingEncryptionKeys = 0;
-        let accumulator = 0;
-
-        logger.info(`${groupCount} groups were found within the ${archiveName} archive.`);
-
-        // Group index keys
-        for (let i = 0; i < groupCount; i++) {
-            const delta = archiveData.get(mainDataType, 'unsigned');
-            const groupKey = accumulator += delta;
-            const group = groups[i] = new Group(this.fileStore, groupKey, archive);
-            archive.setChild(groupKey, group);
-        }
-
-        // Load group database indexes, or create them if they don't yet exist
-        // @todo batch load all archive groups at once
-        for (const group of groups) {
-            await group.loadIndex();
-        }
-
-        // Group name hashes
-        if (flags.groupNames) {
-            for (const group of groups) {
-                group.index.nameHash = archiveData.get('int');
-                group.index.name = this.fileStore.findFileName(
-                    group.index.nameHash,
-                    group.index.name || String(group.index.nameHash) || String(group.index.key)
-                );
-            }
-        }
-
-        // Compressed file data CRC32 checksums
-        for (const group of groups) {
-            group.index.compressedChecksum = archiveData.get('int');
-        }
-
-        // Decompressed file data CRC32 checksums
-        if (flags.decompressedCrcs) {
-            for (const group of groups) {
-                group.index.checksum = archiveData.get('int');
-            }
-        }
-
-        // File data whirlpool digests
-        if (flags.whirlpoolDigests) {
-            for (const group of groups) {
-                group.index.whirlpoolDigest = Buffer.alloc(512);
-                archiveData.getBytes(group.index.whirlpoolDigest, 512);
-            }
-        }
-
-        // Group file sizes
-        if (flags.groupSizes) {
-            for (const group of groups) {
-                group.index.compressedFileSize = archiveData.get('int');
-                group.index.fileSize = archiveData.get('int');
-            }
-        }
-
-        // Group version numbers
-        for (const group of groups) {
-            group.index.version = archiveData.get('int');
-        }
-
-        // Group child file counts
-        for (let i = 0; i < groupCount; i++) {
-            groups[i].index.childCount = archiveData.get('short', 'unsigned');
-        }
-
-        // Grouped file index keys
-        for (const group of groups) {
-            const fileCount = group.index.childCount || 0;
-            accumulator = 0;
-
-            for (let i = 0; i < fileCount; i++) {
-                const delta = archiveData.get(mainDataType, 'unsigned');
-                const childFileIndex = accumulator += delta;
-                const flatFile = new FlatFile(this.fileStore, childFileIndex, group);
-                group.setChild(childFileIndex, flatFile);
-            }
-        }
-
-        // Load flat file database indexes, or create them if they don't yet exist
-        // @todo batch load all grouped files at once
-        for (const group of groups) {
-            for (const [ , flatFile ] of group.children) {
-                await flatFile.loadIndex();
-            }
-        }
-
-        // Grouped file names
-        if (flags.groupNames) {
-            for (const group of groups) {
-                for (const [ , flatFile ] of group.children) {
-                    flatFile.index.nameHash = archiveData.get('int');
-                    flatFile.index.name = this.fileStore.findFileName(
-                        flatFile.index.nameHash,
-                        flatFile.index.name || String(flatFile.index.nameHash) || String(flatFile.index.key)
-                    );
-                }
-            }
-        }
-    }
-
     async decodeGroup(group: Group): Promise<void> {
         const groupDetails = group.index;
         const { key: groupKey, name: groupName } = groupDetails;
-        const files = group.children;
+        const files = group.files;
 
         if (!groupDetails.data) {
             this.decompress(group);
@@ -515,6 +439,138 @@ export class JS5 {
         }
     }
 
+    async decodeArchive(archive: Archive): Promise<void> {
+        const archiveDetails = archive.index;
+
+        if (archiveDetails.key === 255) {
+            return;
+        }
+
+        const archiveName = archiveDetails.name;
+
+        logger.info(`Decoding archive ${archiveName}...`);
+
+        if (!archiveDetails.data) {
+            this.decompress(archive);
+
+            if (!archiveDetails.data) {
+                logger.error(`Unable to decode archive ${archiveName}.`);
+                return;
+            }
+        }
+
+        // logger.info(`Archive ${archiveName} checksum: ${this.crc32}`);
+
+        const archiveData = new ByteBuffer(archiveDetails.data);
+        const format = archiveDetails.archiveFormat = archiveData.get('byte', 'unsigned');
+        const mainDataType = format >= ArchiveFormat.smart ? 'smart_int' : 'short';
+        archiveDetails.version = format >= ArchiveFormat.versioned ? archiveData.get('int') : 0;
+        const flags = archiveFlags(archiveData.get('byte', 'unsigned'));
+        const groupCount = archiveData.get(mainDataType, 'unsigned');
+        const groups: Group[] = new Array(groupCount);
+        let missingEncryptionKeys = 0;
+        let accumulator = 0;
+
+        logger.info(`${groupCount} groups were found within the ${archiveName} archive.`);
+
+        // Group index keys
+        for (let i = 0; i < groupCount; i++) {
+            const delta = archiveData.get(mainDataType, 'unsigned');
+            const groupKey = accumulator += delta;
+            const group = groups[i] = new Group(this.fileStore, groupKey, archive);
+            archive.setGroup(groupKey, group);
+        }
+
+        // Load group database indexes, or create them if they don't yet exist
+        // @todo batch load all archive groups at once
+        for (const group of groups) {
+            await group.loadIndex();
+        }
+
+        // Group name hashes
+        if (flags.groupNames) {
+            for (const group of groups) {
+                group.index.nameHash = archiveData.get('int');
+                group.index.name = this.fileStore.findFileName(
+                    group.index.nameHash,
+                    group.index.name || String(group.index.nameHash) || String(group.index.key)
+                );
+            }
+        }
+
+        // Compressed file data CRC32 checksums
+        for (const group of groups) {
+            group.index.compressedChecksum = archiveData.get('int');
+        }
+
+        // Decompressed file data CRC32 checksums
+        if (flags.decompressedCrcs) {
+            for (const group of groups) {
+                group.index.checksum = archiveData.get('int');
+            }
+        }
+
+        // File data whirlpool digests
+        if (flags.whirlpoolDigests) {
+            for (const group of groups) {
+                group.index.whirlpoolDigest = Buffer.alloc(512);
+                archiveData.getBytes(group.index.whirlpoolDigest, 512);
+            }
+        }
+
+        // Group file sizes
+        if (flags.groupSizes) {
+            for (const group of groups) {
+                group.index.compressedFileSize = archiveData.get('int');
+                group.index.fileSize = archiveData.get('int');
+            }
+        }
+
+        // Group version numbers
+        for (const group of groups) {
+            group.index.version = archiveData.get('int');
+        }
+
+        // Group child file counts
+        for (let i = 0; i < groupCount; i++) {
+            groups[i].index.childCount = archiveData.get('short', 'unsigned');
+        }
+
+        // Grouped file index keys
+        for (const group of groups) {
+            const fileCount = group.index.childCount || 0;
+            accumulator = 0;
+
+            for (let i = 0; i < fileCount; i++) {
+                const delta = archiveData.get(mainDataType, 'unsigned');
+                const childFileIndex = accumulator += delta;
+                const flatFile = new FlatFile(this.fileStore, childFileIndex, group);
+                group.setFile(childFileIndex, flatFile);
+            }
+        }
+
+        // Load flat file database indexes, or create them if they don't yet exist
+        // @todo batch load all grouped files at once
+        for (const group of groups) {
+            for (const [ , flatFile ] of group.files) {
+                await flatFile.loadIndex();
+            }
+        }
+
+        // Grouped file names
+        if (flags.groupNames) {
+            for (const group of groups) {
+                for (const [ , flatFile ] of group.files) {
+                    flatFile.index.nameHash = archiveData.get('int');
+                    flatFile.index.name = this.fileStore.findFileName(
+                        flatFile.index.nameHash,
+                        flatFile.index.name || String(flatFile.index.nameHash) || String(flatFile.index.key)
+                    );
+                }
+            }
+        }
+    }
+
     pack(file: Group | Archive): Buffer | null {
         return null; // @todo stub
     }
@@ -575,15 +631,33 @@ export class JS5 {
         return fileDetails.compressedData;
     }
 
-    encodeArchive(archive: Archive): Buffer {
-        return null; // @todo stub
-    }
-
     encodeGroup(group: Group): Buffer {
         return null; // @todo stub
     }
 
+    encodeArchive(archive: Archive): Buffer {
+        return null; // @todo stub
+    }
+
+    encodeMainIndex(): ByteBuffer {
+        const archiveCount = this.fileStore.archives.size;
+        const fileSize = 4 * archiveCount;
+
+        const data = new ByteBuffer(fileSize + 31);
+
+        data.put(0);
+        data.put(fileSize, 'int');
+
+        for (let archiveIndex = 0; archiveIndex < archiveCount; archiveIndex++) {
+            data.put(this.fileStore.archives.get(archiveIndex).index.checksum, 'int');
+        }
+
+        this.mainIndex = data;
+        return this.mainIndex;
+    }
+
     getEncryptionKeys(fileName: string): any[] {
+        // @todo pull key files from openrs2.org
         return []; // @todo stub
     }
 

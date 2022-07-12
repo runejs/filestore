@@ -7,7 +7,7 @@ import { FlatFile } from './flat-file';
 export class Group extends FileBase {
 
     readonly archive: Archive;
-    readonly children: Map<string, FlatFile>;
+    readonly files: Map<string, FlatFile>;
 
     constructor(
         fileStore: FileStore,
@@ -16,7 +16,7 @@ export class Group extends FileBase {
     ) {
         super(fileStore, key, archive.index.key, 'GROUP');
         this.archive = archive;
-        this.children = new Map<string, FlatFile>();
+        this.files = new Map<string, FlatFile>();
     }
 
     js5Unpack(): Buffer | null {
@@ -43,16 +43,16 @@ export class Group extends FileBase {
         return this.fileStore.js5.encodeGroup(this);
     }
 
-    getChild(fileIndex: number): FlatFile {
-        return this.children.get(String(fileIndex)) || null;
+    getFile(fileIndex: number): FlatFile | null {
+        return this.files.get(String(fileIndex)) || null;
     }
 
-    setChild(fileIndex: number, file: FlatFile): void {
-        this.children.set(String(fileIndex), file);
+    setFile(fileIndex: number, file: FlatFile): void {
+        this.files.set(String(fileIndex), file);
     }
 
-    findChild(fileName: string): FlatFile {
-        return Array.from(this.children.values()).find(
+    findFile(fileName: string): FlatFile | null {
+        return Array.from(this.files.values()).find(
             file => file?.index?.name === fileName
         ) || null;
     }

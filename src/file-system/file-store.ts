@@ -5,6 +5,7 @@ import { logger } from '@runejs/common';
 import { IndexDatabase } from './db/index-database';
 import { ArchiveConfig } from '../config';
 import { JS5 } from './js5';
+import { Archive } from './archive';
 
 
 export class FileStore {
@@ -13,6 +14,7 @@ export class FileStore {
     readonly fileStorePath: string;
     readonly fileNameHashes: Map<number, string>;
     readonly js5: JS5;
+    readonly archives: Map<number, Archive>;
 
     private _archiveConfig: { [key: string]: ArchiveConfig };
     private _database: IndexDatabase;
@@ -21,9 +23,31 @@ export class FileStore {
         this.gameBuild = gameBuild;
         this.fileStorePath = storePath;
         this.fileNameHashes = new Map<number, string>();
+        this.archives = new Map<number, Archive>();
         this.loadArchiveConfig();
         this.loadFileNames();
         this.js5 = new JS5(this);
+    }
+
+    async load(): Promise<void> {
+        const archiveNames = Object.keys(this._archiveConfig);
+
+        for (const archiveName of archiveNames) {
+            const archiveConfig = this._archiveConfig[archiveName];
+            if (!this.archives.has(archiveConfig.index)) {
+                const archive = new Archive(this, archiveConfig.index);
+                this.archives.set(archiveConfig.index, archive);
+                await archive.loadIndex();
+            }
+        }
+    }
+
+    js5Load(): void {
+        this.js5.loadJS5Store();
+    }
+
+    js5EncodeMainIndex(): Buffer {
+        return this.js5.encodeMainIndex().toNodeBuffer();
     }
 
     hashFileName(fileName: string): number {
@@ -86,6 +110,7 @@ export class FileStore {
 
     loadArchiveConfig(): void {
         const configPath = join(this.fileStorePath, 'config', 'archives.json5');
+
         if (!existsSync(configPath)) {
             logger.error(`Error loading file store: ${configPath} was not found.`);
             return;
@@ -105,6 +130,20 @@ export class FileStore {
         this._database = new IndexDatabase(this.gameBuild, join(this.fileStorePath, 'indexes'));
         await this._database.openConnection();
         return this._database;
+    }
+
+    getArchive(archiveKey: number): Archive | null {
+        return this.archives.get(archiveKey) || null;
+    }
+
+    setArchive(archiveKey: number, archive: Archive): void {
+        this.archives.set(archiveKey, archive);
+    }
+
+    findArchive(archiveName: string): Archive | null {
+        return Array.from(this.archives.values()).find(
+            a => a?.index?.name === archiveName
+        ) || null;
     }
 
     get archiveConfig(): { [key: string]: ArchiveConfig } {

@@ -1,6 +1,6 @@
 {
-    "name": "@runejs/store",
-    "version": "1.0.0-beta.1",
+    "name": "@runejs/filestore",
+    "version": "1.0.0-next.0",
     "description": "Tools for managing and indexing the asset file store used with RuneJS.",
     "main": "./index.js",
     "types": "./index.d.ts",
@@ -15,7 +15,7 @@
     },
     "scripts": {
         "build": "tsc",
-        "start": "ts-node-dev src/dev.ts",
+        "start": "ts-node-dev src/scripts/dev.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
         "unpack": "ts-node-dev --max-old-space-size=2048 src/scripts/unpacker.ts",
@@ -30,7 +30,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+ssh://git@github.com/runejs/store.git"
+        "url": "git+ssh://git@github.com/runejs/filestore.git"
     },
     "keywords": [
         "runejs",
@@ -44,9 +44,9 @@
     "author": "Kikorono",
     "license": "GPL-3.0",
     "bugs": {
-        "url": "https://github.com/runejs/store/issues"
+        "url": "https://github.com/runejs/filestore/issues"
     },
-    "homepage": "https://github.com/runejs/store#readme",
+    "homepage": "https://github.com/runejs/filestore#readme",
     "peerDependencies": {
         "@runejs/common": "2.0.2-beta.2",
         "graceful-fs": ">=4.2.0",

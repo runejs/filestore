@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
-import { FileType } from '../file-type';
+import { FileType } from '../config/file-type';
 import { CompressionMethod } from '@runejs/common/compress';
-import { FileError } from '../file-error';
+import { FileError } from '../config/file-error';
 
 
 @Entity('file')

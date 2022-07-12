@@ -2,7 +2,7 @@ import { Connection, createConnection, LoggerOptions, Repository } from 'typeorm
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
 import { IndexEntity } from './index.entity';
-import { FileType } from '../file-type';
+import { FileType } from '../config/file-type';
 
 
 export class IndexDatabase {

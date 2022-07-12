@@ -2,7 +2,7 @@ import { join } from 'path';
 import JSON5 from 'json5';
 import { existsSync, readFileSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
-import { IndexDatabase } from './db/index-database';
+import { IndexDatabase } from '../db/index-database';
 import { ArchiveConfig } from '../config';
 import { JS5 } from './js5';
 import { Archive } from './archive';

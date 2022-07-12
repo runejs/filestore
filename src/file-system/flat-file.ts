@@ -1,6 +1,6 @@
 import { FileBase } from './file-base';
 import { FileStore } from './file-store';
-import { FileType } from './file-type';
+import { FileType } from '../config/file-type';
 import { Archive } from './archive';
 import { Group } from './group';
 

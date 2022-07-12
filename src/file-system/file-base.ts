@@ -1,4 +1,4 @@
-import { IndexEntity } from '../db/index.entity';
+import { IndexEntity } from '../db/index-entity';
 import { FileStore } from './file-store';
 import { FileType } from '../config/file-type';
 

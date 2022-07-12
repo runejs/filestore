@@ -127,7 +127,7 @@ export class FileStore {
     }
 
     async openDatabase(): Promise<IndexDatabase> {
-        this._database = new IndexDatabase(this.gameBuild, join(this.fileStorePath, 'indexes'));
+        this._database = new IndexDatabase(this.gameBuild, join(this.fileStorePath, 'index'));
         await this._database.openConnection();
         return this._database;
     }

@@ -170,6 +170,7 @@ export class IndexService {
         } else {
             delete archiveIndex.groups;
 
+            archiveIndex.data = archive.data.toNodeBuffer();
             const result = await this.archiveRepo.insert(archiveIndex);
             affected = result?.identifiers?.length || 0;
         }

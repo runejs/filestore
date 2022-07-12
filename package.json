@@ -77,13 +77,5 @@
         "source-map-support": "^0.5.21",
         "ts-node-dev": "^1.1.8",
         "typescript": "^4.5.5"
-    },
-    "eslintConfig": {
-        "extends": [
-            "@runejs/eslint-config"
-        ],
-        "parserOptions": {
-            "project": "./tsconfig.json"
-        }
     }
 }

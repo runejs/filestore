@@ -7,7 +7,7 @@ export interface ArchiveConfig {
     name: string;
     versioned?: boolean;
     compression?: CompressionMethod;
-    encryption?: EncryptionMethod | [ EncryptionMethod, string ];
+    encryption?: [ EncryptionMethod, string ];
     contentType?: string;
     filesNamed?: boolean;
     flatten?: boolean;

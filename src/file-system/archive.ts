@@ -6,7 +6,7 @@ import { CompressionMethod } from '@runejs/common/compress';
 
 export class Archive extends FileBase {
 
-    readonly groups: Map<string, Group>;
+    readonly groups: Map<number, Group>;
 
     constructor(
         fileStore: FileStore,
@@ -14,10 +14,33 @@ export class Archive extends FileBase {
         name: string,
         indexFileCompressionMethod: CompressionMethod = 'none',
     ) {
-        super(fileStore, key, 255, 'ARCHIVE');
+        super(fileStore, key, 255, -1, 'ARCHIVE');
         this.index.name = name;
         this.index.compressionMethod = indexFileCompressionMethod;
-        this.groups = new Map<string, Group>();
+        this.groups = new Map<number, Group>();
+    }
+
+    async upsertGroupIndexes(): Promise<void> {
+        const groupIndexes = Array.from(this.groups.values()).map(group => group.index);
+        await this.fileStore.database.upsertIndexes(groupIndexes);
+    }
+
+    async loadGroupIndexes(): Promise<void> {
+        const groupIndexes = await this.fileStore.database.getIndexes('GROUP', this.index.key);
+
+        if (!groupIndexes?.length) {
+            return;
+        }
+
+        for (const groupIndex of groupIndexes) {
+            const groupKey = groupIndex.key;
+
+            if (!this.groups.has(groupKey)) {
+                const group = new Group(this.fileStore, groupKey, this);
+                group.index = groupIndex;
+                this.groups.set(groupKey, group);
+            }
+        }
     }
 
     js5Unpack(): Buffer | null {
@@ -45,11 +68,11 @@ export class Archive extends FileBase {
     }
 
     getGroup(groupIndex: number): Group | null {
-        return this.groups.get(String(groupIndex)) || null;
+        return this.groups.get(groupIndex) || null;
     }
 
     setGroup(groupIndex: number, group: Group): void {
-        this.groups.set(String(groupIndex), group);
+        this.groups.set(groupIndex, group);
     }
 
     findGroup(groupName: string): Group | null {

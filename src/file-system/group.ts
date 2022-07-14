@@ -7,16 +7,41 @@ import { FlatFile } from './flat-file';
 export class Group extends FileBase {
 
     readonly archive: Archive;
-    readonly files: Map<string, FlatFile>;
+    readonly files: Map<number, FlatFile>;
 
     constructor(
         fileStore: FileStore,
         key: number,
         archive: Archive,
     ) {
-        super(fileStore, key, archive.index.key, 'GROUP');
+        super(fileStore, key, archive.index.key, -1, 'GROUP');
         this.archive = archive;
-        this.files = new Map<string, FlatFile>();
+        this.files = new Map<number, FlatFile>();
+    }
+
+    async upsertFileIndexes(): Promise<void> {
+        const fileIndexes = Array.from(this.files.values()).map(file => file.index);
+        await this.fileStore.database.upsertIndexes(fileIndexes);
+    }
+
+    async loadFileIndexes(): Promise<void> {
+        const fileIndexes = await this.fileStore.database.getIndexes(
+            'FILE', this.archive.index.key, this.index.key
+        );
+
+        if (!fileIndexes?.length) {
+            return;
+        }
+
+        for (const fileIndex of fileIndexes) {
+            const fileKey = fileIndex.key;
+
+            if (!this.files.has(fileKey)) {
+                const file = new FlatFile(this.fileStore, fileKey, this);
+                file.index = fileIndex;
+                this.files.set(fileKey, file);
+            }
+        }
     }
 
     js5Unpack(): Buffer | null {
@@ -44,11 +69,11 @@ export class Group extends FileBase {
     }
 
     getFile(fileIndex: number): FlatFile | null {
-        return this.files.get(String(fileIndex)) || null;
+        return this.files.get(fileIndex) || null;
     }
 
     setFile(fileIndex: number, file: FlatFile): void {
-        this.files.set(String(fileIndex), file);
+        this.files.set(fileIndex, file);
     }
 
     findFile(fileName: string): FlatFile | null {

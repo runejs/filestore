@@ -12,7 +12,8 @@ export class FileBase {
     constructor(
         fileStore: FileStore,
         key: number,
-        parentKey: number,
+        archiveKey: number,
+        groupKey: number,
         fileType: FileType,
     ) {
         this.fileStore = fileStore;
@@ -20,7 +21,8 @@ export class FileBase {
         this.index.gameBuild = fileStore.gameBuild;
         this.index.fileType = fileType;
         this.index.key = key;
-        this.index.parentKey = parentKey;
+        this.index.groupKey = groupKey;
+        this.index.archiveKey = archiveKey;
     }
 
     async saveIndex(): Promise<IndexEntity> {
@@ -30,7 +32,7 @@ export class FileBase {
 
     async loadIndex(): Promise<IndexEntity> {
         const indexEntity = await this.fileStore.database.getIndex(
-            this.index.fileType, this.index.key, this.index.parentKey
+            this.index.fileType, this.index.key, this.index.archiveKey
         );
 
         if (indexEntity) {

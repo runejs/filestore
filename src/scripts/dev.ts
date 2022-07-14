@@ -3,6 +3,7 @@ import { logger } from '@runejs/common';
 
 
 const dev = async () => {
+    const start = Date.now();
     const fileStore = new FileStore(435);
     await fileStore.load();
     fileStore.js5Load();
@@ -48,26 +49,19 @@ const dev = async () => {
     logger.info(`Saving group indexes...`);
 
     for (const [ , archive ] of fileStore.archives) {
+        await archive.upsertGroupIndexes();
+    }
+
+    logger.info(`Saving flat file indexes...`);
+
+    for (const [ , archive ] of fileStore.archives) {
         for (const [ , group ] of archive.groups) {
-            await group.saveIndex();
+            await group.upsertFileIndexes();
         }
     }
 
-    // logger.info(`Saving flat file indexes...`);
-    //
-    // for (const [ , archive ] of fileStore.archives) {
-    //     for (const [ , group ] of archive.groups) {
-    //         if (group.files.size <= 1) {
-    //             continue;
-    //         }
-    //
-    //         for (const [ , flatFile ] of group.files) {
-    //             await flatFile.saveIndex();
-    //         }
-    //     }
-    // }
-
-    logger.info(`Complete!`);
+    const end = Date.now();
+    logger.info(`Operations completed in ${(end - start) / 1000} seconds.`);
 };
 
 dev().catch(console.error);

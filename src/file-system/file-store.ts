@@ -60,8 +60,13 @@ export class FileStore {
                     archiveConfig.compression || 'none'
                 );
                 this.archives.set(archiveConfig.key, archive);
-                await archive.loadIndex();
             }
+        }
+    }
+
+    async loadArchiveIndexes(): Promise<void> {
+        for (const [ , archive ] of this.archives) {
+            await archive.loadIndex();
         }
     }
 

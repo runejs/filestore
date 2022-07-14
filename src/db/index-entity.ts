@@ -4,9 +4,9 @@ import { CompressionMethod } from '@runejs/common/compress';
 import { FileError } from '../config/file-error';
 
 
-@Entity('file')
+@Entity('file_index')
 @Index('index_identifier', [
-    'fileType', 'gameBuild', 'key', 'parentKey'
+    'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey'
 ], { unique: true })
 export class IndexEntity {
 
@@ -19,8 +19,11 @@ export class IndexEntity {
     @PrimaryColumn('integer', { nullable: false, unique: false })
     key: number;
 
-    @PrimaryColumn('integer', { name: 'parent_key', nullable: false, unique: false, default: -1 })
-    parentKey: number = -1;
+    @PrimaryColumn('integer', { name: 'archive_key', nullable: false, unique: false, default: -1 })
+    archiveKey: number = -1;
+
+    @PrimaryColumn('integer', { name: 'group_key', nullable: false, unique: false, default: -1 })
+    groupKey: number = -1;
 
     @Column('text', { nullable: true, default: null })
     name: string = null;

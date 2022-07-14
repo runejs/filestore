@@ -383,9 +383,9 @@ export class JS5 {
             return;
         }
 
-        const fileSizeMap = new Map<string, number>();
-        const fileStripeMap = new Map<string, number[]>();
-        const fileDataMap = new Map<string, ByteBuffer>();
+        const fileSizeMap = new Map<number, number>();
+        const fileStripeMap = new Map<number, number[]>();
+        const fileDataMap = new Map<number, ByteBuffer>();
 
         for (const [ flatFileKey, ] of files) {
             fileSizeMap.set(flatFileKey, 0);

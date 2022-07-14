@@ -40,14 +40,39 @@ export class IndexDatabase {
         return this._connection;
     }
 
-    // @todo bulk save - 07/13/22 - Kiko
+    async upsertIndexes(indexEntities: IndexEntity[]): Promise<void> {
+        const chunkSize = 100;
+        for (let i = 0; i < indexEntities.length; i += chunkSize) {
+            const chunk = indexEntities.slice(i, i + chunkSize);
+            await this.repository.upsert(chunk, {
+                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey' ],
+                skipUpdateIfNoValuesChanged: true,
+            });
+        }
+    }
+
+    async saveIndexes(indexEntities: IndexEntity[]): Promise<void> {
+        await this.repository.save(indexEntities, {
+            chunk: 500,
+            transaction: false,
+            reload: false,
+            listeners: false,
+        });
+    }
+
     async saveIndex(indexEntity: IndexEntity): Promise<IndexEntity> {
         return await this.repository.save(indexEntity);
     }
 
-    async getIndex(fileType: FileType, key: number, parentKey: number): Promise<IndexEntity> {
+    async getIndexes(fileType: FileType, archiveKey: number, groupKey: number = -1): Promise<IndexEntity[]> {
+        return await this.repository.find({
+            where: { fileType, archiveKey, groupKey, gameBuild: this.gameBuild }
+        });
+    }
+
+    async getIndex(fileType: FileType, key: number, archiveKey: number, groupKey: number = -1): Promise<IndexEntity> {
         return await this.repository.findOne({
-            where: { fileType, key, parentKey }
+            where: { fileType, key, archiveKey, groupKey, gameBuild: this.gameBuild }
         }) || null;
     }
 

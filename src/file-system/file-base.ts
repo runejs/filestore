@@ -17,9 +17,15 @@ export class FileBase {
     ) {
         this.fileStore = fileStore;
         this.index = new IndexEntity();
+        this.index.gameBuild = fileStore.gameBuild;
         this.index.fileType = fileType;
         this.index.key = key;
         this.index.parentKey = parentKey;
+    }
+
+    async saveIndex(): Promise<IndexEntity> {
+        this.index = await this.fileStore.database.saveIndex(this.index);
+        return this.index;
     }
 
     async loadIndex(): Promise<IndexEntity> {

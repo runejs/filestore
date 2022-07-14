@@ -3,7 +3,7 @@ import { EncryptionMethod } from '@runejs/common/encrypt';
 
 
 export interface ArchiveConfig {
-    index: number;
+    key: number;
     name: string;
     versioned?: boolean;
     compression?: CompressionMethod;

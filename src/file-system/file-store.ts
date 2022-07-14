@@ -11,6 +11,7 @@ import { Archive } from './archive';
 export class FileStore {
 
     readonly gameBuild: string;
+    readonly vanillaBuild: boolean;
     readonly fileStorePath: string;
     readonly fileNameHashes: Map<number, string>;
     readonly js5: JS5;
@@ -19,8 +20,10 @@ export class FileStore {
     private _archiveConfig: { [key: string]: ArchiveConfig };
     private _database: IndexDatabase;
 
-    constructor(gameBuild: string, storePath: string = './') {
-        this.gameBuild = gameBuild;
+    constructor(gameBuild: string | number, storePath: string = './') {
+        this.gameBuild = String(gameBuild);
+        // @todo make `vanillaBuild` obsolete via auto-detection - 07/13/22 - Kiko
+        this.vanillaBuild = typeof gameBuild === 'number';
         this.fileStorePath = storePath;
         this.fileNameHashes = new Map<number, string>();
         this.archives = new Map<number, Archive>();
@@ -30,13 +33,33 @@ export class FileStore {
     }
 
     async load(): Promise<void> {
+        await this.openDatabase();
+
         const archiveNames = Object.keys(this._archiveConfig);
 
         for (const archiveName of archiveNames) {
             const archiveConfig = this._archiveConfig[archiveName];
-            if (!this.archives.has(archiveConfig.index)) {
-                const archive = new Archive(this, archiveConfig.index);
-                this.archives.set(archiveConfig.index, archive);
+
+            if (archiveConfig.key === 255) {
+                continue;
+            }
+
+            if (this.vanillaBuild && archiveConfig.build) {
+                const buildNumber = Number(this.gameBuild);
+
+                if (buildNumber < archiveConfig.build) {
+                    continue;
+                }
+            }
+
+            if (!this.archives.has(archiveConfig.key)) {
+                const archive = new Archive(
+                    this,
+                    archiveConfig.key,
+                    archiveName,
+                    archiveConfig.compression || 'none'
+                );
+                this.archives.set(archiveConfig.key, archive);
                 await archive.loadIndex();
             }
         }
@@ -127,7 +150,11 @@ export class FileStore {
     }
 
     async openDatabase(): Promise<IndexDatabase> {
-        this._database = new IndexDatabase(this.gameBuild, join(this.fileStorePath, 'index'));
+        this._database = new IndexDatabase(
+            this.gameBuild,
+            join(this.fileStorePath, 'index'),
+            [ 'error', 'warn' ],
+        );
         await this._database.openConnection();
         return this._database;
     }

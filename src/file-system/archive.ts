@@ -1,6 +1,7 @@
 import { FileBase } from './file-base';
 import { FileStore } from './file-store';
 import { Group } from './group';
+import { CompressionMethod } from '@runejs/common/compress';
 
 
 export class Archive extends FileBase {
@@ -10,8 +11,12 @@ export class Archive extends FileBase {
     constructor(
         fileStore: FileStore,
         key: number,
+        name: string,
+        indexFileCompressionMethod: CompressionMethod = 'none',
     ) {
-        super(fileStore, key, -1, 'ARCHIVE');
+        super(fileStore, key, 255, 'ARCHIVE');
+        this.index.name = name;
+        this.index.compressionMethod = indexFileCompressionMethod;
         this.groups = new Map<string, Group>();
     }
 

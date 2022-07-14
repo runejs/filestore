@@ -40,6 +40,11 @@ export class IndexDatabase {
         return this._connection;
     }
 
+    // @todo bulk save - 07/13/22 - Kiko
+    async saveIndex(indexEntity: IndexEntity): Promise<IndexEntity> {
+        return await this.repository.save(indexEntity);
+    }
+
     async getIndex(fileType: FileType, key: number, parentKey: number): Promise<IndexEntity> {
         return await this.repository.findOne({
             where: { fileType, key, parentKey }

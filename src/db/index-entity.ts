@@ -67,8 +67,8 @@ export class IndexEntity {
     @Column('boolean', { nullable: true, default: false })
     encrypted: boolean = false;
 
-    @Column('integer', { name: 'stripe_count', nullable: false, default: 1 })
-    stripeCount: number = 1;
+    @Column('integer', { name: 'stripe_count', nullable: true, default: null })
+    stripeCount: number = null;
 
     @Column('text', { nullable: true, default: null })
     stripes: string | null = null;

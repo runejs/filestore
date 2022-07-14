@@ -1,19 +1,21 @@
+import { join } from 'path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
+import { archiveFlags } from '../config/archive-flags';
 import { Group } from './group';
 import { Archive } from './archive';
 import { FileStore } from './file-store';
 import { ArchiveFormat } from '../config';
-import { archiveFlags } from '../config/archive-flags';
 import { FlatFile } from './flat-file';
-import { join } from 'path';
-import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
 
 
 export class JS5 {
 
     readonly fileStore: FileStore;
+
+    encryptionKeys: Map<string, XteaKeys[]>;
 
     private mainIndex: ByteBuffer;
     private archiveIndexes: Map<string, ByteBuffer>;
@@ -21,6 +23,7 @@ export class JS5 {
 
     constructor(fileStore: FileStore) {
         this.fileStore = fileStore;
+        this.loadEncryptionKeys();
     }
 
     loadJS5Store(): void {
@@ -112,10 +115,10 @@ export class JS5 {
         }
 
         fileDetails.fileSize = fileIndexData.get('int24', 'unsigned');
-        fileDetails.stripeCount = fileIndexData.get('int24', 'unsigned');
+        const stripeCount = fileIndexData.get('int24', 'unsigned');
 
         if (fileDetails.fileSize <= 0) {
-            logger.warn(`Extracted JS5 file ${fileKey} has a recorded size of 0, no file data will be extracted.`);
+            logger.warn(`JS5 file ${fileKey} is empty or has been removed.`);
             return null;
         }
 
@@ -125,13 +128,13 @@ export class JS5 {
 
         let stripe = 0;
         let remaining = fileDetails.fileSize;
-        pointer = fileDetails.stripeCount * stripeLength;
+        pointer = stripeCount * stripeLength;
 
         do {
             const temp = new ByteBuffer(stripeLength);
             dataChannel.copy(temp, 0, pointer, pointer + stripeLength);
 
-            if(temp.readable !== stripeLength) {
+            if (temp.readable !== stripeLength) {
                 logger.error(`Error reading stripe for packed file ${fileKey}, the end of the data stream was reached.`);
                 return null;
             }
@@ -143,22 +146,22 @@ export class JS5 {
             const stripeData = new ByteBuffer(stripeDataLength);
             temp.copy(stripeData, 0, temp.readerIndex, temp.readerIndex + stripeDataLength);
 
-            if(remaining > stripeDataLength) {
+            if (remaining > stripeDataLength) {
                 stripeData.copy(data, data.writerIndex, 0, stripeDataLength);
                 data.writerIndex = (data.writerIndex + stripeDataLength);
                 remaining -= stripeDataLength;
 
-                if(stripeArchiveIndex !== archiveKey) {
+                if (stripeArchiveIndex !== archiveKey) {
                     logger.error(`Archive index mismatch, expected archive ${archiveKey} but found archive ${stripeFileIndex}`);
                     return null;
                 }
 
-                if(stripeFileIndex !== fileKey) {
+                if (stripeFileIndex !== fileKey) {
                     logger.error(`File index mismatch, expected ${fileKey} but found ${stripeFileIndex}.`);
                     return null;
                 }
 
-                if(currentStripe !== stripe++) {
+                if (currentStripe !== stripe++) {
                     logger.error(`Error extracting JS5 file ${fileKey}, file data is corrupted.`);
                     return null;
                 }
@@ -212,26 +215,22 @@ export class JS5 {
             return null;
         }
 
-        if (!fileDetails.encrypted) {
+        // @todo move to JS5.decodeArchive
+        const archiveName = file instanceof Archive ? 'main' : file.archive.index.name;
+        const archiveConfig = this.fileStore.archiveConfig[archiveName];
+
+        if (archiveConfig.encryption) {
+            const [ encryption, pattern ] = archiveConfig.encryption;
+            const patternRegex = new RegExp(pattern);
+
+            // Only XTEA encryption is supported at this time
+            if(encryption !== 'xtea' || !patternRegex.test(fileName)) {
+                // FileBase name does not match the pattern, data should be unencrypted
+                return fileDetails.compressedData;
+            }
+        } else {
             return fileDetails.compressedData;
         }
-
-        // @todo move to JS5.decodeArchive
-        // const archiveName = file instanceof Archive ? 'main' : file.archive.index.name;
-        // const archiveConfig = this.fileStore.archiveConfig[archiveName];
-        //
-        // if (archiveConfig.encryption) {
-        //     const [ encryption, pattern ] = archiveConfig.encryption;
-        //     const patternRegex = new RegExp(pattern);
-        //
-        //     // Only XTEA encryption is supported at this time
-        //     if(encryption !== 'xtea' || !patternRegex.test(fileName)) {
-        //         // FileBase name does not match the pattern, data should be unencrypted
-        //         return fileDetails.compressedData;
-        //     }
-        // } else {
-        //     return fileDetails.compressedData;
-        // }
 
         const gameBuild = this.fileStore.gameBuild;
         let keySets: XteaKeys[] = [];
@@ -265,6 +264,7 @@ export class JS5 {
                 dataCopy.readerIndex = readerIndex;
                 fileDetails.compressedData = dataCopy.toNodeBuffer();
                 fileDetails.encrypted = false;
+                return fileDetails.compressedData;
             } else {
                 logger.warn(`Invalid XTEA decryption keys found for file ` +
                     `${fileName || fileDetails.key} using game build ${ gameBuild }.`);
@@ -276,7 +276,7 @@ export class JS5 {
             fileDetails.fileError = 'MISSING_ENCRYPTION_KEYS';
         }
 
-        return fileDetails.compressedData;
+        return null;
     }
 
     decompress(file: Group | Archive): Buffer | null {
@@ -286,7 +286,8 @@ export class JS5 {
             return null;
         }
 
-        if (fileDetails.encrypted && !this.decrypt(file)) {
+        if (!this.decrypt(file)) {
+            fileDetails.encrypted = true;
             return null;
         }
 
@@ -330,19 +331,19 @@ export class JS5 {
                         data = null;
                     }
                 } catch (error) {
-                    logger.error(`Error decompressing file ${fileDetails.name || fileDetails.key}:`,
-                        error?.message ?? error);
+                    logger.error(`Error decompressing file ${fileDetails.name || fileDetails.key}: ` +
+                        `${error?.message ?? error}`);
                     data = null;
                 }
             }
         }
 
-        // Read the file footer, if it has one
-        if(compressedData.readable >= 2) {
-            fileDetails.version = compressedData.get('short', 'unsigned');
-        }
-
         if (data?.length) {
+            // Read the file footer, if it has one
+            if(compressedData.readable >= 2) {
+                fileDetails.version = compressedData.get('short', 'unsigned');
+            }
+
             fileDetails.data = data?.toNodeBuffer();
         }
 
@@ -484,7 +485,8 @@ export class JS5 {
         // Load group database indexes, or create them if they don't yet exist
         // @todo batch load all archive groups at once
         for (const group of groups) {
-            await group.loadIndex();
+            // @todo removed for faster unpacking testing - 07/13/22 - Kiko
+            // await group.loadIndex();
         }
 
         // Group name hashes
@@ -553,7 +555,8 @@ export class JS5 {
         // @todo batch load all grouped files at once
         for (const group of groups) {
             for (const [ , flatFile ] of group.files) {
-                await flatFile.loadIndex();
+                // @todo removed for faster unpacking testing - 07/13/22 - Kiko
+                // await flatFile.loadIndex();
             }
         }
 
@@ -569,6 +572,10 @@ export class JS5 {
                 }
             }
         }
+    }
+
+    decodeMainIndex(): Buffer | null {
+        return null; // @todo stub
     }
 
     pack(file: Group | Archive): Buffer | null {
@@ -656,9 +663,31 @@ export class JS5 {
         return this.mainIndex;
     }
 
-    getEncryptionKeys(fileName: string): any[] {
-        // @todo pull key files from openrs2.org
-        return []; // @todo stub
+    getEncryptionKeys(fileName: string): XteaKeys | XteaKeys[] | null {
+        if(!this.encryptionKeys.size) {
+            this.loadEncryptionKeys();
+        }
+
+        const keySets = this.encryptionKeys.get(fileName);
+        if(!keySets) {
+            return null;
+        }
+
+        if(this.fileStore.gameBuild !== undefined) {
+            return keySets.find(keySet => keySet.gameBuild === this.fileStore.gameBuild) ?? null;
+        }
+
+        return keySets;
+    }
+
+    loadEncryptionKeys(): void {
+        const configPath = join(this.fileStore.fileStorePath, 'config', 'xtea');
+        this.encryptionKeys = Xtea.loadKeys(configPath);
+
+        if(!this.encryptionKeys.size) {
+            throw new Error(`Error reading encryption key lookup table. ` +
+                `Please ensure that the ${configPath} file exists and is valid.`);
+        }
     }
 
 }

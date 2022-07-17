@@ -2,6 +2,7 @@ import { FileBase } from './file-base';
 import { FileStore } from './file-store';
 import { Archive } from './archive';
 import { FlatFile } from './flat-file';
+import { logger } from '@runejs/common';
 
 
 export class Group extends FileBase {
@@ -17,6 +18,25 @@ export class Group extends FileBase {
         super(fileStore, key, archive.index.key, -1, 'GROUP');
         this.archive = archive;
         this.files = new Map<number, FlatFile>();
+    }
+
+    override validate(trackChanges: boolean = true): void {
+        super.validate(trackChanges);
+
+        let groupModified: boolean = false;
+
+        const { childCount } = this.index;
+        const newChildCount = this.files.size;
+
+        if (childCount !== newChildCount) {
+            this.index.childCount = newChildCount;
+            groupModified = true;
+        }
+
+        if (groupModified && trackChanges) {
+            logger.info(`Group ${this.index.name || this.index.key} child count has changed.`);
+            this.index.version++;
+        }
     }
 
     async upsertFileIndexes(): Promise<void> {

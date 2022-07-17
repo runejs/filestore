@@ -2,6 +2,7 @@ import { FileBase } from './file-base';
 import { FileStore } from './file-store';
 import { Group } from './group';
 import { CompressionMethod } from '@runejs/common/compress';
+import { logger } from '@runejs/common';
 
 
 export class Archive extends FileBase {
@@ -18,6 +19,25 @@ export class Archive extends FileBase {
         this.index.name = name;
         this.index.compressionMethod = indexFileCompressionMethod;
         this.groups = new Map<number, Group>();
+    }
+
+    override validate(trackChanges: boolean = true): void {
+        super.validate(trackChanges);
+
+        let archiveModified: boolean = false;
+
+        const { childCount } = this.index;
+        const newChildCount = this.groups.size;
+
+        if (childCount !== newChildCount) {
+            this.index.childCount = newChildCount;
+            archiveModified = true;
+        }
+
+        if (archiveModified && trackChanges) {
+            logger.info(`Archive ${this.index.name || this.index.key} child count has changed.`);
+            this.index.version++;
+        }
     }
 
     async upsertGroupIndexes(): Promise<void> {

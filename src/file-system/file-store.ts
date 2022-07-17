@@ -6,6 +6,7 @@ import { IndexDatabase } from '../db/index-database';
 import { ArchiveConfig } from '../config';
 import { JS5 } from './js5';
 import { Archive } from './archive';
+import { Crc32 } from '@runejs/common/crc32';
 
 
 export class FileStore {
@@ -30,6 +31,7 @@ export class FileStore {
         this.loadArchiveConfig();
         this.loadFileNames();
         this.js5 = new JS5(this);
+        Crc32.init();
     }
 
     async load(): Promise<void> {

@@ -2,6 +2,7 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColum
 import { FileType } from '../config/file-type';
 import { CompressionMethod } from '@runejs/common/compress';
 import { FileError } from '../config/file-error';
+import { Buffer } from 'buffer';
 
 
 @Entity('file_index')

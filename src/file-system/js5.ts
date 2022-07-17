@@ -359,7 +359,9 @@ export class JS5 {
             this.decompress(group);
 
             if (!groupDetails.data) {
-                logger.error(`Unable to decode group ${groupName || groupKey}.`);
+                if (!groupDetails.fileError) {
+                    logger.warn(`Unable to decode group ${ groupName || groupKey }.`);
+                }
                 return;
             }
         }
@@ -437,7 +439,10 @@ export class JS5 {
 
         for (const [ fileIndex, file ] of files) {
             file.index.data = fileDataMap.get(fileIndex).toNodeBuffer();
+            file.validate(false);
         }
+
+        group.validate(false);
     }
 
     async decodeArchive(archive: Archive): Promise<void> {
@@ -480,13 +485,6 @@ export class JS5 {
             const groupKey = accumulator += delta;
             const group = groups[i] = new Group(this.fileStore, groupKey, archive);
             archive.setGroup(groupKey, group);
-        }
-
-        // Load group database indexes, or create them if they don't yet exist
-        // @todo batch load all archive groups at once
-        for (const group of groups) {
-            // @todo removed for faster unpacking testing - 07/13/22 - Kiko
-            // await group.loadIndex();
         }
 
         // Group name hashes
@@ -551,15 +549,6 @@ export class JS5 {
             }
         }
 
-        // Load flat file database indexes, or create them if they don't yet exist
-        // @todo batch load all grouped files at once
-        for (const group of groups) {
-            for (const [ , flatFile ] of group.files) {
-                // @todo removed for faster unpacking testing - 07/13/22 - Kiko
-                // await flatFile.loadIndex();
-            }
-        }
-
         // Grouped file names
         if (flags.groupNames) {
             for (const group of groups) {
@@ -572,6 +561,8 @@ export class JS5 {
                 }
             }
         }
+
+        archive.validate(false);
     }
 
     decodeMainIndex(): Buffer | null {

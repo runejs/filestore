@@ -35,7 +35,7 @@ export class IndexEntity {
     @Column('integer', { nullable: false, default: 0 })
     version: number = 0;
 
-    @Column('integer', { name: 'childCount', nullable: false, default: 0 })
+    @Column('integer', { name: 'child_count', nullable: false, default: 0 })
     childCount: number = 0;
 
     @Column('integer', { nullable: false, default: -1 })

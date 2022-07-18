@@ -1,16 +1,16 @@
-import { CompressionMethod } from '@runejs/common/compress';
 import { EncryptionMethod } from '@runejs/common/encrypt';
 
 
-export interface ArchiveConfig {
+export interface JS5ArchiveConfig {
     key: number;
-    name: string;
-    versioned?: boolean;
-    compression?: CompressionMethod;
     encryption?: [ EncryptionMethod, string ];
     contentType?: string;
-    filesNamed?: boolean;
     flatten?: boolean;
     groupNames?: { [key: string]: number };
     build?: number;
+}
+
+
+export interface JagCacheArchiveConfig {
+    key: number;
 }

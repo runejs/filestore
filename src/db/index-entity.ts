@@ -1,7 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
-import { FileType } from '../config/file-type';
 import { CompressionMethod } from '@runejs/common/compress';
-import { FileError } from '../config/file-error';
+import { FileError, FileType } from '../config';
 import { Buffer } from 'buffer';
 
 

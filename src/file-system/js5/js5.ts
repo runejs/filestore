@@ -3,30 +3,30 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
-import { archiveFlags } from '../config/archive-flags';
+import { archiveFlags } from '../../config';
 import { Group } from './group';
 import { Archive } from './archive';
-import { FileStore } from './file-store';
-import { ArchiveFormat } from '../config';
+import { JS5FileStore } from './js5-file-store';
+import { ArchiveFormat } from '../../config';
 import { FlatFile } from './flat-file';
 
 
 export class JS5 {
 
-    readonly fileStore: FileStore;
+    readonly fileStore: JS5FileStore;
 
     encryptionKeys: Map<string, XteaKeys[]>;
 
-    private mainIndex: ByteBuffer;
-    private archiveIndexes: Map<string, ByteBuffer>;
-    private mainArchiveData: ByteBuffer;
+    private mainIndexFile: ByteBuffer;
+    private indexFiles: Map<number, ByteBuffer>;
+    private dataFile: ByteBuffer;
 
-    constructor(fileStore: FileStore) {
+    constructor(fileStore: JS5FileStore) {
         this.fileStore = fileStore;
         this.loadEncryptionKeys();
     }
 
-    loadJS5Store(): void {
+    loadJS5Files(): void {
         const js5StorePath = join(this.fileStore.fileStorePath, 'js5');
 
         if (!existsSync(js5StorePath)) {
@@ -39,11 +39,11 @@ export class JS5 {
         }
 
         const storeFileNames = readdirSync(js5StorePath);
-        const dataFile = 'main_file_cache.dat2';
+        const dataFileName = 'main_file_cache.dat2';
         const mainIndexFile = 'main_file_cache.idx255';
 
-        if (storeFileNames.indexOf(dataFile) === -1) {
-            throw new Error(`The main ${dataFile} data file could not be found.`);
+        if (storeFileNames.indexOf(dataFileName) === -1) {
+            throw new Error(`The main ${dataFileName} data file could not be found.`);
         }
 
         if (storeFileNames.indexOf(mainIndexFile) === -1) {
@@ -51,15 +51,15 @@ export class JS5 {
         }
 
         const indexFilePrefix = 'main_file_cache.idx';
-        const dataFilePath = join(js5StorePath, dataFile);
+        const dataFilePath = join(js5StorePath, dataFileName);
         const mainIndexFilePath = join(js5StorePath, mainIndexFile);
 
-        this.mainArchiveData = new ByteBuffer(readFileSync(dataFilePath));
-        this.mainIndex = new ByteBuffer(readFileSync(mainIndexFilePath));
-        this.archiveIndexes = new Map<string, ByteBuffer>();
+        this.dataFile = new ByteBuffer(readFileSync(dataFilePath));
+        this.mainIndexFile = new ByteBuffer(readFileSync(mainIndexFilePath));
+        this.indexFiles = new Map<number, ByteBuffer>();
 
         for (const fileName of storeFileNames) {
-            if (!fileName?.length || fileName === mainIndexFile || fileName === dataFile) {
+            if (!fileName?.length || fileName === mainIndexFile || fileName === dataFileName) {
                 continue;
             }
 
@@ -74,10 +74,10 @@ export class JS5 {
                 logger.error(`Index file ${fileName} does not have a valid extension.`);
             }
 
-            this.archiveIndexes.set(index, new ByteBuffer(readFileSync(join(js5StorePath, fileName))));
+            this.indexFiles.set(numericIndex, new ByteBuffer(readFileSync(join(js5StorePath, fileName))));
         }
 
-        logger.info(`JS5 store loaded for game build ${this.fileStore.gameBuild}.`);
+        logger.info(`JS5 store file loaded for game build ${this.fileStore.gameBuild}.`);
     }
 
     unpack(file: Group | Archive): Buffer | null {
@@ -87,14 +87,14 @@ export class JS5 {
         const archiveName: string = file instanceof Archive ? 'main' : file.archive.index.name;
 
         const indexChannel: ByteBuffer = archiveKey !== 255 ?
-            this.archiveIndexes.get(String(archiveKey)) : this.mainIndex;
+            this.indexFiles.get(archiveKey) : this.mainIndexFile;
 
         if (archiveKey === 255 && fileKey === 255) {
             return null;
         }
 
         const indexDataLength = 6;
-        const dataChannel = this.mainArchiveData;
+        const dataChannel = this.dataFile;
 
         indexChannel.readerIndex = 0;
         dataChannel.readerIndex = 0;
@@ -184,10 +184,7 @@ export class JS5 {
         return fileDetails.compressedData;
     }
 
-    readCompressedFileHeader(file: Group | Archive): {
-        compressedLength: number;
-        readerIndex: number;
-    } {
+    readCompressedFileHeader(file: Group | Archive): { compressedLength: number, readerIndex: number } {
         const fileDetails = file.index;
 
         if (!fileDetails.compressedData?.length) {
@@ -491,7 +488,7 @@ export class JS5 {
         if (flags.groupNames) {
             for (const group of groups) {
                 group.index.nameHash = archiveData.get('int');
-                group.index.name = this.fileStore.findFileName(
+                group.index.name = this.fileStore.djb2.findFileName(
                     group.index.nameHash,
                     group.index.name || String(group.index.nameHash) || String(group.index.key)
                 );
@@ -554,7 +551,7 @@ export class JS5 {
             for (const group of groups) {
                 for (const [ , flatFile ] of group.files) {
                     flatFile.index.nameHash = archiveData.get('int');
-                    flatFile.index.name = this.fileStore.findFileName(
+                    flatFile.index.name = this.fileStore.djb2.findFileName(
                         flatFile.index.nameHash,
                         flatFile.index.name || String(flatFile.index.nameHash) || String(flatFile.index.key)
                     );
@@ -650,8 +647,8 @@ export class JS5 {
             data.put(this.fileStore.archives.get(archiveIndex).index.checksum, 'int');
         }
 
-        this.mainIndex = data;
-        return this.mainIndex;
+        this.mainIndexFile = data;
+        return this.mainIndexFile;
     }
 
     getEncryptionKeys(fileName: string): XteaKeys | XteaKeys[] | null {

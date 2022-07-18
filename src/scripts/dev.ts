@@ -1,12 +1,12 @@
-import { FileStore } from '../file-system/file-store';
+import { JS5FileStore } from '../file-system/js5/js5-file-store';
 import { logger } from '@runejs/common';
 
 
 const dev = async () => {
     const start = Date.now();
-    const fileStore = new FileStore(435);
+    const fileStore = new JS5FileStore(435);
     await fileStore.load();
-    fileStore.js5Load();
+    fileStore.js5.loadJS5Files();
 
     logger.info(`Unpacking archives from JS5 store...`);
 

@@ -1,14 +1,16 @@
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
-
-import { Store, StoreFormat } from '../index';
-import { ScriptExecutor, ArgumentOptions } from './index';
+import { ScriptExecutor, ArgumentOptions } from './script-executor';
+import { JS5FileStore } from '../file-system/js5/js5-file-store';
+import { JagStore } from '../file-system/jag/jag-store';
+import { FileStoreBase } from '../file-system/file-store-base';
+import { Archive } from '../file-system/js5/archive';
 
 
 interface IndexerOptions {
     dir: string;
-    format: StoreFormat | 'flat' | 'js5';
+    format: 'flat' | 'js5' | 'jag';
     archive: string;
     build: string;
 }
@@ -20,7 +22,10 @@ const indexerArgumentOptions: ArgumentOptions = {
         description: `The store root directory. Defaults to the current location.`
     },
     format: {
-        alias: 'f', type: 'string', default: 'unpacked', choices: [ 'unpacked', 'packed', 'flat', 'js5' ],
+        alias: 'f',
+        type: 'string',
+        default: 'unpacked',
+        choices: [ 'unpacked', 'packed', 'flat', 'js5' ],
         description: `The format of the store to index, either 'unpacked' (flat files) or 'packed' (JS5 format). Defaults to 'unpacked'.`
     },
     archive: {
@@ -34,84 +39,155 @@ const indexerArgumentOptions: ArgumentOptions = {
 };
 
 
-async function indexFiles(store: Store, args: IndexerOptions): Promise<void> {
-    const argDebugString = args ? Array.from(Object.entries(args))
-        .map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
+const indexJS5Store = async (store: JS5FileStore) => {
+    logger.info(`Unpacking archives from JS5 store...`);
 
-    const { archive: archiveName } = args;
-
-    let format = args.format;
-    if(format === 'js5') {
-        format = 'packed';
-    } else if(format === 'flat') {
-        format = 'unpacked';
+    for (const [ , archive ] of store.archives) {
+        store.js5.unpack(archive);
     }
 
-    if(format === 'packed') {
-        store.loadPackedStore();
-    } else {
-        const outputDir = store.outputPath;
-        if(!existsSync(outputDir)) {
-            mkdirSync(outputDir, { recursive: true });
-        }
+    logger.info(`Decoding JS5 archives...`);
+
+    for (const [ , archive ] of store.archives) {
+        await store.js5.decodeArchive(archive);
     }
 
-    if(archiveName === 'main') {
-        logger.info(`Indexing ${format} store with arguments:`, argDebugString);
+    logger.info(`Saving archive indexes...`);
 
-        if(format === 'unpacked') {
-            await store.read();
-        } else if(format === 'packed') {
-            store.decode(true);
-        }
-
-        store.encode(true);
-        store.compress(true);
-
-        await store.saveIndexData(true, true, true);
-    } else {
-        logger.info(`Indexing ${format} archive ${archiveName} with arguments:`, argDebugString);
-
-        const archive = store.find(archiveName);
-
-        if(format === 'unpacked') {
-            await archive.read(false);
-        } else if(format === 'packed') {
-            archive.decode();
-        }
-
-        archive.encode(true);
-        archive.compress(true);
-
-        await store.saveIndexData(false, false, false);
-        await archive.saveIndexData(true, true);
+    for (const [ , archive ] of store.archives) {
+        await archive.saveIndex();
     }
-}
+
+    logger.info(`Unpacking groups from JS5 store...`);
+
+    for (const [ , archive ] of store.archives) {
+        for (const [ , group ] of archive.groups) {
+            store.js5.unpack(group);
+        }
+
+        logger.info(`Finished unpacking archive ${ archive.index.name } groups.`);
+    }
+
+    logger.info(`Decoding JS5 groups...`);
+
+    for (const [ , archive ] of store.archives) {
+        for (const [ , group ] of archive.groups) {
+            await store.js5.decodeGroup(group);
+        }
+
+        logger.info(`Finished decoding archive ${ archive.index.name } groups.`);
+    }
+
+    logger.info(`Saving group indexes...`);
+
+    for (const [ , archive ] of store.archives) {
+        await archive.upsertGroupIndexes();
+    }
+
+    logger.info(`Saving flat file indexes...`);
+
+    for (const [ , archive ] of store.archives) {
+        for (const [ , group ] of archive.groups) {
+            await group.upsertFileIndexes();
+        }
+    }
+};
 
 
-new ScriptExecutor().executeScript<IndexerOptions>(indexerArgumentOptions, async (terminal, args) => {
+const indexJS5Archive = async (store: JS5FileStore, archiveName: string) => {
+    const archive = store.findArchive(archiveName);
+
+    if (!archive) {
+        logger.error(`Archive ${ archiveName } was not found.`);
+        return;
+    }
+
+    logger.info(`Unpacking archive ${ archiveName } from JS5 store...`);
+
+    store.js5.unpack(archive);
+
+    logger.info(`Decoding archive ${ archiveName }...`);
+
+    await store.js5.decodeArchive(archive);
+
+    logger.info(`Saving archive ${ archiveName } index...`);
+
+    await archive.saveIndex();
+
+    logger.info(`Unpacking groups from archive ${ archiveName }...`);
+
+    for (const [ , group ] of archive.groups) {
+        store.js5.unpack(group);
+    }
+
+    logger.info(`Decoding archive ${ archiveName } groups...`);
+
+    for (const [ , group ] of archive.groups) {
+        await store.js5.decodeGroup(group);
+    }
+
+    logger.info(`Saving group indexes...`);
+
+    await archive.upsertGroupIndexes();
+
+    logger.info(`Saving flat file indexes...`);
+
+    for (const [ , group ] of archive.groups) {
+        await group.upsertFileIndexes();
+    }
+};
+
+
+const indexJagStore = async (store: JagStore) => {
+    // @todo 18/07/22 - Kiko
+};
+
+
+const indexJagArchive = async (store: JagStore, archiveName: string) => {
+    // @todo 18/07/22 - Kiko
+};
+
+
+const indexerScript = async (
+    terminal,
+    { build, dir, format, archive: archiveName }
+) => {
     const start = Date.now();
-    logger.info(`Indexing store...`);
-
-    const { build, dir } = args;
-
     const logDir = join(dir, 'logs');
-
-    if(!existsSync(logDir)) {
+    const numericBuildNumber: boolean = /^\d+$/.test(build);
+    
+    if (!existsSync(logDir)) {
         mkdirSync(logDir, { recursive: true });
     }
 
-    logger.destination(join(logDir, `index_${build}.log`));
+    logger.destination(join(logDir, `index-${ format }-${ build }.log`));
 
-    const store = await Store.create(build, dir);
+    logger.info(`Indexing ${ format } file store...`);
 
-    await indexFiles(store, args);
+    if (format === 'js5') {
+        const store = new JS5FileStore(numericBuildNumber ? Number(build) : build, dir);
+        await store.load();
+        store.js5.loadJS5Files();
 
+        if (archiveName === 'main') {
+            await indexJS5Store(store);
+        } else {
+            await indexJS5Archive(store, archiveName);
+        }
+    } else if (format === 'jag') {
+        const store = new JagStore(numericBuildNumber ? Number(build) : build, dir);
+        await store.load();
+        store.jag.loadJagFiles();
+
+        // @todo 18/07/22 - Kiko
+    } else if (format === 'flat') {
+        // @todo 18/07/22 - Kiko
+    }
+
+    logger.info(`Indexing completed in ${ (Date.now() - start) / 1000 } seconds.`);
     logger.boom.flushSync();
     logger.boom.end();
+};
 
-    const end = Date.now();
-    logger.info(`Indexing completed in ${(end - start) / 1000} seconds.`);
 
-    process.exit(0);
-});
+new ScriptExecutor().executeScript<IndexerOptions>(indexerArgumentOptions, indexerScript);

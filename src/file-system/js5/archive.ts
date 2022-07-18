@@ -1,23 +1,20 @@
-import { FileBase } from './file-base';
-import { FileStore } from './file-store';
+import { JS5FileStore } from './js5-file-store';
 import { Group } from './group';
-import { CompressionMethod } from '@runejs/common/compress';
 import { logger } from '@runejs/common';
+import { IndexedFileBase } from '../indexed-file-base';
 
 
-export class Archive extends FileBase {
+export class Archive extends IndexedFileBase<JS5FileStore> {
 
     readonly groups: Map<number, Group>;
 
     constructor(
-        fileStore: FileStore,
-        key: number,
-        name: string,
-        indexFileCompressionMethod: CompressionMethod = 'none',
+        fileStore: JS5FileStore,
+        archiveKey: number,
+        archiveName: string,
     ) {
-        super(fileStore, key, 255, -1, 'ARCHIVE');
-        this.index.name = name;
-        this.index.compressionMethod = indexFileCompressionMethod;
+        super(fileStore, 'ARCHIVE', archiveKey, 255, -1);
+        this.index.name = archiveName;
         this.groups = new Map<number, Group>();
     }
 

@@ -1,32 +1,31 @@
 import { IndexEntity } from '../db/index-entity';
-import { FileStore } from './file-store';
-import { FileType } from '../config/file-type';
+import { FileStoreBase } from './file-store-base';
+import { FileType } from '../config';
+import { logger } from '@runejs/common';
+import { Buffer } from 'buffer';
 import { Crc32 } from '@runejs/common/crc32';
 import { createHash } from 'crypto';
-import { Buffer } from 'buffer';
-import { logger } from '@runejs/common';
 
 
-export class FileBase {
+export abstract class IndexedFileBase<S extends FileStoreBase<any, any>> {
 
-    readonly fileStore: FileStore;
-
+    readonly fileStore: S;
     index: IndexEntity;
 
-    constructor(
-        fileStore: FileStore,
-        key: number,
-        archiveKey: number,
-        groupKey: number,
+    protected constructor(
+        fileStore: S,
         fileType: FileType,
+        key: number,
+        archiveKey: number = -1,
+        groupKey: number = -1,
     ) {
         this.fileStore = fileStore;
         this.index = new IndexEntity();
         this.index.gameBuild = fileStore.gameBuild;
         this.index.fileType = fileType;
         this.index.key = key;
-        this.index.groupKey = groupKey;
         this.index.archiveKey = archiveKey;
+        this.index.groupKey = groupKey;
     }
 
     validate(trackChanges: boolean = true): void {
@@ -48,12 +47,12 @@ export class FileBase {
 
         if (name && nameHash === -1) {
             // nameHash not set
-            this.index.nameHash = this.fileStore.hashFileName(name);
+            this.index.nameHash = this.fileStore.djb2.hashFileName(name);
         }
 
         if (nameHash !== -1 && !name) {
             // name not set
-            const lookupTableName = this.fileStore.findFileName(nameHash);
+            const lookupTableName = this.fileStore.djb2.findFileName(nameHash);
             if (lookupTableName) {
                 this.index.name = lookupTableName;
             }

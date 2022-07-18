@@ -1,27 +1,19 @@
 {
     // The main index of indexes
     main: {
-        key: 255,
-        compression: 'none',
-        versioned: false
+        key: 255
     },
 
     // Regular indexes
     anims: {
         key: 0,
-        compression: 'bzip',
-        versioned: true,
         flatten: true
     },
     bases: {
-        key: 1,
-        compression: 'gzip',
-        versioned: true
+        key: 1
     },
     config: {
         key: 2,
-        compression: 'bzip',
-        versioned: true,
         groupNames: {
             '.flu':         1,  // Floor Underlays
             // 2?
@@ -45,168 +37,109 @@
     },
     interfaces: {
         key: 3,
-        compression: 'bzip',
-        versioned: true,
         flatten: true
     },
     synth_sounds: {
         key: 4,
-        compression: 'gzip',
-        versioned: true,
         contentType: '.wav'
     },
     maps: {
         key: 5,
-        compression: 'gzip',
-        encryption: [ 'xtea', '^l[0-9]{1,3}_[0-9]{1,3}$' ],
-        versioned: true,
-        filesNamed: true
+        encryption: [ 'xtea', '^l[0-9]{1,3}_[0-9]{1,3}$' ]
     },
     midi_songs: {
         key: 6,
-        compression: 'gzip',
-        versioned: false,
-        contentType: '.mid',
-        filesNamed: true
+        contentType: '.mid'
     },
     models: {
         key: 7,
-        compression: 'gzip',
-        versioned: true,
         contentType: '.dat'
     },
     sprites: {
-        key: 8,
-        compression: 'gzip',
-        versioned: true,
-        filesNamed: true
+        key: 8
     },
     textures: {
-        key: 9,
-        compression: 'gzip',
-        versioned: true
+        key: 9
     },
     binary: {
-        key: 10,
-        compression: 'none',
-        versioned: true,
-        filesNamed: true
+        key: 10
     },
     midi_jingles: {
         key: 11,
-        compression: 'gzip',
-        versioned: true,
         contentType: '.mid'
     },
     clientscripts: {
         key: 12,
         compression: 'gzip',
-        versioned: true,
         contentType: '.cs2',
-        filesNamed: true,
         build: 435
     },
     fontmetrics: {
         key: 13,
-        compression: 'gzip',
-        versioned: false,
-        filesNamed: true,
         build: 443
     },
     vorbis: {
         key: 14,
-        compression: 'gzip',
-        versioned: true,
         build: 451
     },
     midi_instruments: {
         key: 15,
-        compression: 'gzip',
-        versioned: false,
         build: 451
     },
     config_loc: {
         key: 16,
-        compression: 'gzip',
-        versioned: false,
         build: 489
     },
     config_enum: {
         key: 17,
-        compression: 'gzip',
-        versioned: false,
         build: 489
     },
     config_npc: {
         key: 18,
-        compression: 'gzip',
-        versioned: false,
         build: 489
     },
     config_obj: {
         key: 19,
-        compression: 'gzip',
-        versioned: false,
         build: 489
     },
     config_seq: {
         key: 20,
-        compression: 'gzip',
-        versioned: false,
         build: 489
     },
     config_spot: {
         key: 21,
-        compression: 'gzip',
-        versioned: false,
         build: 489
     },
     config_var_bit: {
         key: 22,
-        compression: 'gzip',
-        versioned: false,
         build: 489
     },
     worldmapdata: {
         key: 23,
-        compression: 'gzip',
-        versioned: false,
         build: 493
     },
     quickchat: {
         key: 24,
-        compression: 'gzip',
-        versioned: false,
         build: 498
     },
     quickchat_global: {
         key: 25,
-        compression: 'gzip',
-        versioned: false,
         build: 498
     },
     materials: {
         key: 26,
-        compression: 'gzip',
-        versioned: false,
         build: 500
     },
     config_particle: {
         key: 27,
-        compression: 'gzip',
-        versioned: false,
         build: 523
     },
     defaults: {
         key: 28,
-        compression: 'gzip',
-        versioned: false,
         build: 537
     },
     billboards: {
         key: 29,
-        compression: 'gzip',
-        versioned: false,
         build: 582
     }
 }

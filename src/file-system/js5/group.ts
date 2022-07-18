@@ -1,21 +1,21 @@
-import { FileBase } from './file-base';
-import { FileStore } from './file-store';
+import { JS5FileStore } from './js5-file-store';
 import { Archive } from './archive';
 import { FlatFile } from './flat-file';
 import { logger } from '@runejs/common';
+import { IndexedFileBase } from '../indexed-file-base';
 
 
-export class Group extends FileBase {
+export class Group extends IndexedFileBase<JS5FileStore> {
 
     readonly archive: Archive;
     readonly files: Map<number, FlatFile>;
 
     constructor(
-        fileStore: FileStore,
-        key: number,
+        fileStore: JS5FileStore,
+        groupKey: number,
         archive: Archive,
     ) {
-        super(fileStore, key, archive.index.key, -1, 'GROUP');
+        super(fileStore, 'GROUP', groupKey, archive.index.key);
         this.archive = archive;
         this.files = new Map<number, FlatFile>();
     }

@@ -1,0 +1,26 @@
+{
+    title: {
+        key: 1
+    },
+    config: {
+        key: 2
+    },
+    interface: {
+        key: 3
+    },
+    media: {
+        key: 4
+    },
+    versionlist: {
+        key: 5
+    },
+    textures: {
+        key: 6
+    },
+    wordenc: {
+        key: 7
+    },
+    sounds: {
+        key: 8
+    }
+}

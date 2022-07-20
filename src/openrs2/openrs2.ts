@@ -2,6 +2,8 @@ import axios from 'axios';
 import AdmZip, { IZipEntry } from 'adm-zip';
 import { Buffer } from 'buffer';
 import { logger } from '@runejs/common';
+import { XteaKeys } from '@runejs/common/encrypt';
+import { XteaConfig } from '@runejs/common/encrypt/xtea';
 
 
 const openRS2Endpoint = 'https://archive.openrs2.org';
@@ -96,16 +98,27 @@ export const getAvailableBuilds = async (
 };
 
 
-export const getOpenRS2CacheById = async (
+export const getOpenRS2CacheDetailsByBuild = async (
+    build: number,
+): Promise<OpenRS2Cache | null> => {
+    return (await getOpenRS2CacheList())?.find(
+        c => c.scope === 'runescape' && c.game === 'runescape' && c.builds.find(b => b.major === build)
+    ) || null;
+};
+
+
+export const getOpenRS2CacheFilesById = async (
     id: number,
     scope: string = 'runescape'
 ): Promise<OpenRS2CacheFile[]> => {
     const response = await axios.get(
         `${ openRS2Endpoint }/caches/${ scope }/${ id }/disk.zip`,
-        {
-            responseType: 'arraybuffer'
-        }
+        { responseType: 'arraybuffer' }
     );
+
+    if (!response?.data) {
+        return [];
+    }
 
     const zip = new AdmZip(Buffer.from(response.data, 'binary'));
     return zip.getEntries().map(entry => ({
@@ -115,13 +128,13 @@ export const getOpenRS2CacheById = async (
 };
 
 
-export const getOpenRS2CacheByBuild = async (
+export const getOpenRS2CacheFilesByBuild = async (
     build: number
 ): Promise<OpenRS2CacheFile[] | null> => {
     logger.info(`Searching OpenRS2 for build ${ build }...`);
 
     const cacheList = (await getOpenRS2CacheList())
-        .filter(c => c.scope === 'runescape' && c.game === 'runescape');
+        ?.filter(c => c.scope === 'runescape' && c.game === 'runescape') || [];
 
     const desiredCacheInfo = cacheList.find(cacheDetails => {
         for (const b of cacheDetails.builds) {
@@ -136,11 +149,35 @@ export const getOpenRS2CacheByBuild = async (
     if (desiredCacheInfo) {
         logger.info(`Build ${ build } was found within the OpenRS2 archive, fetching data...`);
 
-        const cacheFiles = await getOpenRS2CacheById(desiredCacheInfo.id);
+        const cacheFiles = await getOpenRS2CacheFilesById(desiredCacheInfo.id);
         return cacheFiles?.length ? cacheFiles : null;
     } else {
         logger.error(`Build ${ build } was not found within the OpenRS2.org archive.`);
     }
 
     return null;
+};
+
+
+export const getXteaKeysById = async (
+    id: number,
+    scope: string = 'runescape'
+): Promise<XteaConfig[]> => {
+    const response = await axios.get<XteaConfig[]>(
+        `${ openRS2Endpoint }/caches/${ scope }/${ id }/keys.json`
+    );
+
+    return response?.data || [];
+};
+
+
+export const getXteaKeysByBuild = async (
+    build: number
+): Promise<XteaConfig[]> => {
+    const cacheDetails = await getOpenRS2CacheDetailsByBuild(build);
+    if (!cacheDetails) {
+        return [];
+    }
+
+    return await getXteaKeysById(cacheDetails.id, cacheDetails.scope);
 };

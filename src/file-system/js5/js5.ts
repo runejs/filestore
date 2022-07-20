@@ -9,7 +9,8 @@ import { Archive } from './archive';
 import { JS5FileStore } from './js5-file-store';
 import { ArchiveFormat } from '../../config';
 import { FlatFile } from './flat-file';
-import { OpenRS2CacheFile } from '../../openrs2';
+import { getXteaKeysByBuild, OpenRS2CacheFile } from '../../openrs2';
+import { XteaConfig } from '@runejs/common/encrypt/xtea';
 
 
 const dataFileName = 'main_file_cache.dat2';
@@ -21,7 +22,8 @@ export class JS5 {
 
     readonly fileStore: JS5FileStore;
 
-    encryptionKeys: Map<string, XteaKeys[]>;
+    localEncryptionKeys: Map<string, XteaKeys[]>;
+    openRS2EncryptionKeys: XteaConfig[];
 
     private mainIndexFile: ByteBuffer;
     private indexFiles: Map<number, ByteBuffer>;
@@ -30,18 +32,17 @@ export class JS5 {
     constructor(fileStore: JS5FileStore) {
         this.fileStore = fileStore;
         this.indexFiles = new Map<number, ByteBuffer>();
-        this.loadEncryptionKeys();
     }
 
     loadOpenRS2CacheFiles(cacheFiles: OpenRS2CacheFile[]): void {
         const dataFileBuffer = cacheFiles.find(file => file.name === dataFileName)?.data || null;
         if (!dataFileBuffer?.length) {
-            throw new Error(`The main ${dataFileName} data file could not be found.`);
+            throw new Error(`The main ${ dataFileName } data file could not be found.`);
         }
 
         const mainIndexFileBuffer = cacheFiles.find(file => file.name === mainIndexFileName)?.data || null;
         if (!mainIndexFileBuffer?.length) {
-            throw new Error(`The main ${mainIndexFileName} index file could not be found.`);
+            throw new Error(`The main ${ mainIndexFileName } index file could not be found.`);
         }
 
         this.dataFile = new ByteBuffer(dataFileBuffer);
@@ -60,7 +61,7 @@ export class JS5 {
             }
 
             if (!cacheFile?.data?.length) {
-                logger.error(`Index file ${fileName} is empty!`);
+                logger.error(`Index file ${ fileName } is empty!`);
                 continue;
             }
 
@@ -68,35 +69,35 @@ export class JS5 {
             const numericIndex = Number(index);
 
             if (isNaN(numericIndex)) {
-                logger.error(`Index file ${fileName} does not have a valid extension.`);
+                logger.error(`Index file ${ fileName } does not have a valid extension.`);
             }
 
             this.indexFiles.set(numericIndex, new ByteBuffer(cacheFile.data));
         }
 
-        logger.info(`JS5 store file loaded for game build ${this.fileStore.gameBuild}.`);
+        logger.info(`JS5 store file loaded for game build ${ this.fileStore.gameBuild }.`);
     }
 
     loadLocalCacheFiles(): void {
         const js5StorePath = join(this.fileStore.fileStorePath, 'js5');
 
         if (!existsSync(js5StorePath)) {
-            throw new Error(`${js5StorePath} could not be found.`);
+            throw new Error(`${ js5StorePath } could not be found.`);
         }
 
         const stats = statSync(js5StorePath);
         if (!stats?.isDirectory()) {
-            throw new Error(`${js5StorePath} is not a valid directory.`);
+            throw new Error(`${ js5StorePath } is not a valid directory.`);
         }
 
         const storeFileNames = readdirSync(js5StorePath);
 
         if (storeFileNames.indexOf(dataFileName) === -1) {
-            throw new Error(`The main ${dataFileName} data file could not be found.`);
+            throw new Error(`The main ${ dataFileName } data file could not be found.`);
         }
 
         if (storeFileNames.indexOf(mainIndexFileName) === -1) {
-            throw new Error(`The main ${mainIndexFileName} index file could not be found.`);
+            throw new Error(`The main ${ mainIndexFileName } index file could not be found.`);
         }
 
         const dataFilePath = join(js5StorePath, dataFileName);
@@ -119,13 +120,13 @@ export class JS5 {
             const numericIndex = Number(index);
 
             if (isNaN(numericIndex)) {
-                logger.error(`Index file ${fileName} does not have a valid extension.`);
+                logger.error(`Index file ${ fileName } does not have a valid extension.`);
             }
 
             this.indexFiles.set(numericIndex, new ByteBuffer(readFileSync(join(js5StorePath, fileName))));
         }
 
-        logger.info(`JS5 store file loaded for game build ${this.fileStore.gameBuild}.`);
+        logger.info(`JS5 store file loaded for game build ${ this.fileStore.gameBuild }.`);
     }
 
     unpack(file: Group | Archive): Buffer | null {
@@ -150,7 +151,7 @@ export class JS5 {
         let pointer = fileKey * indexDataLength;
 
         if (pointer < 0 || pointer >= indexChannel.length) {
-            logger.error(`File ${fileKey} was not found within the ${archiveName} archive index file.`);
+            logger.error(`File ${ fileKey } was not found within the ${ archiveName } archive index file.`);
             return null;
         }
 
@@ -158,7 +159,7 @@ export class JS5 {
         indexChannel.copy(fileIndexData, 0, pointer, pointer + indexDataLength);
 
         if (fileIndexData.readable !== indexDataLength) {
-            logger.error(`Error extracting JS5 file ${fileKey}: the end of the data stream was reached.`);
+            logger.error(`Error extracting JS5 file ${ fileKey }: the end of the data stream was reached.`);
             return null;
         }
 
@@ -166,7 +167,7 @@ export class JS5 {
         const stripeCount = fileIndexData.get('int24', 'unsigned');
 
         if (fileDetails.fileSize <= 0) {
-            logger.warn(`JS5 file ${fileKey} is empty or has been removed.`);
+            logger.warn(`JS5 file ${ fileKey } is empty or has been removed.`);
             return null;
         }
 
@@ -183,7 +184,7 @@ export class JS5 {
             dataChannel.copy(temp, 0, pointer, pointer + stripeLength);
 
             if (temp.readable !== stripeLength) {
-                logger.error(`Error reading stripe for packed file ${fileKey}, the end of the data stream was reached.`);
+                logger.error(`Error reading stripe for packed file ${ fileKey }, the end of the data stream was reached.`);
                 return null;
             }
 
@@ -200,17 +201,17 @@ export class JS5 {
                 remaining -= stripeDataLength;
 
                 if (stripeArchiveIndex !== archiveKey) {
-                    logger.error(`Archive index mismatch, expected archive ${archiveKey} but found archive ${stripeFileIndex}`);
+                    logger.error(`Archive index mismatch, expected archive ${ archiveKey } but found archive ${ stripeFileIndex }`);
                     return null;
                 }
 
                 if (stripeFileIndex !== fileKey) {
-                    logger.error(`File index mismatch, expected ${fileKey} but found ${stripeFileIndex}.`);
+                    logger.error(`File index mismatch, expected ${ fileKey } but found ${ stripeFileIndex }.`);
                     return null;
                 }
 
                 if (currentStripe !== stripe++) {
-                    logger.error(`Error extracting JS5 file ${fileKey}, file data is corrupted.`);
+                    logger.error(`Error extracting JS5 file ${ fileKey }, file data is corrupted.`);
                     return null;
                 }
 
@@ -255,7 +256,7 @@ export class JS5 {
         const fileName = fileDetails.name;
 
         if (!fileDetails.compressedData?.length) {
-            logger.error(`Error decrypting file ${fileName || fileDetails.key}, file data not found.`,
+            logger.error(`Error decrypting file ${ fileName || fileDetails.key }, file data not found.`,
                 `Please ensure that the file has been unpacked from an existing JS5 file store using JS5.unpack(file);`);
             return null;
         }
@@ -269,7 +270,7 @@ export class JS5 {
             const patternRegex = new RegExp(pattern);
 
             // Only XTEA encryption is supported at this time
-            if(encryption !== 'xtea' || !patternRegex.test(fileName)) {
+            if (encryption !== 'xtea' || !patternRegex.test(fileName)) {
                 // FileBase name does not match the pattern, data should be unencrypted
                 return fileDetails.compressedData;
             }
@@ -282,7 +283,7 @@ export class JS5 {
 
         const loadedKeys = this.getEncryptionKeys(fileName);
         if (loadedKeys) {
-            if(!Array.isArray(loadedKeys)) {
+            if (!Array.isArray(loadedKeys)) {
                 keySets = [ loadedKeys ];
             } else {
                 keySets = loadedKeys;
@@ -298,7 +299,7 @@ export class JS5 {
             dataCopy.readerIndex = readerIndex;
 
             let lengthOffset = readerIndex;
-            if(dataCopy.length - (compressedLength + readerIndex + 4) >= 2) {
+            if (dataCopy.length - (compressedLength + readerIndex + 4) >= 2) {
                 lengthOffset += 2;
             }
 
@@ -312,12 +313,12 @@ export class JS5 {
                 return fileDetails.compressedData;
             } else {
                 logger.warn(`Invalid XTEA decryption keys found for file ` +
-                    `${fileName || fileDetails.key} using game build ${ gameBuild }.`);
+                    `${ fileName || fileDetails.key } using game build ${ gameBuild }.`);
                 fileDetails.fileError = 'MISSING_ENCRYPTION_KEYS';
             }
         } else {
             logger.warn(`No XTEA decryption keys found for file ` +
-                `${fileName || fileDetails.key} using game build ${gameBuild}.`);
+                `${ fileName || fileDetails.key } using game build ${ gameBuild }.`);
             fileDetails.fileError = 'MISSING_ENCRYPTION_KEYS';
         }
 
@@ -352,11 +353,11 @@ export class JS5 {
             // BZIP or GZIP compressed file
             const decompressedLength = compressedData.get('int', 'unsigned');
             if (decompressedLength < 0) {
-                const errorPrefix = `Unable to decompress file ${fileDetails.name || fileDetails.key}:`;
+                const errorPrefix = `Unable to decompress file ${ fileDetails.name || fileDetails.key }:`;
                 if (fileDetails.fileError === 'FILE_MISSING') {
-                    logger.error(`${errorPrefix} Missing file data.`);
+                    logger.error(`${ errorPrefix } Missing file data.`);
                 } else {
-                    logger.error(`${errorPrefix} Missing or invalid XTEA key.`);
+                    logger.error(`${ errorPrefix } Missing or invalid XTEA key.`);
                     fileDetails.fileError = 'MISSING_ENCRYPTION_KEYS';
                 }
             } else {
@@ -376,8 +377,8 @@ export class JS5 {
                         data = null;
                     }
                 } catch (error) {
-                    logger.error(`Error decompressing file ${fileDetails.name || fileDetails.key}: ` +
-                        `${error?.message ?? error}`);
+                    logger.error(`Error decompressing file ${ fileDetails.name || fileDetails.key }: ` +
+                        `${ error?.message ?? error }`);
                     data = null;
                 }
             }
@@ -385,7 +386,7 @@ export class JS5 {
 
         if (data?.length) {
             // Read the file footer, if it has one
-            if(compressedData.readable >= 2) {
+            if (compressedData.readable >= 2) {
                 fileDetails.version = compressedData.get('short', 'unsigned');
             }
 
@@ -413,7 +414,7 @@ export class JS5 {
 
         const data = new ByteBuffer(groupDetails.data);
 
-        if(groupDetails.childCount === 1) {
+        if (groupDetails.childCount === 1) {
             return;
         }
 
@@ -425,8 +426,8 @@ export class JS5 {
             groupDetails.childCount * 4); // Stripe data footer
 
         if (data.readerIndex < 0) {
-            logger.error(`Invalid reader index of ${data.readerIndex} for group ` +
-                `${groupName || groupKey}.`);
+            logger.error(`Invalid reader index of ${ data.readerIndex } for group ` +
+                `${ groupName || groupKey }.`);
             return;
         }
 
@@ -499,13 +500,13 @@ export class JS5 {
 
         const archiveName = archiveDetails.name;
 
-        logger.info(`Decoding archive ${archiveName}...`);
+        logger.info(`Decoding archive ${ archiveName }...`);
 
         if (!archiveDetails.data) {
             this.decompress(archive);
 
             if (!archiveDetails.data) {
-                logger.error(`Unable to decode archive ${archiveName}.`);
+                logger.error(`Unable to decode archive ${ archiveName }.`);
                 return;
             }
         }
@@ -522,7 +523,7 @@ export class JS5 {
         let missingEncryptionKeys = 0;
         let accumulator = 0;
 
-        logger.info(`${groupCount} groups were found within the ${archiveName} archive.`);
+        logger.info(`${ groupCount } groups were found within the ${ archiveName } archive.`);
 
         // Group index keys
         for (let i = 0; i < groupCount; i++) {
@@ -700,29 +701,46 @@ export class JS5 {
     }
 
     getEncryptionKeys(fileName: string): XteaKeys | XteaKeys[] | null {
-        if(!this.encryptionKeys.size) {
-            this.loadEncryptionKeys();
+        if (this.openRS2EncryptionKeys?.length) {
+            const fileKeys = this.openRS2EncryptionKeys.find(file => file.name === fileName);
+            if (fileKeys) {
+                return {
+                    gameBuild: this.fileStore.gameBuild,
+                    key: fileKeys.key
+                };
+            }
         }
 
-        const keySets = this.encryptionKeys.get(fileName);
-        if(!keySets) {
+        const keySets = this.localEncryptionKeys?.get(fileName);
+        if (!keySets) {
             return null;
         }
 
-        if(this.fileStore.gameBuild !== undefined) {
+        if (this.fileStore.gameBuild !== undefined) {
             return keySets.find(keySet => keySet.gameBuild === this.fileStore.gameBuild) ?? null;
         }
 
         return keySets;
     }
 
-    loadEncryptionKeys(): void {
-        const configPath = join(this.fileStore.fileStorePath, 'config', 'xtea');
-        this.encryptionKeys = Xtea.loadKeys(configPath);
+    async loadEncryptionKeys(): Promise<void> {
+        if (/^\d+$/.test(this.fileStore.gameBuild)) {
+            const openRS2Keys = await getXteaKeysByBuild(parseInt(this.fileStore.gameBuild, 10));
 
-        if(!this.encryptionKeys.size) {
+            if (openRS2Keys?.length) {
+                logger.info(`XTEA keys found for build ${ this.fileStore.gameBuild } on OpenRS2.org.`);
+                this.openRS2EncryptionKeys = openRS2Keys;
+                return;
+            }
+        }
+
+        logger.warn(`XTEA keys not found for build ${ this.fileStore.gameBuild } on OpenRS2.org, using local XTEA key files instead.`);
+        const configPath = join(this.fileStore.fileStorePath, 'config', 'xtea');
+        this.localEncryptionKeys = Xtea.loadKeys(configPath);
+
+        if (!this.localEncryptionKeys.size) {
             throw new Error(`Error reading encryption key lookup table. ` +
-                `Please ensure that the ${configPath} file exists and is valid.`);
+                `Please ensure that the ${ configPath } file exists and is valid.`);
         }
     }
 

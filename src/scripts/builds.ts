@@ -40,7 +40,7 @@ const buildsScript = async (
         logger.error(`Invalid range of ${ range }: Range must be a multiple of 100.`);
         return;
     }
-    
+
     const availableBuilds = await getAvailableBuilds(scope, game);
     let msg = `Available builds on OpenRS2.org with scope ${ scope } and game ${ game }`;
 

@@ -18,9 +18,9 @@ export class ScriptExecutor {
     ): void {
         (async function(args: T) {
             await script(args);
-        }(this.getArguments<T>(argumentOptions)))
-            .catch(logger.error)
-            .finally(() => process.exit(0));
+        }(this.getArguments<T>(argumentOptions)));
+            // .catch(logger.error);
+            // .finally(() => process.exit(0));
     }
 
 }

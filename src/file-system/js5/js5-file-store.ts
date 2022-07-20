@@ -17,6 +17,7 @@ export class JS5FileStore extends FileStoreBase<Archive, JS5ArchiveConfig>{
     }
 
     override async load(): Promise<void> {
+        await this.js5.loadEncryptionKeys();
         await this.openDatabase();
 
         const archiveNames = Object.keys(this.archiveConfig);

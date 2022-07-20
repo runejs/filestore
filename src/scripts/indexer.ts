@@ -5,7 +5,7 @@ import { ScriptExecutor, ArgumentOptions } from './script-executor';
 import { JS5FileStore } from '../file-system/js5/js5-file-store';
 import { JagStore } from '../file-system/jag/jag-store';
 import {
-    getOpenRS2CacheByBuild,
+    getOpenRS2CacheFilesByBuild,
     OpenRS2CacheFile
 } from '../openrs2';
 
@@ -179,7 +179,7 @@ const indexerScript = async (
 
     if (source === 'openrs2') {
         if (numericBuildNumber) {
-            const openRS2CacheFiles = await getOpenRS2CacheByBuild(numericBuildNumber);
+            const openRS2CacheFiles = await getOpenRS2CacheFilesByBuild(numericBuildNumber);
             if (!openRS2CacheFiles?.length) {
                 return;
             }
@@ -191,7 +191,7 @@ const indexerScript = async (
         }
     }
 
-    logger.info(`Indexing ${ format } file store...`);
+    logger.info(`Indexing ${ format === 'flat' ? format : format.toUpperCase() } file store...`);
 
     if (format === 'js5') {
         const store = new JS5FileStore(numericBuildNumber !== -1 ? numericBuildNumber : build, dir);

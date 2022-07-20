@@ -65,6 +65,10 @@ export abstract class FileStoreBase<A extends IndexedFileBase<any>, C> {
         return this._database;
     }
 
+    async closeDatabase(): Promise<void> {
+        await this._database.closeConnection();
+    }
+
     getArchive(archiveKey: number): A | null {
         return this.archives.get(archiveKey) || null;
     }

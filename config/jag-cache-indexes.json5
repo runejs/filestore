@@ -1,0 +1,17 @@
+{
+    archives: {
+        key: 0
+    },
+    models: {
+        key: 1
+    },
+    animations: {
+        key: 2
+    },
+    midi: {
+        key: 3
+    },
+    maps: {
+        key: 4
+    }
+}

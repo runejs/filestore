@@ -14,11 +14,11 @@ export class ScriptExecutor {
 
     public executeScript<T>(
         argumentOptions: ArgumentOptions,
-        script: (terminalInterface: ScriptExecutor, args: T
-    ) => Promise<void>): void {
-        (async function(terminal: ScriptExecutor, args: T) {
-            await script(terminal, args);
-        }(this, this.getArguments<T>(argumentOptions)))
+        script: (args: T) => Promise<void>
+    ): void {
+        (async function(args: T) {
+            await script(args);
+        }(this.getArguments<T>(argumentOptions)))
             .catch(logger.error)
             .finally(() => process.exit(0));
     }

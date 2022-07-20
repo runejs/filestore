@@ -9,6 +9,12 @@ import { Archive } from './archive';
 import { JS5FileStore } from './js5-file-store';
 import { ArchiveFormat } from '../../config';
 import { FlatFile } from './flat-file';
+import { OpenRS2CacheFile } from '../../openrs2';
+
+
+const dataFileName = 'main_file_cache.dat2';
+const indexFileNamePrefix = 'main_file_cache.idx';
+const mainIndexFileName = `${ indexFileNamePrefix }255`;
 
 
 export class JS5 {
@@ -23,10 +29,55 @@ export class JS5 {
 
     constructor(fileStore: JS5FileStore) {
         this.fileStore = fileStore;
+        this.indexFiles = new Map<number, ByteBuffer>();
         this.loadEncryptionKeys();
     }
 
-    loadJS5Files(): void {
+    loadOpenRS2CacheFiles(cacheFiles: OpenRS2CacheFile[]): void {
+        const dataFileBuffer = cacheFiles.find(file => file.name === dataFileName)?.data || null;
+        if (!dataFileBuffer?.length) {
+            throw new Error(`The main ${dataFileName} data file could not be found.`);
+        }
+
+        const mainIndexFileBuffer = cacheFiles.find(file => file.name === mainIndexFileName)?.data || null;
+        if (!mainIndexFileBuffer?.length) {
+            throw new Error(`The main ${mainIndexFileName} index file could not be found.`);
+        }
+
+        this.dataFile = new ByteBuffer(dataFileBuffer);
+        this.mainIndexFile = new ByteBuffer(mainIndexFileBuffer);
+        this.indexFiles.clear();
+
+        for (const cacheFile of cacheFiles) {
+            const fileName = cacheFile?.name;
+
+            if (!fileName?.length || fileName === mainIndexFileName || fileName === dataFileName) {
+                continue;
+            }
+
+            if (!fileName.startsWith(indexFileNamePrefix)) {
+                continue;
+            }
+
+            if (!cacheFile?.data?.length) {
+                logger.error(`Index file ${fileName} is empty!`);
+                continue;
+            }
+
+            const index = fileName.substring(fileName.indexOf('.idx') + 4);
+            const numericIndex = Number(index);
+
+            if (isNaN(numericIndex)) {
+                logger.error(`Index file ${fileName} does not have a valid extension.`);
+            }
+
+            this.indexFiles.set(numericIndex, new ByteBuffer(cacheFile.data));
+        }
+
+        logger.info(`JS5 store file loaded for game build ${this.fileStore.gameBuild}.`);
+    }
+
+    loadLocalCacheFiles(): void {
         const js5StorePath = join(this.fileStore.fileStorePath, 'js5');
 
         if (!existsSync(js5StorePath)) {
@@ -39,31 +90,28 @@ export class JS5 {
         }
 
         const storeFileNames = readdirSync(js5StorePath);
-        const dataFileName = 'main_file_cache.dat2';
-        const mainIndexFile = 'main_file_cache.idx255';
 
         if (storeFileNames.indexOf(dataFileName) === -1) {
             throw new Error(`The main ${dataFileName} data file could not be found.`);
         }
 
-        if (storeFileNames.indexOf(mainIndexFile) === -1) {
-            throw new Error(`The main ${mainIndexFile} index file could not be found.`);
+        if (storeFileNames.indexOf(mainIndexFileName) === -1) {
+            throw new Error(`The main ${mainIndexFileName} index file could not be found.`);
         }
 
-        const indexFilePrefix = 'main_file_cache.idx';
         const dataFilePath = join(js5StorePath, dataFileName);
-        const mainIndexFilePath = join(js5StorePath, mainIndexFile);
+        const mainIndexFilePath = join(js5StorePath, mainIndexFileName);
 
         this.dataFile = new ByteBuffer(readFileSync(dataFilePath));
         this.mainIndexFile = new ByteBuffer(readFileSync(mainIndexFilePath));
-        this.indexFiles = new Map<number, ByteBuffer>();
+        this.indexFiles.clear();
 
         for (const fileName of storeFileNames) {
-            if (!fileName?.length || fileName === mainIndexFile || fileName === dataFileName) {
+            if (!fileName?.length || fileName === mainIndexFileName || fileName === dataFileName) {
                 continue;
             }
 
-            if (!fileName.startsWith(indexFilePrefix)) {
+            if (!fileName.startsWith(indexFileNamePrefix)) {
                 continue;
             }
 

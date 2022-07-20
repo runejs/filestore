@@ -6,7 +6,7 @@ const dev = async () => {
     const start = Date.now();
     const fileStore = new JS5FileStore(435);
     await fileStore.load();
-    fileStore.js5.loadJS5Files();
+    fileStore.js5.loadLocalCacheFiles();
 
     logger.info(`Unpacking archives from JS5 store...`);
 

@@ -15,7 +15,7 @@ export class Jag {
         this.jagStore = jagStore;
     }
 
-    loadJagFiles(): void {
+    loadLocalJagFiles(): void {
         const jagStorePath = join(this.jagStore.fileStorePath, 'jag');
 
         if (!existsSync(jagStorePath)) {

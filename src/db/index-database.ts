@@ -40,6 +40,10 @@ export class IndexDatabase {
         return this._connection;
     }
 
+    async closeConnection(): Promise<void> {
+        await this._connection.close();
+    }
+
     async upsertIndexes(indexEntities: IndexEntity[]): Promise<void> {
         const chunkSize = 100;
         for (let i = 0; i < indexEntities.length; i += chunkSize) {

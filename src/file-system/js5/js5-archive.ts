@@ -1,21 +1,23 @@
 import { JS5FileStore } from './js5-file-store';
-import { Group } from './group';
+import { JS5Group } from './js5-group';
 import { logger } from '@runejs/common';
 import { IndexedFileBase } from '../indexed-file-base';
+import { JS5ArchiveConfig } from '../../config';
 
 
-export class Archive extends IndexedFileBase<JS5FileStore> {
+export class JS5Archive extends IndexedFileBase<JS5FileStore> {
 
-    readonly groups: Map<number, Group>;
+    readonly groups: Map<number, JS5Group>;
+    readonly config: JS5ArchiveConfig;
 
     constructor(
         fileStore: JS5FileStore,
         archiveKey: number,
-        archiveName: string,
     ) {
         super(fileStore, 'ARCHIVE', archiveKey, 255, -1);
-        this.index.name = archiveName;
-        this.groups = new Map<number, Group>();
+        this.config = fileStore.getArchiveConfig(archiveKey);
+        this.index.name = fileStore.getArchiveName(archiveKey);
+        this.groups = new Map<number, JS5Group>();
     }
 
     override validate(trackChanges: boolean = true): void {
@@ -53,49 +55,28 @@ export class Archive extends IndexedFileBase<JS5FileStore> {
             const groupKey = groupIndex.key;
 
             if (!this.groups.has(groupKey)) {
-                const group = new Group(this.fileStore, groupKey, this);
+                const group = new JS5Group(this.fileStore, groupKey, this);
                 group.index = groupIndex;
                 this.groups.set(groupKey, group);
             }
         }
     }
 
-    js5Unpack(): Buffer | null {
-        return this.fileStore.js5.unpack(this);
+    getGroup(groupKey: number): JS5Group | null;
+    getGroup(groupName: string): JS5Group | null;
+    getGroup(groupKeyOrName: number | string): JS5Group | null;
+    getGroup(groupKeyOrName: number | string): JS5Group | null {
+        if (typeof groupKeyOrName === 'string') {
+            return Array.from(this.groups.values()).find(
+                group => group?.index?.name === groupKeyOrName
+            ) || null;
+        } else {
+            return this.groups.get(groupKeyOrName) || null;
+        }
     }
 
-    js5Decompress(): Buffer | null {
-        return this.fileStore.js5.decompress(this);
-    }
-
-    async js5Decode(): Promise<void> {
-        await this.fileStore.js5.decodeArchive(this);
-    }
-
-    js5Pack(): Buffer | null {
-        return this.fileStore.js5.pack(this);
-    }
-
-    js5Compress(): Buffer | null {
-        return this.fileStore.js5.compress(this);
-    }
-
-    js5Encode(): Buffer | null {
-        return this.fileStore.js5.encodeArchive(this);
-    }
-
-    getGroup(groupIndex: number): Group | null {
-        return this.groups.get(groupIndex) || null;
-    }
-
-    setGroup(groupIndex: number, group: Group): void {
-        this.groups.set(groupIndex, group);
-    }
-
-    findGroup(groupName: string): Group | null {
-        return Array.from(this.groups.values()).find(
-            group => group?.index?.name === groupName
-        ) || null;
+    setGroup(groupKey: number, group: JS5Group): void {
+        this.groups.set(groupKey, group);
     }
 
 }

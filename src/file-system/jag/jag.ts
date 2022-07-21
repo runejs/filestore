@@ -2,6 +2,7 @@ import { join } from 'path';
 import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
 import { JagStore } from './jag-store';
+import { OpenRS2CacheFile } from '../../openrs2';
 
 
 export class Jag {
@@ -15,7 +16,11 @@ export class Jag {
         this.jagStore = jagStore;
     }
 
-    loadLocalJagFiles(): void {
+    // @todo stubbed - 21/07/22 - Kiko
+    readOpenRS2CacheFiles(cacheFiles: OpenRS2CacheFile[]): void {
+    }
+
+    readLocalJagFiles(): void {
         const jagStorePath = join(this.jagStore.fileStorePath, 'jag');
 
         if (!existsSync(jagStorePath)) {
@@ -49,17 +54,17 @@ export class Jag {
                 continue;
             }
 
-            const index = fileName.substring(fileName.indexOf('.idx') + 4);
-            const numericIndex = Number(index);
+            const indexString = fileName.substring(fileName.indexOf('.idx') + 4);
+            const indexKey = Number(indexString);
 
-            if (isNaN(numericIndex)) {
+            if (isNaN(indexKey)) {
                 logger.error(`Index file ${fileName} does not have a valid extension.`);
             }
 
-            this.indexFiles.set(numericIndex, new ByteBuffer(readFileSync(join(jagStorePath, fileName))));
+            this.indexFiles.set(indexKey, new ByteBuffer(readFileSync(join(jagStorePath, fileName))));
         }
 
-        logger.info(`Jag store files loaded for game build ${this.jagStore.gameBuild}.`);
+        logger.info(`JAG store files loaded for game build ${this.jagStore.gameBuild}.`);
     }
 
     // @todo 18/07/22 - Kiko

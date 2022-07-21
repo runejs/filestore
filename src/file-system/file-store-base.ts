@@ -1,14 +1,15 @@
-import { Djb2 } from '../config';
-import { IndexDatabase } from '../db/index-database';
-import { join } from 'path';
-import { Crc32 } from '@runejs/common/crc32';
-import { existsSync, readFileSync } from 'graceful-fs';
-import { logger } from '@runejs/common';
 import JSON5 from 'json5';
+import { join } from 'path';
+import { existsSync, readFileSync } from 'graceful-fs';
+import { Crc32 } from '@runejs/common/crc32';
+import { logger } from '@runejs/common';
+
+import { ArchiveConfig, Djb2 } from '../config';
+import { IndexDatabase } from '../db/index-database';
 import { IndexedFileBase } from './indexed-file-base';
 
 
-export abstract class FileStoreBase<A extends IndexedFileBase<any>, C> {
+export abstract class FileStoreBase<A extends IndexedFileBase<any>, C extends ArchiveConfig = ArchiveConfig> {
 
     readonly gameBuild: string;
     readonly fileStorePath: string;
@@ -69,18 +70,55 @@ export abstract class FileStoreBase<A extends IndexedFileBase<any>, C> {
         await this._database.closeConnection();
     }
 
-    getArchive(archiveKey: number): A | null {
-        return this.archives.get(archiveKey) || null;
+    getArchive(archiveKey: number): A | null;
+    getArchive(archiveName: string): A | null;
+    getArchive(archiveKeyOrName: number | string): A | null;
+    getArchive(archiveKeyOrName: number | string): A | null {
+        if (typeof archiveKeyOrName === 'string') {
+            return Array.from(this.archives.values()).find(
+                a => a?.index?.name === archiveKeyOrName
+            ) || null;
+        } else {
+            return this.archives.get(archiveKeyOrName) || null;
+        }
     }
 
-    setArchive(archiveKey: number, archive: A): void {
-        this.archives.set(archiveKey, archive);
+    setArchive(archiveKey: number, archive: A): void;
+    setArchive(archiveName: string, archive: A): void;
+    setArchive(archiveKeyOrName: number | string, archive: A): void;
+    setArchive(archiveKeyOrName: number | string, archive: A): void {
+        if (typeof archiveKeyOrName === 'string') {
+            const archiveConfig = this.getArchiveConfig(archiveKeyOrName);
+            if (archiveConfig) {
+                this.archives.set(archiveConfig.key, archive);
+            } else {
+                logger.error(`Archive ${ archiveKeyOrName } configuration was not found.`);
+            }
+        } else {
+            this.archives.set(archiveKeyOrName, archive);
+        }
     }
 
-    findArchive(archiveName: string): A | null {
-        return Array.from(this.archives.values()).find(
-            a => a?.index?.name === archiveName
-        ) || null;
+    getArchiveConfig(archiveKey: number): C | null;
+    getArchiveConfig(archiveName: string): C | null;
+    getArchiveConfig(archiveKeyOrName: number | string): C | null;
+    getArchiveConfig(archiveKeyOrName: number | string): C | null {
+        if (typeof archiveKeyOrName === 'string') {
+            return this._archiveConfig[archiveKeyOrName] || null;
+        } else {
+            return Object.values(this._archiveConfig).find(c => c.key === archiveKeyOrName) || null;
+        }
+    }
+
+    getArchiveName(archiveKey: number): string | null {
+        const archiveEntries = Object.entries(this._archiveConfig);
+        for (const [ name, config ] of archiveEntries) {
+            if (config.key === archiveKey) {
+                return name;
+            }
+        }
+
+        return null;
     }
 
     get archiveConfig(): { [key: string]: C } {

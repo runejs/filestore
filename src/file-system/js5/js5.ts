@@ -4,11 +4,11 @@ import { ByteBuffer, logger } from '@runejs/common';
 import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
 import { Xtea, XteaKeys } from '@runejs/common/encrypt';
 import { archiveFlags } from '../../config';
-import { Group } from './group';
-import { Archive } from './archive';
+import { JS5Group } from './js5-group';
+import { JS5Archive } from './js5-archive';
 import { JS5FileStore } from './js5-file-store';
 import { ArchiveFormat } from '../../config';
-import { FlatFile } from './flat-file';
+import { JS5File } from './js5-file';
 import { getXteaKeysByBuild, OpenRS2CacheFile } from '../../openrs2';
 import { XteaConfig } from '@runejs/common/encrypt/xtea';
 
@@ -34,7 +34,7 @@ export class JS5 {
         this.indexFiles = new Map<number, ByteBuffer>();
     }
 
-    loadOpenRS2CacheFiles(cacheFiles: OpenRS2CacheFile[]): void {
+    readOpenRS2CacheFiles(cacheFiles: OpenRS2CacheFile[]): void {
         const dataFileBuffer = cacheFiles.find(file => file.name === dataFileName)?.data || null;
         if (!dataFileBuffer?.length) {
             throw new Error(`The main ${ dataFileName } data file could not be found.`);
@@ -65,20 +65,21 @@ export class JS5 {
                 continue;
             }
 
-            const index = fileName.substring(fileName.indexOf('.idx') + 4);
-            const numericIndex = Number(index);
+            const indexString = fileName.substring(fileName.indexOf('.idx') + 4);
+            const archiveKey = Number(indexString);
 
-            if (isNaN(numericIndex)) {
+            if (isNaN(archiveKey)) {
                 logger.error(`Index file ${ fileName } does not have a valid extension.`);
             }
 
-            this.indexFiles.set(numericIndex, new ByteBuffer(cacheFile.data));
+            this.indexFiles.set(archiveKey, new ByteBuffer(cacheFile.data));
+            this.fileStore.createArchive(archiveKey);
         }
 
         logger.info(`JS5 store file loaded for game build ${ this.fileStore.gameBuild }.`);
     }
 
-    loadLocalCacheFiles(): void {
+    readLocalCacheFiles(): void {
         const js5StorePath = join(this.fileStore.fileStorePath, 'js5');
 
         if (!existsSync(js5StorePath)) {
@@ -116,24 +117,25 @@ export class JS5 {
                 continue;
             }
 
-            const index = fileName.substring(fileName.indexOf('.idx') + 4);
-            const numericIndex = Number(index);
+            const indexString = fileName.substring(fileName.indexOf('.idx') + 4);
+            const archiveKey = Number(indexString);
 
-            if (isNaN(numericIndex)) {
+            if (isNaN(archiveKey)) {
                 logger.error(`Index file ${ fileName } does not have a valid extension.`);
             }
 
-            this.indexFiles.set(numericIndex, new ByteBuffer(readFileSync(join(js5StorePath, fileName))));
+            this.indexFiles.set(archiveKey, new ByteBuffer(readFileSync(join(js5StorePath, fileName))));
+            this.fileStore.createArchive(archiveKey);
         }
 
         logger.info(`JS5 store file loaded for game build ${ this.fileStore.gameBuild }.`);
     }
 
-    unpack(file: Group | Archive): Buffer | null {
+    unpack(file: JS5Group | JS5Archive): Buffer | null {
         const fileDetails = file.index;
         const fileKey = fileDetails.key;
-        const archiveKey: number = file instanceof Archive ? 255 : file.archive.index.key;
-        const archiveName: string = file instanceof Archive ? 'main' : file.archive.index.name;
+        const archiveKey: number = file instanceof JS5Archive ? 255 : file.archive.index.key;
+        const archiveName: string = file instanceof JS5Archive ? 'main' : file.archive.index.name;
 
         const indexChannel: ByteBuffer = archiveKey !== 255 ?
             this.indexFiles.get(archiveKey) : this.mainIndexFile;
@@ -233,7 +235,7 @@ export class JS5 {
         return fileDetails.compressedData;
     }
 
-    readCompressedFileHeader(file: Group | Archive): { compressedLength: number, readerIndex: number } {
+    readCompressedFileHeader(file: JS5Group | JS5Archive): { compressedLength: number, readerIndex: number } {
         const fileDetails = file.index;
 
         if (!fileDetails.compressedData?.length) {
@@ -251,7 +253,7 @@ export class JS5 {
         return { compressedLength, readerIndex };
     }
 
-    decrypt(file: Group | Archive): Buffer {
+    decrypt(file: JS5Group | JS5Archive): Buffer {
         const fileDetails = file.index;
         const fileName = fileDetails.name;
 
@@ -262,7 +264,7 @@ export class JS5 {
         }
 
         // @todo move to JS5.decodeArchive
-        const archiveName = file instanceof Archive ? 'main' : file.archive.index.name;
+        const archiveName = file instanceof JS5Archive ? 'main' : file.archive.index.name;
         const archiveConfig = this.fileStore.archiveConfig[archiveName];
 
         if (archiveConfig.encryption) {
@@ -325,7 +327,7 @@ export class JS5 {
         return null;
     }
 
-    decompress(file: Group | Archive): Buffer | null {
+    decompress(file: JS5Group | JS5Archive): Buffer | null {
         const fileDetails = file.index;
 
         if (!fileDetails.compressedData?.length) {
@@ -396,7 +398,7 @@ export class JS5 {
         return fileDetails.data;
     }
 
-    async decodeGroup(group: Group): Promise<void> {
+    async decodeGroup(group: JS5Group): Promise<void> {
         const groupDetails = group.index;
         const { key: groupKey, name: groupName } = groupDetails;
         const files = group.files;
@@ -491,7 +493,7 @@ export class JS5 {
         group.validate(false);
     }
 
-    async decodeArchive(archive: Archive): Promise<void> {
+    async decodeArchive(archive: JS5Archive): Promise<void> {
         const archiveDetails = archive.index;
 
         if (archiveDetails.key === 255) {
@@ -511,16 +513,13 @@ export class JS5 {
             }
         }
 
-        // logger.info(`Archive ${archiveName} checksum: ${this.crc32}`);
-
         const archiveData = new ByteBuffer(archiveDetails.data);
         const format = archiveDetails.archiveFormat = archiveData.get('byte', 'unsigned');
         const mainDataType = format >= ArchiveFormat.smart ? 'smart_int' : 'short';
         archiveDetails.version = format >= ArchiveFormat.versioned ? archiveData.get('int') : 0;
         const flags = archiveFlags(archiveData.get('byte', 'unsigned'));
         const groupCount = archiveData.get(mainDataType, 'unsigned');
-        const groups: Group[] = new Array(groupCount);
-        let missingEncryptionKeys = 0;
+        const groups: JS5Group[] = new Array(groupCount);
         let accumulator = 0;
 
         logger.info(`${ groupCount } groups were found within the ${ archiveName } archive.`);
@@ -529,7 +528,7 @@ export class JS5 {
         for (let i = 0; i < groupCount; i++) {
             const delta = archiveData.get(mainDataType, 'unsigned');
             const groupKey = accumulator += delta;
-            const group = groups[i] = new Group(this.fileStore, groupKey, archive);
+            const group = groups[i] = new JS5Group(this.fileStore, groupKey, archive);
             archive.setGroup(groupKey, group);
         }
 
@@ -590,7 +589,7 @@ export class JS5 {
             for (let i = 0; i < fileCount; i++) {
                 const delta = archiveData.get(mainDataType, 'unsigned');
                 const childFileIndex = accumulator += delta;
-                const flatFile = new FlatFile(this.fileStore, childFileIndex, group);
+                const flatFile = new JS5File(this.fileStore, childFileIndex, group);
                 group.setFile(childFileIndex, flatFile);
             }
         }
@@ -611,19 +610,22 @@ export class JS5 {
         archive.validate(false);
     }
 
+    // @todo stubbed - 21/07/22 - Kiko
     decodeMainIndex(): Buffer | null {
-        return null; // @todo stub
+        return null;
     }
 
-    pack(file: Group | Archive): Buffer | null {
-        return null; // @todo stub
+    // @todo stubbed - 21/07/22 - Kiko
+    pack(file: JS5Group | JS5Archive): Buffer | null {
+        return null;
     }
 
-    encrypt(file: Group | Archive): Buffer | null {
-        return null; // @todo stub
+    // @todo stubbed - 21/07/22 - Kiko
+    encrypt(file: JS5Group | JS5Archive): Buffer | null {
+        return null;
     }
 
-    compress(file: Group | Archive): Buffer | null {
+    compress(file: JS5Group | JS5Archive): Buffer | null {
         const fileDetails = file.index;
 
         if (!fileDetails.data?.length) {
@@ -675,12 +677,148 @@ export class JS5 {
         return fileDetails.compressedData;
     }
 
-    encodeGroup(group: Group): Buffer {
-        return null; // @todo stub
+    encodeGroup(group: JS5Group): Buffer | null {
+        const { files: fileMap, index, stripes } = group;
+        const fileCount = fileMap.size;
+
+        // Single-file group
+        if (fileCount <= 1) {
+            index.data = fileMap.get(0)?.index?.data || null;
+            return index.data;
+        }
+
+        // Multi-file group
+        const files = Array.from(fileMap.values());
+        const fileSizes = files.map(file => file.index.fileSize);
+        const stripeCount = stripes?.length ?? 1;
+
+        // Size of all individual files + 1 int per file containing it's size
+        // + 1 at the end for the total group stripe count
+        const groupSize = fileSizes.reduce(
+            (a, c) => a + c) + (stripeCount * fileCount * 4
+        ) + 1;
+
+        const groupBuffer = new ByteBuffer(groupSize);
+
+        // Write child file data
+        for (let stripe = 0; stripe < stripeCount; stripe++) {
+            files.forEach(file => {
+                const fileData = file.index.data;
+                if (!fileData?.length) {
+                    return;
+                }
+
+                const fileBuffer = new ByteBuffer(fileData);
+                const stripeSize = file.stripes?.[stripe] ?? 0;
+
+                if (stripeSize) {
+                    const stripeData = fileBuffer.getSlice(fileBuffer.readerIndex, stripeSize);
+                    fileBuffer.readerIndex = fileBuffer.readerIndex + stripeSize;
+                    groupBuffer.putBytes(stripeData);
+                }
+            });
+        }
+
+        // Write child file stripe lengths
+        for (let stripe = 0; stripe < stripeCount; stripe++) {
+            let prevSize = 0;
+            files.forEach(file => {
+                const fileData = file.index.data;
+                if (!fileData?.length) {
+                    return;
+                }
+
+                const stripeLength = file.stripes?.[stripe] ?? 0;
+                groupBuffer.put(stripeLength - prevSize, 'int');
+                prevSize = stripeLength;
+            });
+        }
+
+        // Write group child file stripe count
+        groupBuffer.put(stripeCount, 'byte');
+
+        if (groupBuffer.length) {
+            index.data = groupBuffer.toNodeBuffer();
+        } else {
+            index.data = null;
+        }
+
+        return index.data;
     }
 
-    encodeArchive(archive: Archive): Buffer {
-        return null; // @todo stub
+    // @todo support newer archive fields & formats - 21/07/22 - Kiko
+    encodeArchive(archive: JS5Archive): Buffer | null {
+        const { groups: groupMap, index } = archive;
+        const groups = Array.from(groupMap.values());
+        const groupCount = groups.length;
+        const filesNamed = groups.filter(group => group.index.name !== null).length !== 0;
+        let lastFileKey = 0;
+
+        // @todo calculate the proper size instead of using a set amount here - 21/07/22 - Kiko
+        const buffer = new ByteBuffer(1000 * 1000);
+
+        // Write archive index file header
+        buffer.put(index.archiveFormat ?? ArchiveFormat.original);
+        buffer.put(filesNamed ? 1 : 0);
+        buffer.put(groupCount, 'short');
+
+        // Write group keys
+        groups.forEach(group => {
+            buffer.put(group.index.key - lastFileKey, 'short');
+            lastFileKey = group.index.key;
+        });
+
+        // Write group names (if applicable)
+        if (filesNamed) {
+            groups.forEach(group => buffer.put(group.index.nameHash ?? -1, 'int'));
+        }
+
+        // Write uncompressed crc values
+        groups.forEach(group => buffer.put(group.index.checksum ?? -1, 'int'));
+
+        // Write group version numbers
+        groups.forEach(group => buffer.put(group.index.version, 'int'));
+
+        // Write group child file counts
+        groups.forEach(group => buffer.put(group.files?.size ?? 1, 'short'));
+
+        // Write group child file keys
+        groups.forEach(group => {
+            if (group.files.size > 1) {
+                lastFileKey = 0;
+
+                group.files.forEach(file => {
+                    buffer.put(file.index.key - lastFileKey, 'short');
+                    lastFileKey = file.index.key;
+                });
+            } else {
+                buffer.put(0, 'short');
+            }
+        });
+
+        // Write group child file names (if applicable)
+        if (filesNamed) {
+            groups.forEach(group => {
+                if (group.files.size > 1) {
+                    lastFileKey = 0;
+
+                    group.files.forEach(file =>
+                        buffer.put(file.index.nameHash ?? -1, 'int'));
+                } else {
+                    buffer.put(0, 'int');
+                }
+            });
+        }
+
+        const archiveIndexData = buffer?.flipWriter();
+
+        if (archiveIndexData?.length) {
+            index.data = archiveIndexData.toNodeBuffer();
+        } else {
+            index.data = null;
+        }
+
+        return index.data;
     }
 
     encodeMainIndex(): ByteBuffer {

@@ -110,7 +110,7 @@ const indexJS5Store = async (store: JS5FileStore) => {
 
 
 const indexJS5Archive = async (store: JS5FileStore, archiveName: string) => {
-    const archive = store.findArchive(archiveName);
+    const archive = store.getArchive(archiveName);
 
     if (!archive) {
         logger.error(`Archive ${ archiveName } was not found.`);
@@ -198,9 +198,9 @@ const indexerScript = async (
         await store.load();
 
         if (cacheFiles === 'local') {
-            store.js5.loadLocalCacheFiles();
+            store.js5.readLocalCacheFiles();
         } else {
-            store.js5.loadOpenRS2CacheFiles(cacheFiles);
+            store.js5.readOpenRS2CacheFiles(cacheFiles);
         }
 
         if (archiveName === 'main') {
@@ -213,7 +213,7 @@ const indexerScript = async (
     } else if (format === 'jag') {
         const store = new JagStore(numericBuildNumber !== -1 ? numericBuildNumber : build, dir);
         await store.load();
-        store.jag.loadLocalJagFiles();
+        store.jag.readLocalJagFiles();
 
         // @todo 18/07/22 - Kiko
 

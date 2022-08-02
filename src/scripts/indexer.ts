@@ -2,12 +2,13 @@ import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { ScriptExecutor, ArgumentOptions } from './script-executor';
-import { JS5FileStore } from '../file-system/js5/js5-file-store';
-import { JagStore } from '../file-system/jag/jag-store';
+import { JS5FileStore } from '../file-system/js5';
+import { indexes, JagArchive, JagStore } from '../file-system/jag';
 import {
     getOpenRS2CacheFilesByBuild,
     OpenRS2CacheFile
 } from '../openrs2';
+import { fileTarget, prettyPrintTarget } from '../../../common/src';
 
 
 interface IndexerOptions {
@@ -154,7 +155,52 @@ const indexJS5Archive = async (store: JS5FileStore, archiveName: string) => {
 
 
 const indexJagStore = async (store: JagStore) => {
-    // @todo 18/07/22 - Kiko
+    logger.info(`Decoding JAG store indexes...`);
+
+    const indexNames = Object.keys(indexes);
+    for (const indexName of indexNames) {
+        store.jag.decodeIndex(indexName);
+    }
+
+    logger.info(`Saving indexes...`);
+
+    for (const [ , indexFile ] of store.indexes) {
+        await indexFile.saveIndex();
+    }
+
+    for (const [, indexFile ] of store.indexes) {
+        logger.info(`Unpacking JAG files for index ${indexFile.index.name}...`);
+
+        for (const [ , file ] of indexFile.files) {
+            store.jag.unpack(file);
+        }
+    }
+
+    logger.info(`Decoding JAG archives...`);
+
+    const archiveIndex = store.getIndex(indexes.archives);
+
+    // @todo unfinished - 02/08/22 - Kiko
+    for (const [ , archive ] of archiveIndex.files) {
+        if (archive instanceof JagArchive) {
+            store.jag.decodeArchive(archive);
+        }
+    }
+
+    logger.info(`Saving JAG file indexes...`);
+
+    for (const [, index ] of store.indexes) {
+        await index.upsertFileIndexes();
+    }
+
+    logger.info(`Saving JAG archive file indexes...`);
+
+    // @todo unfinished - 02/08/22 - Kiko
+    for (const [ , archive ] of archiveIndex.files) {
+        if (archive instanceof JagArchive) {
+            await archive.upsertFileIndexes();
+        }
+    }
 };
 
 
@@ -175,7 +221,11 @@ const indexerScript = async (
         mkdirSync(logDir, { recursive: true });
     }
 
-    logger.destination(join(logDir, `index-${ format }-${ build }.log`));
+    // logger.destination(join(logDir, `index-${ format }-${ build }.log`));
+    logger.setTargets([
+        prettyPrintTarget(),
+        fileTarget(join(logDir, `index-${ format }-${ build }.log`))
+    ]);
 
     if (source === 'openrs2') {
         if (numericBuildNumber) {
@@ -213,9 +263,18 @@ const indexerScript = async (
     } else if (format === 'jag') {
         const store = new JagStore(numericBuildNumber !== -1 ? numericBuildNumber : build, dir);
         await store.load();
-        store.jag.readLocalJagFiles();
 
-        // @todo 18/07/22 - Kiko
+        if (cacheFiles === 'local') {
+            store.jag.readLocalCacheFiles();
+        } else {
+            store.jag.readOpenRS2CacheFiles(cacheFiles);
+        }
+
+        if (archiveName === 'main') {
+            await indexJagStore(store);
+        } else {
+            await indexJagArchive(store, archiveName);
+        }
 
         await store.closeDatabase();
     } else if (format === 'flat') {
@@ -223,8 +282,8 @@ const indexerScript = async (
     }
 
     logger.info(`Indexing completed in ${ (Date.now() - start) / 1000 } seconds.`);
-    logger.boom.flushSync();
-    logger.boom.end();
+    // logger.boom.flushSync();
+    // logger.boom.end();
 };
 
 

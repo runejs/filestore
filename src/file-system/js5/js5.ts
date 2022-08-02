@@ -1,16 +1,20 @@
 import { join } from 'path';
+import { Buffer } from 'buffer';
 import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
+
 import { ByteBuffer, logger } from '@runejs/common';
-import { Bzip2, getCompressionMethod, Gzip } from '@runejs/common/compress';
-import { Xtea, XteaKeys } from '@runejs/common/encrypt';
-import { archiveFlags } from '../../config';
-import { JS5Group } from './js5-group';
-import { JS5Archive } from './js5-archive';
-import { JS5FileStore } from './js5-file-store';
-import { ArchiveFormat } from '../../config';
-import { JS5File } from './js5-file';
+import { getCompressionMethod } from '@runejs/common/compress';
+import { Xtea, XteaKeys, XteaConfig } from '@runejs/common/encrypt';
+
+import { JS5FileStore, JS5Archive, JS5Group, JS5File } from '.';
+import { archiveFlags, ArchiveFormat } from '../../config';
 import { getXteaKeysByBuild, OpenRS2CacheFile } from '../../openrs2';
-import { XteaConfig } from '@runejs/common/encrypt/xtea';
+import {
+    compressHeadlessBzip2,
+    decompressHeadlessBzip2,
+    compressGzip,
+    decompressGzip
+} from '../../compress';
 
 
 const dataFileName = 'main_file_cache.dat2';
@@ -132,8 +136,8 @@ export class JS5 {
     }
 
     unpack(file: JS5Group | JS5Archive): Buffer | null {
-        const fileDetails = file.index;
-        const fileKey = fileDetails.key;
+        const fileIndex = file.index;
+        const fileKey = fileIndex.key;
         const archiveKey: number = file instanceof JS5Archive ? 255 : file.archive.index.key;
         const archiveName: string = file instanceof JS5Archive ? 'main' : file.archive.index.name;
 
@@ -165,74 +169,75 @@ export class JS5 {
             return null;
         }
 
-        fileDetails.fileSize = fileIndexData.get('int24', 'unsigned');
-        const stripeCount = fileIndexData.get('int24', 'unsigned');
+        fileIndex.fileSize = fileIndexData.get('int24', 'unsigned');
+        const sectorNumber = fileIndexData.get('int24', 'unsigned');
 
-        if (fileDetails.fileSize <= 0) {
+        if (fileIndex.fileSize <= 0) {
             logger.warn(`JS5 file ${ fileKey } is empty or has been removed.`);
             return null;
         }
 
-        const data = new ByteBuffer(fileDetails.fileSize);
-        const stripeDataLength = 512;
-        const stripeLength = 520;
+        const data = new ByteBuffer(fileIndex.fileSize);
+        const sectorDataLength = 512;
+        const sectorLength = 520;
 
-        let stripe = 0;
-        let remaining = fileDetails.fileSize;
-        pointer = stripeCount * stripeLength;
+        let sector = 0;
+        let remainingData = fileIndex.fileSize;
+        pointer = sectorNumber * sectorLength;
 
         do {
-            const temp = new ByteBuffer(stripeLength);
-            dataChannel.copy(temp, 0, pointer, pointer + stripeLength);
+            const temp = new ByteBuffer(sectorLength);
+            dataChannel.copy(temp, 0, pointer, pointer + sectorLength);
 
-            if (temp.readable !== stripeLength) {
+            if (temp.readable !== sectorLength) {
                 logger.error(`Error reading stripe for packed file ${ fileKey }, the end of the data stream was reached.`);
                 return null;
             }
 
-            const stripeFileIndex = temp.get('short', 'unsigned');
-            const currentStripe = temp.get('short', 'unsigned');
-            const nextStripe = temp.get('int24', 'unsigned');
-            const stripeArchiveIndex = temp.get('byte', 'unsigned');
-            const stripeData = new ByteBuffer(stripeDataLength);
-            temp.copy(stripeData, 0, temp.readerIndex, temp.readerIndex + stripeDataLength);
+            const sectorFileKey = temp.get('short', 'unsigned');
+            const sectorFilePartNumber = temp.get('short', 'unsigned');
+            const sectorNumber = temp.get('int24', 'unsigned');
+            const sectorIndexKey = temp.get('byte', 'unsigned');
 
-            if (remaining > stripeDataLength) {
-                stripeData.copy(data, data.writerIndex, 0, stripeDataLength);
-                data.writerIndex = (data.writerIndex + stripeDataLength);
-                remaining -= stripeDataLength;
+            const sectorData = new ByteBuffer(sectorDataLength);
+            temp.copy(sectorData, 0, temp.readerIndex, temp.readerIndex + sectorDataLength);
 
-                if (stripeArchiveIndex !== archiveKey) {
-                    logger.error(`Archive index mismatch, expected archive ${ archiveKey } but found archive ${ stripeFileIndex }`);
+            if (remainingData > sectorDataLength) {
+                sectorData.copy(data, data.writerIndex, 0, sectorDataLength);
+                data.writerIndex = (data.writerIndex + sectorDataLength);
+                remainingData -= sectorDataLength;
+
+                if (sectorIndexKey !== archiveKey) {
+                    logger.error(`Archive index mismatch, expected archive ${ archiveKey } but found ${ sectorFileKey }`);
                     return null;
                 }
 
-                if (stripeFileIndex !== fileKey) {
-                    logger.error(`File index mismatch, expected ${ fileKey } but found ${ stripeFileIndex }.`);
+                if (sectorFileKey !== fileKey) {
+                    logger.error(`File index mismatch, expected ${ fileKey } but found ${ sectorFileKey }.`);
                     return null;
                 }
 
-                if (currentStripe !== stripe++) {
+                if (sectorFilePartNumber !== sector++) {
                     logger.error(`Error extracting JS5 file ${ fileKey }, file data is corrupted.`);
                     return null;
                 }
 
-                pointer = nextStripe * stripeLength;
+                pointer = sectorNumber * sectorLength;
             } else {
-                stripeData.copy(data, data.writerIndex, 0, remaining);
-                data.writerIndex = (data.writerIndex + remaining);
-                remaining = 0;
+                sectorData.copy(data, data.writerIndex, 0, remainingData);
+                data.writerIndex = (data.writerIndex + remainingData);
+                remainingData = 0;
             }
-        } while (remaining > 0);
+        } while (remainingData > 0);
 
-        if (data?.length) {
-            fileDetails.compressedData = data.toNodeBuffer();
+        if (data.length) {
+            fileIndex.compressedData = data.toNodeBuffer();
         } else {
-            fileDetails.compressedData = null;
-            fileDetails.fileError = 'FILE_MISSING';
+            fileIndex.compressedData = null;
+            fileIndex.fileError = 'FILE_MISSING';
         }
 
-        return fileDetails.compressedData;
+        return fileIndex.compressedData;
     }
 
     readCompressedFileHeader(file: JS5Group | JS5Archive): { compressedLength: number, readerIndex: number } {
@@ -344,11 +349,11 @@ export class JS5 {
         // JS5.decrypt will set compressedData to the new decrypted data after completion
         const compressedData = new ByteBuffer(fileDetails.compressedData);
         compressedData.readerIndex = readerIndex;
-        let data: ByteBuffer;
+        let data: Buffer;
 
         if (fileDetails.compressionMethod === 'none') {
             // Uncompressed file
-            data = new ByteBuffer(compressedLength);
+            data = Buffer.alloc(compressedLength);
             compressedData.copy(data, 0, compressedData.readerIndex, compressedLength);
             compressedData.readerIndex = (compressedData.readerIndex + compressedLength);
         } else {
@@ -370,7 +375,8 @@ export class JS5 {
 
                 try {
                     data = fileDetails.compressionMethod === 'bzip' ?
-                        Bzip2.decompress(decompressedData) : Gzip.decompress(decompressedData);
+                        decompressHeadlessBzip2(decompressedData) :
+                        decompressGzip(decompressedData);
 
                     compressedData.readerIndex = compressedData.readerIndex + compressedLength;
 
@@ -392,7 +398,7 @@ export class JS5 {
                 fileDetails.version = compressedData.get('short', 'unsigned');
             }
 
-            fileDetails.data = data?.toNodeBuffer();
+            fileDetails.data = data;
         }
 
         return fileDetails.data;
@@ -650,8 +656,9 @@ export class JS5 {
         } else {
             // compressed Bzip2 or Gzip file
 
-            const compressedData: ByteBuffer = fileDetails.compressionMethod === 'bzip' ?
-                Bzip2.compress(decompressedData) : Gzip.compress(decompressedData);
+            const compressedData: Buffer = fileDetails.compressionMethod === 'bzip' ?
+                compressHeadlessBzip2(decompressedData) :
+                compressGzip(decompressedData);
 
             const compressedLength: number = compressedData.length;
 

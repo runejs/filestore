@@ -18,6 +18,7 @@ export abstract class IndexedFileBase<S extends FileStoreBase<any, any>> {
         key: number,
         archiveKey: number = -1,
         groupKey: number = -1,
+        indexKey: number = -1,
     ) {
         this.fileStore = fileStore;
         this.index = new IndexEntity();
@@ -26,6 +27,7 @@ export abstract class IndexedFileBase<S extends FileStoreBase<any, any>> {
         this.index.key = key;
         this.index.archiveKey = archiveKey;
         this.index.groupKey = groupKey;
+        this.index.indexKey = indexKey;
     }
 
     validate(trackChanges: boolean = true): void {

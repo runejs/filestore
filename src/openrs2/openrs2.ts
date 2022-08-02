@@ -1,9 +1,8 @@
 import axios from 'axios';
-import AdmZip, { IZipEntry } from 'adm-zip';
+import AdmZip from 'adm-zip';
 import { Buffer } from 'buffer';
 import { logger } from '@runejs/common';
-import { XteaKeys } from '@runejs/common/encrypt';
-import { XteaConfig } from '@runejs/common/encrypt/xtea';
+import { XteaConfig } from '@runejs/common/encrypt';
 
 
 const openRS2Endpoint = 'https://archive.openrs2.org';

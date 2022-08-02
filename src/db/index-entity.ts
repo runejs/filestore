@@ -6,7 +6,7 @@ import { Buffer } from 'buffer';
 
 @Entity('file_index')
 @Index('index_identifier', [
-    'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey'
+    'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey', 'indexKey'
 ], { unique: true })
 export class IndexEntity {
 
@@ -22,6 +22,11 @@ export class IndexEntity {
     @PrimaryColumn('integer', { name: 'archive_key', nullable: false, unique: false, default: -1 })
     archiveKey: number = -1;
 
+    // For JAG format files
+    @PrimaryColumn('integer', { name: 'index_key', nullable: false, unique: false, default: -1 })
+    indexKey: number = -1;
+
+    // For JS5 format files
     @PrimaryColumn('integer', { name: 'group_key', nullable: false, unique: false, default: -1 })
     groupKey: number = -1;
 

@@ -49,7 +49,7 @@ export class IndexDatabase {
         for (let i = 0; i < indexEntities.length; i += chunkSize) {
             const chunk = indexEntities.slice(i, i + chunkSize);
             await this.repository.upsert(chunk, {
-                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey' ],
+                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey', 'indexKey' ],
                 skipUpdateIfNoValuesChanged: true,
             });
         }

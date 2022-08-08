@@ -1,11 +1,11 @@
-import { IndexedFileBase } from '../indexed-file-base';
-import { JagStore } from './jag-store';
+import { JagFileStore } from './jag-file-store';
+import { JagFileBase } from './jag-file-base';
 
 
-export class JagFile extends IndexedFileBase<JagStore> {
+export class JagFile extends JagFileBase {
 
-    constructor(jagStore: JagStore, fileKey: number, indexKey: number, archiveKey: number = -1) {
-        super(jagStore, 'FILE', fileKey, archiveKey, -1, indexKey);
+    constructor(jagStore: JagFileStore, fileKey: number, indexKey: number, archiveKey: number = -1) {
+        super(jagStore, 'FILE', fileKey, indexKey, archiveKey);
     }
 
 }

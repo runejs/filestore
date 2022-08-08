@@ -3,6 +3,7 @@ import AdmZip from 'adm-zip';
 import { Buffer } from 'buffer';
 import { logger } from '@runejs/common';
 import { XteaConfig } from '@runejs/common/encrypt';
+import { CacheFile } from '../file-system/cache';
 
 
 const openRS2Endpoint = 'https://archive.openrs2.org';
@@ -33,19 +34,6 @@ export interface OpenRS2Cache {
     blocks: number | null;
     disk_store_valid: boolean | null;
 }
-
-
-export interface OpenRS2CacheFile {
-    name: string;
-    data: Buffer;
-}
-
-
-export const getCacheFormat = (files: OpenRS2CacheFile[]): 'js5' | 'jag' => {
-    return files.find(
-        file => file.name === 'main_file_cache.dat2' || file.name === 'main_file_cache.idx255'
-    ) !== null ? 'js5' : 'jag';
-};
 
 
 export const getOpenRS2CacheList = async (): Promise<OpenRS2Cache[]> => {
@@ -109,7 +97,7 @@ export const getOpenRS2CacheDetailsByBuild = async (
 export const getOpenRS2CacheFilesById = async (
     id: number,
     scope: string = 'runescape'
-): Promise<OpenRS2CacheFile[]> => {
+): Promise<CacheFile[]> => {
     const response = await axios.get(
         `${ openRS2Endpoint }/caches/${ scope }/${ id }/disk.zip`,
         { responseType: 'arraybuffer' }
@@ -129,7 +117,7 @@ export const getOpenRS2CacheFilesById = async (
 
 export const getOpenRS2CacheFilesByBuild = async (
     build: number
-): Promise<OpenRS2CacheFile[] | null> => {
+): Promise<CacheFile[] | null> => {
     logger.info(`Searching OpenRS2 for build ${ build }...`);
 
     const cacheList = (await getOpenRS2CacheList())

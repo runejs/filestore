@@ -1,22 +1,24 @@
-import { JagStore } from './jag-store';
-import { IndexedFileBase } from '../indexed-file-base';
-import { ArchiveConfig } from '../../config';
-import { indexes } from './jag';
+import { JagFileStore } from './jag-file-store';
+import { archives, indexes } from './jag';
 import { JagFile } from './jag-file';
+import { JagFileBase } from './jag-file-base';
 
 
-export class JagArchive extends IndexedFileBase<JagStore> {
+export class JagArchive extends JagFileBase {
 
-    readonly config: ArchiveConfig;
     readonly files: Map<number, JagFile>;
 
     constructor(
-        jagStore: JagStore,
+        jagStore: JagFileStore,
         archiveKey: number,
     ) {
-        super(jagStore, 'ARCHIVE', archiveKey, -1, -1, indexes.archives);
-        this.config = jagStore.getArchiveConfig(archiveKey);
-        this.index.name = jagStore.getArchiveName(archiveKey);
+        super(jagStore, 'ARCHIVE', archiveKey, indexes.archives, -1);
+        const archiveNames = Object.keys(archives);
+        for (const name of archiveNames) {
+            if (archives[name] === archiveKey) {
+                this.index.name = name;
+            }
+        }
         this.files = new Map<number, JagFile>();
     }
 

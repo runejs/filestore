@@ -2,18 +2,18 @@ import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { ScriptExecutor, ArgumentOptions } from './script-executor';
-import { JS5FileStore } from '../file-system/js5';
-import { indexes, JagArchive, JagStore } from '../file-system/jag';
+import { Js5FileStore } from '../file-system/js5';
+import { indexes, JagArchive, JagFileStore } from '../file-system/jag';
 import {
     getOpenRS2CacheFilesByBuild,
-    OpenRS2CacheFile
 } from '../openrs2';
 import { fileTarget, prettyPrintTarget } from '../../../common/src';
+import { CacheFile, getCacheFormat } from '../file-system/cache';
 
 
 interface IndexerOptions {
     dir: string;
-    format: 'flat' | 'js5' | 'jag';
+    format: 'flat' | 'packed';
     archive: string;
     build: string;
 }
@@ -41,9 +41,9 @@ const indexerArgumentOptions: ArgumentOptions = {
     format: {
         alias: 'f',
         type: 'string',
-        default: 'js5',
-        choices: [ 'jag', 'js5', 'flat' ],
-        description: `The format of the store to index, either 'js5' (400+ JS5 format), 'jag' (234-399 .jag format), or 'flat' (flat files). Defaults to 'js5'.`
+        default: 'packed',
+        choices: [ 'packed', 'flat' ],
+        description: `The format of the store to index, either 'packed' (JAG or JS5 format) or 'flat' (flat files). Defaults to 'packed'.`
     },
     source: {
         alias: 's',
@@ -55,7 +55,7 @@ const indexerArgumentOptions: ArgumentOptions = {
 };
 
 
-const indexJS5Store = async (store: JS5FileStore) => {
+const indexJS5Store = async (store: Js5FileStore) => {
     logger.info(`Unpacking archives from JS5 store...`);
 
     for (const [ , archive ] of store.archives) {
@@ -65,13 +65,13 @@ const indexJS5Store = async (store: JS5FileStore) => {
     logger.info(`Decoding JS5 archives...`);
 
     for (const [ , archive ] of store.archives) {
-        await store.js5.decodeArchive(archive);
+        await store.js5.decodeArchive(archive).catch(e => logger.error(e));
     }
 
     logger.info(`Saving archive indexes...`);
 
     for (const [ , archive ] of store.archives) {
-        await archive.saveIndex();
+        await archive.saveIndex().catch(e => logger.error(e));
     }
 
     logger.info(`Unpacking groups from JS5 store...`);
@@ -88,7 +88,7 @@ const indexJS5Store = async (store: JS5FileStore) => {
 
     for (const [ , archive ] of store.archives) {
         for (const [ , group ] of archive.groups) {
-            await store.js5.decodeGroup(group);
+            await store.js5.decodeGroup(group).catch(e => logger.error(e));
         }
 
         logger.info(`Finished decoding archive ${ archive.index.name } groups.`);
@@ -97,20 +97,20 @@ const indexJS5Store = async (store: JS5FileStore) => {
     logger.info(`Saving group indexes...`);
 
     for (const [ , archive ] of store.archives) {
-        await archive.upsertGroupIndexes();
+        await archive.upsertGroupIndexes().catch(e => logger.error(e));
     }
 
     logger.info(`Saving flat file indexes...`);
 
     for (const [ , archive ] of store.archives) {
         for (const [ , group ] of archive.groups) {
-            await group.upsertFileIndexes();
+            await group.upsertFileIndexes().catch(e => logger.error(e));
         }
     }
 };
 
 
-const indexJS5Archive = async (store: JS5FileStore, archiveName: string) => {
+const indexJS5Archive = async (store: Js5FileStore, archiveName: string) => {
     const archive = store.getArchive(archiveName);
 
     if (!archive) {
@@ -124,11 +124,11 @@ const indexJS5Archive = async (store: JS5FileStore, archiveName: string) => {
 
     logger.info(`Decoding archive ${ archiveName }...`);
 
-    await store.js5.decodeArchive(archive);
+    await store.js5.decodeArchive(archive).catch(e => logger.error(e));
 
     logger.info(`Saving archive ${ archiveName } index...`);
 
-    await archive.saveIndex();
+    await archive.saveIndex().catch(e => logger.error(e));
 
     logger.info(`Unpacking groups from archive ${ archiveName }...`);
 
@@ -139,22 +139,22 @@ const indexJS5Archive = async (store: JS5FileStore, archiveName: string) => {
     logger.info(`Decoding archive ${ archiveName } groups...`);
 
     for (const [ , group ] of archive.groups) {
-        await store.js5.decodeGroup(group);
+        await store.js5.decodeGroup(group).catch(e => logger.error(e));
     }
 
     logger.info(`Saving group indexes...`);
 
-    await archive.upsertGroupIndexes();
+    await archive.upsertGroupIndexes().catch(e => logger.error(e));
 
     logger.info(`Saving flat file indexes...`);
 
     for (const [ , group ] of archive.groups) {
-        await group.upsertFileIndexes();
+        await group.upsertFileIndexes().catch(e => logger.error(e));
     }
 };
 
 
-const indexJagStore = async (store: JagStore) => {
+const indexJagStore = async (store: JagFileStore) => {
     logger.info(`Decoding JAG store indexes...`);
 
     const indexNames = Object.keys(indexes);
@@ -165,7 +165,7 @@ const indexJagStore = async (store: JagStore) => {
     logger.info(`Saving indexes...`);
 
     for (const [ , indexFile ] of store.indexes) {
-        await indexFile.saveIndex();
+        await indexFile.saveIndex().catch(e => logger.error(e));
     }
 
     for (const [, indexFile ] of store.indexes) {
@@ -180,9 +180,9 @@ const indexJagStore = async (store: JagStore) => {
 
     const archiveIndex = store.getIndex(indexes.archives);
 
-    // @todo unfinished - 02/08/22 - Kiko
     for (const [ , archive ] of archiveIndex.files) {
         if (archive instanceof JagArchive) {
+            logger.info(`Decoding archive ${archive.index.name}...`);
             store.jag.decodeArchive(archive);
         }
     }
@@ -190,21 +190,20 @@ const indexJagStore = async (store: JagStore) => {
     logger.info(`Saving JAG file indexes...`);
 
     for (const [, index ] of store.indexes) {
-        await index.upsertFileIndexes();
+        await index.upsertFileIndexes().catch(e => logger.error(e));
     }
 
     logger.info(`Saving JAG archive file indexes...`);
 
-    // @todo unfinished - 02/08/22 - Kiko
     for (const [ , archive ] of archiveIndex.files) {
         if (archive instanceof JagArchive) {
-            await archive.upsertFileIndexes();
+            await archive.upsertFileIndexes().catch(e => logger.error(e));
         }
     }
 };
 
 
-const indexJagArchive = async (store: JagStore, archiveName: string) => {
+const indexJagArchive = async (store: JagFileStore, archiveName: string) => {
     // @todo 18/07/22 - Kiko
 };
 
@@ -215,17 +214,16 @@ const indexerScript = async (
     const start = Date.now();
     const logDir = join(dir, 'logs');
     const numericBuildNumber: number = /^\d+$/.test(build) ? parseInt(build, 10) : -1;
-    let cacheFiles: OpenRS2CacheFile[] | 'local' = 'local';
+    let cacheFiles: CacheFile[] | 'local' = 'local';
 
     if (!existsSync(logDir)) {
         mkdirSync(logDir, { recursive: true });
     }
 
-    // logger.destination(join(logDir, `index-${ format }-${ build }.log`));
-    logger.setTargets([
+    /*logger.setTargets([
         prettyPrintTarget(),
-        fileTarget(join(logDir, `index-${ format }-${ build }.log`))
-    ]);
+        fileTarget(join(logDir, `index-${ build }.log`))
+    ]);*/
 
     if (source === 'openrs2') {
         if (numericBuildNumber) {
@@ -241,10 +239,12 @@ const indexerScript = async (
         }
     }
 
-    logger.info(`Indexing ${ format === 'flat' ? format : format.toUpperCase() } file store...`);
+    const storeType = cacheFiles !== 'local' ? getCacheFormat(cacheFiles) : 'flat';
 
-    if (format === 'js5') {
-        const store = new JS5FileStore(numericBuildNumber !== -1 ? numericBuildNumber : build, dir);
+    logger.info(`Indexing ${ storeType === 'flat' ? storeType : storeType.toUpperCase() } file store...`);
+
+    if (storeType === 'js5') {
+        const store = new Js5FileStore(numericBuildNumber !== -1 ? numericBuildNumber : build, dir);
         await store.load();
 
         if (cacheFiles === 'local') {
@@ -260,8 +260,8 @@ const indexerScript = async (
         }
 
         await store.closeDatabase();
-    } else if (format === 'jag') {
-        const store = new JagStore(numericBuildNumber !== -1 ? numericBuildNumber : build, dir);
+    } else if (storeType === 'jag') {
+        const store = new JagFileStore(numericBuildNumber !== -1 ? numericBuildNumber : build, dir);
         await store.load();
 
         if (cacheFiles === 'local') {

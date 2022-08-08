@@ -1,17 +1,17 @@
-import { JS5FileStore } from './js5-file-store';
+import { Js5FileStore } from './js5-file-store';
 import { JS5Group } from './js5-group';
 import { logger } from '@runejs/common';
-import { IndexedFileBase } from '../indexed-file-base';
-import { JS5ArchiveConfig } from '../../config';
+import { Js5FileBase } from './js5-file-base';
+import { Js5ArchiveConfig } from '../../config';
 
 
-export class JS5Archive extends IndexedFileBase<JS5FileStore> {
+export class Js5Archive extends Js5FileBase {
 
     readonly groups: Map<number, JS5Group>;
-    readonly config: JS5ArchiveConfig;
+    readonly config: Js5ArchiveConfig;
 
     constructor(
-        fileStore: JS5FileStore,
+        fileStore: Js5FileStore,
         archiveKey: number,
     ) {
         super(fileStore, 'ARCHIVE', archiveKey, 255, -1);
@@ -45,7 +45,10 @@ export class JS5Archive extends IndexedFileBase<JS5FileStore> {
     }
 
     async loadGroupIndexes(): Promise<void> {
-        const groupIndexes = await this.fileStore.database.getIndexes('GROUP', this.index.key);
+        const groupIndexes = await this.fileStore.database.getIndexes({
+            fileType: 'GROUP',
+            archiveKey: this.index.key,
+        });
 
         if (!groupIndexes?.length) {
             return;

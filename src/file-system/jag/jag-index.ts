@@ -1,18 +1,17 @@
-import { IndexedFileBase } from '../indexed-file-base';
-import { JagStore } from './jag-store';
+import { JagFileStore } from './jag-file-store';
 import { JagFileIndex, indexes } from './jag';
 import { JagArchive } from './jag-archive';
 import { JagFile } from './jag-file';
-import { JS5File } from '../js5';
+import { JagFileBase } from './jag-file-base';
 
 
-export class JagIndex extends IndexedFileBase<JagStore> {
+export class JagIndex extends JagFileBase {
 
     readonly files: Map<number, JagArchive | JagFile>;
 
     fileIndexes: JagFileIndex[];
 
-    constructor(jagStore: JagStore, indexKey: number) {
+    constructor(jagStore: JagFileStore, indexKey: number) {
         super(jagStore, 'INDEX', indexKey);
         const indexNames = Object.keys(indexes);
         for (const name of indexNames) {
@@ -26,6 +25,12 @@ export class JagIndex extends IndexedFileBase<JagStore> {
     async upsertFileIndexes(): Promise<void> {
         const fileIndexes = Array.from(this.files.values()).map(file => file.index);
         await this.fileStore.database.upsertIndexes(fileIndexes);
+    }
+
+    createArchive(archiveKey: number): JagArchive {
+        const archive = new JagArchive(this.fileStore, archiveKey);
+        this.setArchive(archiveKey, archive);
+        return archive;
     }
 
     getArchive(archiveKey: number): JagArchive | null;
@@ -45,6 +50,10 @@ export class JagIndex extends IndexedFileBase<JagStore> {
         return (archive && archive instanceof JagArchive) ? archive : null;
     }
 
+    setArchive(archiveKey: number, archive: JagArchive): void {
+        this.files.set(archiveKey, archive);
+    }
+
     getFile(fileKey: number): JagFile | null;
     getFile(fileName: string): JagFile | null;
     getFile(fileKeyOrName: number | string): JagFile | null;
@@ -60,6 +69,10 @@ export class JagIndex extends IndexedFileBase<JagStore> {
         }
 
         return (file && file instanceof JagFile) ? file : null;
+    }
+
+    setFile(fileKey: number, file: JagFile): void {
+        this.files.set(fileKey, file);
     }
 
 }

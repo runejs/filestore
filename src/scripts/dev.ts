@@ -1,10 +1,10 @@
-import { JS5FileStore } from '../file-system/js5/js5-file-store';
+import { Js5FileStore } from '../file-system/js5/js5-file-store';
 import { logger } from '@runejs/common';
 
 
 const dev = async () => {
     const start = Date.now();
-    const fileStore = new JS5FileStore(435);
+    const fileStore = new Js5FileStore(435);
     await fileStore.load();
     fileStore.js5.readLocalCacheFiles();
 

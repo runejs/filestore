@@ -6,7 +6,7 @@ export interface ArchiveConfig {
 }
 
 
-export interface JS5ArchiveConfig extends ArchiveConfig {
+export interface Js5ArchiveConfig extends ArchiveConfig {
     encryption?: [ EncryptionMethod, string ];
     contentType?: string;
     flattenGroups?: boolean;

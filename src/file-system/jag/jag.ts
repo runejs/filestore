@@ -1,13 +1,13 @@
 import { join } from 'path';
 import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
 import { ByteBuffer, logger } from '@runejs/common';
-import { JagStore } from './jag-store';
-import { OpenRS2CacheFile } from '../../openrs2';
-import { IndexedFileBase } from '../indexed-file-base';
+import { JagFileStore } from './jag-file-store';
 import { JagFile } from './jag-file';
 import { Buffer } from 'buffer';
 import { JagArchive } from './jag-archive';
 import { decompressHeadlessBzip2 } from '../../compress';
+import { JagFileBase } from './jag-file-base';
+import { CacheFile } from '../cache';
 
 
 const dataFileName = 'main_file_cache.dat';
@@ -20,6 +20,19 @@ export const indexes = {
     animations: 2,
     midi: 3,
     maps: 4,
+};
+
+
+export const archives = {
+    'empty.jag': 0,
+    'title.jag': 1,
+    'config.jag': 2,
+    'interface.jag': 3,
+    'media.jag': 4,
+    'versionlist.jag': 5,
+    'textures.jag': 6,
+    'wordenc.jag': 7,
+    'sounds.jag': 8,
 };
 
 
@@ -39,17 +52,17 @@ export interface JagSectorHeader {
 
 export class Jag {
 
-    readonly jagStore: JagStore;
+    readonly jagStore: JagFileStore;
 
     private indexFiles: Map<number, ByteBuffer>;
     private dataFile: ByteBuffer;
 
-    constructor(jagStore: JagStore) {
+    constructor(jagStore: JagFileStore) {
         this.jagStore = jagStore;
         this.indexFiles = new Map<number, ByteBuffer>();
     }
 
-    readOpenRS2CacheFiles(cacheFiles: OpenRS2CacheFile[]): void {
+    readOpenRS2CacheFiles(cacheFiles: CacheFile[]): void {
         const dataFileBuffer = cacheFiles.find(file => file.name === dataFileName)?.data || null;
         if (!dataFileBuffer?.length) {
             throw new Error(`The main ${ dataFileName } data file could not be found.`);
@@ -155,10 +168,10 @@ export class Jag {
                 fileSize, sectorNumber: sectorPos
             };
 
-            let file: IndexedFileBase<JagStore>;
+            let file: JagFileBase;
 
             if (indexName === 'archives') {
-                file = this.jagStore.createArchive(fileKey);
+                file = new JagArchive(this.jagStore, fileKey);
             } else {
                 file = new JagFile(this.jagStore, fileKey, indexKey);
             }
@@ -189,10 +202,9 @@ export class Jag {
 
             const block = this.dataFile.getSlice(currentSectorNumber * sectorLength, readableSectorData);
 
-            const sectorFileKey = block.get('short', 'unsigned');//readUnsignedShortBE();
-            const sectorFilePartNumber = block.get('short', 'unsigned');//readUnsignedShortBE();
-            const sectorNumber = block.get('int24', 'unsigned');//(block.readUnsignedByte() << 16)
-            // | (block.readUnsignedByte() << 8) | block.readUnsignedByte();
+            const sectorFileKey = block.get('short', 'unsigned');
+            const sectorFilePartNumber = block.get('short', 'unsigned');
+            const sectorNumber = block.get('int24', 'unsigned');
             const sectorIndexKey = block.get('byte', 'unsigned');
 
             readableSectorData -= 8;
@@ -247,35 +259,84 @@ export class Jag {
         return file.index.compressedData;
     }
 
-    // @todo 18/07/22 - Kiko
     decodeArchive(archive: JagArchive): Buffer | null {
-        let archiveData = new ByteBuffer(archive.index.compressedData);
-
-        const uncompressed = archiveData.get('int24', 'unsigned');
-        const compressed = archiveData.get('int24', 'unsigned');
-
-        if (uncompressed !== compressed) {
-            const compressedData = archiveData.getSlice(archiveData.readerIndex, archiveData.length - archiveData.readerIndex);
-            archiveData = new ByteBuffer(decompressHeadlessBzip2(compressedData));
+        if (!archive.index.compressedData?.length) {
+            return null;
         }
 
-        const fileCount = archiveData.get('short', 'unsigned');
-        let fileDataOffset = archiveData.readerIndex + fileCount * 10;
+        try {
+            let archiveData = new ByteBuffer(archive.index.compressedData);
 
-        for (let fileKey = 0; fileKey < fileCount; fileKey++) {
-            const fileNameHash = archiveData.get('int');
-            const decompressedFileLength = archiveData.get('int24', 'unsigned');
-            const compressedFileLength = archiveData.get('int24', 'unsigned');
-            fileDataOffset += compressedFileLength;
+            const uncompressed = archiveData.get('int24', 'unsigned');
+            const compressed = archiveData.get('int24', 'unsigned');
+
+            if (uncompressed !== compressed) {
+                const compressedData = archiveData.getSlice(archiveData.readerIndex, archiveData.length - archiveData.readerIndex);
+                archiveData = new ByteBuffer(decompressHeadlessBzip2(compressedData));
+            }
+
+            const fileCount = archiveData.get('short', 'unsigned');
+            const fileDataOffsets: number[] = new Array(fileCount);
+            archive.files.clear();
+
+            let fileDataOffset = archiveData.readerIndex + fileCount * 10;
+
+            // Read archive file headers
+            for (let fileKey = 0; fileKey < fileCount; fileKey++) {
+                const fileNameHash = archiveData.get('int');
+                const fileName = this.jagStore.nameHasher.findFileName(fileNameHash);
+                const decompressedFileLength = archiveData.get('int24', 'unsigned');
+                const compressedFileLength = archiveData.get('int24', 'unsigned');
+                fileDataOffset += compressedFileLength;
+
+                fileDataOffsets[fileKey] = fileDataOffset;
+
+                const file = new JagFile(this.jagStore, fileKey, archive.index.indexKey, archive.index.key);
+                file.index.nameHash = fileNameHash;
+                file.index.name = fileName;
+                file.index.fileSize = decompressedFileLength;
+                file.index.compressedFileSize = compressedFileLength;
+
+                archive.files.set(fileKey, file);
+            }
+
+            // Read archive file data
+            for (const [ fileKey, file ] of archive.files) {
+                try {
+                    const fileDataOffset = fileDataOffsets[fileKey];
+                    const fileData = Buffer.alloc(file.index.compressedFileSize);
+                    archiveData.copy(fileData, 0, fileDataOffset);
+                } catch (error) {
+                    logger.error(`Error reading archive ${archive.index.name } file ${fileKey}`, error);
+                    return null;
+                }
+            }
+
+            // Decompress archive file data (if needed)
+            for (const [ fileKey, file ] of archive.files) {
+                try {
+                    const { compressedFileSize, fileSize, compressedData } = file.index;
+                    if (compressedData?.length && compressedFileSize !== fileSize) {
+                        file.index.data = decompressHeadlessBzip2(file.index.compressedData);
+                        if (file.index.data.length !== fileSize) {
+                            file.index.fileSize = file.index.data.length;
+                        }
+                    }
+                } catch (error) {
+                    logger.error(`Error decompressing archive ${archive.index.name } file ${fileKey}`, error);
+                    return null;
+                }
+            }
+
+            if (archiveData.length) {
+                archive.index.data = archiveData.toNodeBuffer();
+            }
+
+            return archive.index.data;
+        } catch (error) {
+            logger.error(`Error decoding archive ${archive.index.name }`, error);
+            return null;
         }
-
-        // @todo read file data and decompress files if needed - 18/07/22 - Kiko
-
-        if (archiveData.length) {
-            archive.index.data = archiveData.toNodeBuffer();
-        }
-
-        return archive.index.data;
     }
 
 }

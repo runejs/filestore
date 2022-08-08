@@ -1,16 +1,16 @@
-import { JS5FileStore } from './js5-file-store';
-import { JS5Archive } from './js5-archive';
+import { Js5FileStore } from './js5-file-store';
+import { Js5Archive } from './js5-archive';
 import { JS5Group } from './js5-group';
-import { IndexedFileBase } from '../indexed-file-base';
+import { Js5FileBase } from './js5-file-base';
 
 
-export class JS5File extends IndexedFileBase<JS5FileStore> {
+export class JS5File extends Js5FileBase {
 
-    readonly archive: JS5Archive;
+    readonly archive: Js5Archive;
     readonly group: JS5Group;
 
     constructor(
-        fileStore: JS5FileStore,
+        fileStore: Js5FileStore,
         fileKey: number,
         group: JS5Group,
     ) {

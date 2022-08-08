@@ -18,6 +18,7 @@
         "start": "ts-node-dev src/scripts/dev.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
+        "namehash": "ts-node-dev --max-old-space-size=2048 src/scripts/name-hasher.ts",
         "unpack": "ts-node-dev --max-old-space-size=2048 src/scripts/unpacker.ts",
         "index": "ts-node-dev --max-old-space-size=2048 src/scripts/indexer.ts",
         "builds": "ts-node-dev src/scripts/builds.ts",
@@ -53,7 +54,7 @@
         "typescript": ">=4.5.0"
     },
     "dependencies": {
-        "@runejs/common": "file:../common",
+        "@runejs/common": "2.0.2-beta.2",
         "adm-zip": "^0.5.9",
         "axios": "^0.27.2",
         "compressjs": "^1.0.3",
@@ -79,7 +80,7 @@
         "eslint": "^8.11.0",
         "rimraf": "^3.0.2",
         "source-map-support": "^0.5.21",
-        "ts-node-dev": "^1.1.8",
+        "ts-node-dev": "^2.0.0",
         "typescript": "^4.5.5"
     }
 }

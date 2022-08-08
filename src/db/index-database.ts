@@ -1,24 +1,56 @@
 import { Connection, createConnection, LoggerOptions, Repository } from 'typeorm';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'graceful-fs';
-import { IndexEntity } from './index-entity';
-import { FileType } from '../config';
 
 
-export class IndexDatabase {
+export abstract class IndexDatabase<ENTITY, WHERE = any> {
 
-    private readonly gameBuild: string;
-    private readonly databasePath: string;
-    private readonly loggerOptions: LoggerOptions;
+    protected readonly gameBuild: string;
+    protected readonly databasePath: string;
+    protected readonly loggerOptions: LoggerOptions;
+    protected readonly entityType: new () => ENTITY;
 
-    private _connection: Connection;
-    private _repository: Repository<IndexEntity>;
+    protected _connection: Connection;
+    protected _repository: Repository<ENTITY>;
 
-    constructor(gameBuild: string, databasePath: string, loggerOptions: LoggerOptions = 'all') {
+    protected constructor(
+        gameBuild: string,
+        databasePath: string,
+        entityType: new () => ENTITY,
+        loggerOptions: LoggerOptions = 'all'
+    ) {
         this.gameBuild = gameBuild;
         this.databasePath = databasePath;
+        this.entityType = entityType;
         // [ 'error', 'warn' ], 'all', etc...
         this.loggerOptions = loggerOptions;
+    }
+
+    abstract upsertIndexes(indexEntities: ENTITY[]): Promise<void>;
+
+    async getIndexes(where: WHERE): Promise<ENTITY[]> {
+        return await this.repository.find({
+            where: { ...where, gameBuild: this.gameBuild }
+        }) || [];
+    }
+
+    async getIndex(where: WHERE): Promise<ENTITY> {
+        return await this.repository.findOne({
+            where: { ...where, gameBuild: this.gameBuild }
+        }) || null;
+    }
+
+    async saveIndexes(indexEntities: ENTITY[]): Promise<void> {
+        await this.repository.save(indexEntities as any, {
+            chunk: 500,
+            transaction: false,
+            reload: false,
+            listeners: false,
+        });
+    }
+
+    async saveIndex(indexEntity: ENTITY): Promise<ENTITY> {
+        return await this.repository.save(indexEntity as any);
     }
 
     async openConnection(): Promise<Connection> {
@@ -29,13 +61,13 @@ export class IndexDatabase {
         this._connection = await createConnection({
             type: 'better-sqlite3',
             database: join(this.databasePath, `${this.gameBuild}.index.sqlite3`),
-            entities: [ IndexEntity ],
+            entities: [ this.entityType ],
             synchronize: true,
             logging: this.loggerOptions,
             name: 'index-repository'
         });
 
-        this._repository = this._connection.getRepository(IndexEntity);
+        this._repository = this._connection.getRepository(this.entityType);
 
         return this._connection;
     }
@@ -44,47 +76,11 @@ export class IndexDatabase {
         await this._connection.close();
     }
 
-    async upsertIndexes(indexEntities: IndexEntity[]): Promise<void> {
-        const chunkSize = 100;
-        for (let i = 0; i < indexEntities.length; i += chunkSize) {
-            const chunk = indexEntities.slice(i, i + chunkSize);
-            await this.repository.upsert(chunk, {
-                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey', 'indexKey' ],
-                skipUpdateIfNoValuesChanged: true,
-            });
-        }
-    }
-
-    async saveIndexes(indexEntities: IndexEntity[]): Promise<void> {
-        await this.repository.save(indexEntities, {
-            chunk: 500,
-            transaction: false,
-            reload: false,
-            listeners: false,
-        });
-    }
-
-    async saveIndex(indexEntity: IndexEntity): Promise<IndexEntity> {
-        return await this.repository.save(indexEntity);
-    }
-
-    async getIndexes(fileType: FileType, archiveKey: number, groupKey: number = -1): Promise<IndexEntity[]> {
-        return await this.repository.find({
-            where: { fileType, archiveKey, groupKey, gameBuild: this.gameBuild }
-        });
-    }
-
-    async getIndex(fileType: FileType, key: number, archiveKey: number, groupKey: number = -1): Promise<IndexEntity> {
-        return await this.repository.findOne({
-            where: { fileType, key, archiveKey, groupKey, gameBuild: this.gameBuild }
-        }) || null;
-    }
-
     get connection(): Connection {
         return this._connection;
     }
 
-    get repository(): Repository<IndexEntity> {
+    get repository(): Repository<ENTITY> {
         return this._repository;
     }
 

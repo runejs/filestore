@@ -6,8 +6,8 @@ import { join } from 'path';
 // @todo optimize this thing - 08/08/22 - Kiko
 const bruteForcer = async () => {
     const hashes = [
-        22834782,
-        -1857300557,
+        216335554,
+        216316762,
     ];
 
     const validChars = [
@@ -91,37 +91,49 @@ const bruteForcer = async () => {
                 l2hash = int32(l1hash * 61 + c2 - 32);
                 for (const c3 of validCharCodes) {
                     l3hash = int32(l2hash * 61 + c3 - 32);
-                    console.log('First 3 characters (out of 9): ' + c1 + c2 + c3);
                     for (const c4 of validCharCodes) {
                         l4hash = int32(l3hash * 61 + c4 - 32);
-                        for (const c5 of validCharCodes) {
-                            l5hash = int32(l4hash * 61 + c5 - 32);
-                            for (const c6 of validCharCodes) {
-                                l6hash = int32(l5hash * 61 + c6 - 32);
-                                for (const c7 of validCharCodes) {
-                                    l7hash = int32(l6hash * 61 + c7 - 32);
-                                    for (const c8 of validCharCodes) {
-                                        l8hash = int32(l7hash * 61 + c8 - 32);
-                                        for (const c9 of validCharCodes) {
-                                            l9hash = int32(l8hash * 61 + c9 - 32);
-                                            hash = addToHash(".DAT", l9hash);
-                                            const resultString = createString(c1, c2, c3, c4, c5, c6, c7, c8, c9);
-                                            if (getMatch(hash) !== -1) {
-                                                logger.info(resultString + '.DAT : ' + hash);
-                                            }
-
-                                            hash = addToHash(".IDX", l9hash);
-                                            if (getMatch(hash) !== -1) {
-                                                logger.info(resultString + '.IDX : ' + hash);
-                                            }
-                                            if (getMatch(l9hash) !== -1) {
-                                                logger.info(resultString + ' : ' + hash);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                        const resultString = createString(c1, c2, c3, c4);
+                        hash = addToHash(".DAT", l4hash);
+                        if (getMatch(hash) !== -1) {
+                            logger.info(resultString + '.DAT : ' + hash);
                         }
+
+                        hash = addToHash(".IDX", l4hash);
+                        if (getMatch(hash) !== -1) {
+                            logger.info(resultString + '.IDX : ' + hash);
+                        }
+                        if (getMatch(l4hash) !== -1) {
+                            logger.info(resultString + ' : ' + hash);
+                        }
+                    //     for (const c5 of validCharCodes) {
+                    //         l5hash = int32(l4hash * 61 + c5 - 32);
+                    //         for (const c6 of validCharCodes) {
+                    //             l6hash = int32(l5hash * 61 + c6 - 32);
+                    //             for (const c7 of validCharCodes) {
+                    //                 l7hash = int32(l6hash * 61 + c7 - 32);
+                    //                 for (const c8 of validCharCodes) {
+                    //                     l8hash = int32(l7hash * 61 + c8 - 32);
+                    //                     for (const c9 of validCharCodes) {
+                    //                         l9hash = int32(l8hash * 61 + c9 - 32);
+                    //                         hash = addToHash(".DAT", l9hash);
+                    //                         const resultString = createString(c1, c2, c3, c4, c5, c6, c7, c8, c9);
+                    //                         if (getMatch(hash) !== -1) {
+                    //                             logger.info(resultString + '.DAT : ' + hash);
+                    //                         }
+                    //
+                    //                         hash = addToHash(".IDX", l9hash);
+                    //                         if (getMatch(hash) !== -1) {
+                    //                             logger.info(resultString + '.IDX : ' + hash);
+                    //                         }
+                    //                         if (getMatch(l9hash) !== -1) {
+                    //                             logger.info(resultString + ' : ' + hash);
+                    //                         }
+                    //                     }
+                    //                 }
+                    //             }
+                    //         }
+                    //     }
                     }
                 }
             }
@@ -138,18 +150,8 @@ const nameHasher = async () => {
     const hasher = new NameHasher(join('.', 'config'));
 
     const fileNames = [
-        'leftarrow_small.dat',
-        'rightarrow_small.dat',
-        'blackmark.dat',
-        'button_brown.dat',
-        'button_red.dat',
-        'key.dat',
-        'pen.dat',
-        'startgame.dat',
-        'titlescroll.dat',
-        'letter.dat',
-        'button_brown_big.dat',
-        'overlay_duel.dat'
+        'hunt.dat',
+        'hunt.idx',
     ];
 
     const keyValueMap: { [key: string]: string } = {};

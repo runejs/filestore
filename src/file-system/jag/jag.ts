@@ -264,79 +264,83 @@ export class Jag {
             return null;
         }
 
-        try {
-            let archiveData = new ByteBuffer(archive.index.compressedData);
+        let archiveData = new ByteBuffer(archive.index.compressedData);
 
-            const uncompressed = archiveData.get('int24', 'unsigned');
-            const compressed = archiveData.get('int24', 'unsigned');
+        const uncompressed = archiveData.get('int24', 'unsigned');
+        const compressed = archiveData.get('int24', 'unsigned');
 
-            if (uncompressed !== compressed) {
-                const compressedData = archiveData.getSlice(archiveData.readerIndex, archiveData.length - archiveData.readerIndex);
-                archiveData = new ByteBuffer(decompressHeadlessBzip2(compressedData));
-            }
-
-            const fileCount = archiveData.get('short', 'unsigned');
-            const fileDataOffsets: number[] = new Array(fileCount);
-            archive.files.clear();
-
-            let fileDataOffset = archiveData.readerIndex + fileCount * 10;
-
-            // Read archive file headers
-            for (let fileKey = 0; fileKey < fileCount; fileKey++) {
-                const fileNameHash = archiveData.get('int');
-                const fileName = this.jagStore.nameHasher.findFileName(fileNameHash);
-                const decompressedFileLength = archiveData.get('int24', 'unsigned');
-                const compressedFileLength = archiveData.get('int24', 'unsigned');
-                fileDataOffset += compressedFileLength;
-
-                fileDataOffsets[fileKey] = fileDataOffset;
-
-                const file = new JagFile(this.jagStore, fileKey, archive.index.indexKey, archive.index.key);
-                file.index.nameHash = fileNameHash;
-                file.index.name = fileName;
-                file.index.fileSize = decompressedFileLength;
-                file.index.compressedFileSize = compressedFileLength;
-
-                archive.files.set(fileKey, file);
-            }
-
-            // Read archive file data
-            for (const [ fileKey, file ] of archive.files) {
-                try {
-                    const fileDataOffset = fileDataOffsets[fileKey];
-                    const fileData = Buffer.alloc(file.index.compressedFileSize);
-                    archiveData.copy(fileData, 0, fileDataOffset);
-                } catch (error) {
-                    logger.error(`Error reading archive ${archive.index.name } file ${fileKey}`, error);
-                    return null;
-                }
-            }
-
-            // Decompress archive file data (if needed)
-            for (const [ fileKey, file ] of archive.files) {
-                try {
-                    const { compressedFileSize, fileSize, compressedData } = file.index;
-                    if (compressedData?.length && compressedFileSize !== fileSize) {
-                        file.index.data = decompressHeadlessBzip2(file.index.compressedData);
-                        if (file.index.data.length !== fileSize) {
-                            file.index.fileSize = file.index.data.length;
-                        }
-                    }
-                } catch (error) {
-                    logger.error(`Error decompressing archive ${archive.index.name } file ${fileKey}`, error);
-                    return null;
-                }
-            }
-
-            if (archiveData.length) {
-                archive.index.data = archiveData.toNodeBuffer();
-            }
-
-            return archive.index.data;
-        } catch (error) {
-            logger.error(`Error decoding archive ${archive.index.name }`, error);
-            return null;
+        if (uncompressed !== compressed) {
+            const compressedData = archiveData.getSlice(archiveData.readerIndex, archiveData.length - archiveData.readerIndex);
+            archiveData = new ByteBuffer(decompressHeadlessBzip2(compressedData));
+            archive.index.compressionMethod = 'bzip';
+        } else {
+            archive.index.compressionMethod = 'none';
         }
+
+        const fileCount = archiveData.get('short', 'unsigned');
+        archive.index.childCount = fileCount;
+        archive.files.clear();
+
+        const fileDataOffsets: number[] = new Array(fileCount);
+        let fileDataOffset = archiveData.readerIndex + fileCount * 10;
+
+        // Read archive file headers
+        for (let fileKey = 0; fileKey < fileCount; fileKey++) {
+            const fileNameHash = archiveData.get('int');
+            const fileName = this.jagStore.nameHasher.findFileName(fileNameHash);
+            const decompressedFileLength = archiveData.get('int24', 'unsigned');
+            const compressedFileLength = archiveData.get('int24', 'unsigned');
+            fileDataOffsets[fileKey] = fileDataOffset;
+            fileDataOffset += compressedFileLength;
+
+            const file = new JagFile(this.jagStore, fileKey, archive.index.indexKey, archive.index.key);
+            file.index.nameHash = fileNameHash;
+            file.index.name = fileName;
+            file.index.fileSize = decompressedFileLength;
+            file.index.compressedFileSize = compressedFileLength;
+
+            archive.files.set(fileKey, file);
+        }
+
+        // Read archive file data
+        for (const [ fileKey, file ] of archive.files) {
+            try {
+                const fileDataOffset = fileDataOffsets[fileKey];
+                const fileData = Buffer.alloc(file.index.compressedFileSize);
+                archiveData.copy(fileData, 0, fileDataOffset);
+                file.index.compressedData = fileData;
+            } catch (error) {
+                logger.error(`Error reading archive ${archive.index.name } file ${fileKey}`, error);
+            }
+        }
+
+        // Decompress archive file data (if needed)
+        for (const [ fileKey, file ] of archive.files) {
+            try {
+                const { compressedFileSize, fileSize, compressedData } = file.index;
+                if (compressedData?.length && compressedFileSize !== fileSize) {
+                    file.index.data = decompressHeadlessBzip2(file.index.compressedData);
+                    file.index.compressionMethod = 'bzip';
+                } else {
+                    file.index.compressionMethod = 'none';
+                }
+            } catch (error) {
+                logger.error(`Error decompressing archive ${archive.index.name } file ${fileKey}`, error);
+            }
+        }
+
+        // Validate each file
+        for (const [ , file ] of archive.files) {
+            file.validate(false);
+        }
+
+        if (archiveData.length) {
+            archive.index.data = archiveData.toNodeBuffer();
+        }
+
+        archive.validate(false);
+
+        return archive.index.data;
     }
 
 }

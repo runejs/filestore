@@ -91,7 +91,7 @@ export class Animations {
 
         const animData = new ByteBuffer(animFile.index.data);
 
-        // @todo stopped here - 12/08/22 - Kiko
+        //@todo stopped here - 12/08/22 - Kiko
         return null;
     }
 

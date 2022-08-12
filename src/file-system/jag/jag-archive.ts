@@ -27,4 +27,21 @@ export class JagArchive extends JagFileBase {
         await this.fileStore.database.upsertIndexes(fileIndexes);
     }
 
+    getFile(fileKey: number): JagFile | null;
+    getFile(fileName: string): JagFile | null;
+    getFile(fileKeyOrName: number | string): JagFile | null;
+    getFile(fileKeyOrName: number | string): JagFile | null {
+        if (typeof fileKeyOrName === 'string') {
+            return Array.from(this.files.values()).find(
+                file => file?.index?.name === fileKeyOrName
+            ) || null;
+        } else {
+            return this.files.get(fileKeyOrName) || null;
+        }
+    }
+
+    setFile(fileKey: number, file: JagFile): void {
+        this.files.set(fileKey, file);
+    }
+
 }

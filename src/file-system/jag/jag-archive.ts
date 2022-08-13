@@ -27,6 +27,28 @@ export class JagArchive extends JagFileBase {
         await this.fileStore.database.upsertIndexes(fileIndexes);
     }
 
+    async loadFileIndexes(): Promise<void> {
+        const fileIndexes = await this.fileStore.database.getIndexes({
+            fileType: 'FILE',
+            indexKey: this.index.indexKey,
+            archiveKey: this.index.key,
+        });
+
+        if (!fileIndexes?.length) {
+            return;
+        }
+
+        for (const fileIndex of fileIndexes) {
+            const fileKey = fileIndex.key;
+
+            if (!this.files.has(fileKey)) {
+                const file = new JagFile(this.fileStore, fileKey, this.index.indexKey, this.index.key);
+                file.index = fileIndex;
+                this.files.set(fileKey, file);
+            }
+        }
+    }
+
     getFile(fileKey: number): JagFile | null;
     getFile(fileName: string): JagFile | null;
     getFile(fileKeyOrName: number | string): JagFile | null;

@@ -4,7 +4,7 @@ import { Buffer } from 'buffer';
 import { Crc32 } from '@runejs/common/crc32';
 import { createHash } from 'crypto';
 import { JagFileStore } from './jag-file-store';
-import { JagIndexEntity } from '../../db/jag-index-entity';
+import { JagIndexEntity } from '../../db/jag/jag-index-entity';
 
 
 export abstract class JagFileBase {

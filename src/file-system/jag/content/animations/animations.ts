@@ -59,9 +59,9 @@ export class Animations {
         const animCount = versionData.length / 2;
 
         for (let i = 0; i < animCount; i++) {
-            const version = versionData.get('short', 'unsigned', 'le');
+            const version = versionData.get('short', 'unsigned');
             const checksum = checksumData.get('int');
-            const key = indexData.get('short', 'unsigned', 'le');
+            const key = indexData.get('short', 'unsigned');
 
             this.animations.set(key, {
                 key, version, checksum

@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 import { CompressionMethod } from '@runejs/common/compress';
-import { FileError, Js5FileType } from '../config';
+import { FileError, Js5FileType } from '../../config';
 import { Buffer } from 'buffer';
 
 

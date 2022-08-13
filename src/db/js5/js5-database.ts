@@ -1,7 +1,7 @@
-import { IndexDatabase } from './index-database';
+import { IndexDatabase } from '../index-database';
 import { Js5IndexEntity } from './js5-index-entity';
 import { LoggerOptions } from 'typeorm';
-import { Js5FileType } from '../config';
+import { Js5FileType } from '../../config';
 
 
 export interface Js5IndexEntityWhere {

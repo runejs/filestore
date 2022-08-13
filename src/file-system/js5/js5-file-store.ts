@@ -6,7 +6,7 @@ import { JS5 } from './js5';
 import { Js5Archive } from './js5-archive';
 import { FileStoreBase } from '../file-store-base';
 import { logger } from '../../../../common';
-import { Js5Database } from '../../db/js5-database';
+import { Js5Database } from '../../db/js5/js5-database';
 
 
 export class Js5FileStore extends FileStoreBase<Js5Database>{
@@ -38,7 +38,7 @@ export class Js5FileStore extends FileStoreBase<Js5Database>{
         await this.openDatabase();
     }
 
-    async loadArchiveIndexes(): Promise<void> {
+    async loadArchiveEntities(): Promise<void> {
         for (const [ , archive ] of this.archives) {
             await archive.loadIndex();
         }

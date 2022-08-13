@@ -1,10 +1,10 @@
 import { FileStoreBase } from '../file-store-base';
 import { Jag, indexes } from './jag';
 import { JagIndex } from './jag-index';
-import { JagIndexEntity } from '../../db/jag-index-entity';
+import { JagIndexEntity } from '../../db/jag/jag-index-entity';
 import { IndexDatabase } from '../../db/index-database';
 import { join } from 'path';
-import { JagDatabase } from '../../db/jag-database';
+import { JagDatabase } from '../../db/jag/jag-database';
 
 
 export class JagFileStore extends FileStoreBase<JagDatabase> {
@@ -26,6 +26,12 @@ export class JagFileStore extends FileStoreBase<JagDatabase> {
         );
         await this._database.openConnection();
         return this._database;
+    }
+
+    async loadIndexEntities(): Promise<void> {
+        for (const [ , index ] of this.indexes) {
+            await index.loadIndex();
+        }
     }
 
     override async load(): Promise<void> {

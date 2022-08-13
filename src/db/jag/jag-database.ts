@@ -1,7 +1,7 @@
-import { IndexDatabase } from './index-database';
+import { IndexDatabase } from '../index-database';
 import { JagIndexEntity } from './jag-index-entity';
 import { LoggerOptions } from 'typeorm';
-import { JagFileType } from '../config';
+import { JagFileType } from '../../config';
 
 
 export interface JagIndexEntityWhere {

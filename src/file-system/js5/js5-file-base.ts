@@ -1,4 +1,4 @@
-import { Js5IndexEntity } from '../../db/js5-index-entity';
+import { Js5IndexEntity } from '../../db/js5/js5-index-entity';
 import { Js5FileType } from '../../config';
 import { logger } from '@runejs/common';
 import { Buffer } from 'buffer';

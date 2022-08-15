@@ -1,8 +1,6 @@
 import { FileStoreBase } from '../file-store-base';
 import { Jag, indexes } from './jag';
 import { JagIndex } from './jag-index';
-import { JagIndexEntity } from '../../db/jag/jag-index-entity';
-import { IndexDatabase } from '../../db/index-database';
 import { join } from 'path';
 import { JagDatabase } from '../../db/jag/jag-database';
 
@@ -18,7 +16,7 @@ export class JagFileStore extends FileStoreBase<JagDatabase> {
         this.indexes = new Map<number, JagIndex>();
     }
 
-    override async openDatabase(): Promise<IndexDatabase<JagIndexEntity>> {
+    override async openDatabase(): Promise<JagDatabase> {
         this._database = new JagDatabase(
             this.gameBuild,
             join(this.fileStorePath, 'index'),

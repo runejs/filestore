@@ -322,6 +322,8 @@ export class Jag {
                     file.index.data = decompressHeadlessBzip2(file.index.compressedData);
                     file.index.compressionMethod = 'bzip';
                 } else {
+                    file.index.data = file.index.compressedData;
+                    file.index.compressedData = null;
                     file.index.compressionMethod = 'none';
                 }
             } catch (error) {

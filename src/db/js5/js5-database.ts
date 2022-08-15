@@ -1,7 +1,9 @@
 import { IndexDatabase } from '../index-database';
 import { Js5IndexEntity } from './js5-index-entity';
-import { LoggerOptions } from 'typeorm';
+import { Connection, createConnection, LoggerOptions } from 'typeorm';
 import { Js5FileType } from '../../config';
+import { existsSync, mkdirSync } from 'graceful-fs';
+import { join } from 'path';
 
 
 export interface Js5IndexEntityWhere {
@@ -19,7 +21,26 @@ export class Js5Database extends IndexDatabase<Js5IndexEntity, Js5IndexEntityWhe
         databasePath: string,
         loggerOptions: LoggerOptions = 'all'
     ) {
-        super(gameBuild, databasePath, Js5IndexEntity, loggerOptions);
+        super(gameBuild, databasePath, loggerOptions);
+    }
+
+    override async openConnection(): Promise<Connection> {
+        if(!existsSync(this.databasePath)) {
+            mkdirSync(this.databasePath, { recursive: true });
+        }
+
+        this._connection = await createConnection({
+            type: 'better-sqlite3',
+            database: join(this.databasePath, `${this.gameBuild}.index.sqlite3`),
+            entities: [ Js5IndexEntity ],
+            synchronize: true,
+            logging: this.loggerOptions,
+            name: 'js5-index-repository'
+        });
+
+        this._repository = this._connection.getRepository(Js5IndexEntity);
+
+        return this._connection;
     }
 
     override async upsertIndexes(indexEntities: Js5IndexEntity[]): Promise<void> {

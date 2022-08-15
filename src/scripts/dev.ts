@@ -1,64 +1,50 @@
-import { Js5FileStore } from '../file-system/js5/js5-file-store';
 import { logger } from '@runejs/common';
+import { indexes, JagArchive, JagFileStore } from '../file-system/jag';
+import { JagInterfaceArchive } from '../file-system/jag/content/archives/interfaces/jag-interface-archive';
 
 
 const dev = async () => {
     const start = Date.now();
-    const fileStore = new Js5FileStore(435);
-    await fileStore.load();
-    fileStore.js5.readLocalCacheFiles();
 
-    logger.info(`Unpacking archives from JS5 store...`);
+    const store = new JagFileStore(317);
 
-    for (const [ , archive ] of fileStore.archives) {
-        fileStore.js5.unpack(archive);
+    logger.info(`Loading JAG store for build ${store.gameBuild}...`);
+
+    await store.load();
+
+    logger.info(`Loading index entities...`);
+
+    const indexNames = Object.keys(indexes);
+    for (const indexName of indexNames) {
+        store.createIndex(indexes[indexName]);
     }
 
-    logger.info(`Decoding JS5 archives...`);
+    await store.loadIndexEntities();
 
-    for (const [ , archive ] of fileStore.archives) {
-        await fileStore.js5.decodeArchive(archive);
+    logger.info(`Loading index file entities...`);
+
+    for (const [ , indexFile ] of store.indexes) {
+        await indexFile.loadFileIndexes();
     }
 
-    logger.info(`Saving archive indexes...`);
+    logger.info(`Loading archive file entities...`);
 
-    for (const [ , archive ] of fileStore.archives) {
-        await archive.saveIndex();
+    const archiveIndex = store.getIndex('archives');
+
+    for (const [ , file ] of archiveIndex.files) {
+        const archive = file as JagArchive;
+        await archive.loadFileIndexes();
     }
 
-    logger.info(`Unpacking groups from JS5 store...`);
+    logger.info(`Decoding game interfaces...`);
 
-    for (const [ , archive ] of fileStore.archives) {
-        for (const [ , group ] of archive.groups) {
-            fileStore.js5.unpack(group);
-        }
+    const interfaceArchive = new JagInterfaceArchive(store);
 
-        logger.info(`Finished unpacking archive ${archive.index.name} groups.`);
-    }
+    interfaceArchive.decodeAll();
 
-    logger.info(`Decoding JS5 groups...`);
+    logger.info(`${interfaceArchive.interfaces.size} interfaces decoded. Saving interface entities...`);
 
-    for (const [ , archive ] of fileStore.archives) {
-        for (const [ , group ] of archive.groups) {
-            await fileStore.js5.decodeGroup(group);
-        }
-
-        logger.info(`Finished decoding archive ${archive.index.name} groups.`);
-    }
-
-    logger.info(`Saving group indexes...`);
-
-    for (const [ , archive ] of fileStore.archives) {
-        await archive.upsertGroupIndexes();
-    }
-
-    logger.info(`Saving flat file indexes...`);
-
-    for (const [ , archive ] of fileStore.archives) {
-        for (const [ , group ] of archive.groups) {
-            await group.upsertFileIndexes();
-        }
-    }
+    await interfaceArchive.saveAll();
 
     const end = Date.now();
     logger.info(`Operations completed in ${(end - start) / 1000} seconds.`);

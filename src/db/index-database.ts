@@ -8,7 +8,6 @@ export abstract class IndexDatabase<ENTITY, WHERE = any> {
     protected readonly gameBuild: string;
     protected readonly databasePath: string;
     protected readonly loggerOptions: LoggerOptions;
-    protected readonly entityType: new () => ENTITY;
 
     protected _connection: Connection;
     protected _repository: Repository<ENTITY>;
@@ -16,15 +15,15 @@ export abstract class IndexDatabase<ENTITY, WHERE = any> {
     protected constructor(
         gameBuild: string,
         databasePath: string,
-        entityType: new () => ENTITY,
         loggerOptions: LoggerOptions = 'all'
     ) {
         this.gameBuild = gameBuild;
         this.databasePath = databasePath;
-        this.entityType = entityType;
         // [ 'error', 'warn' ], 'all', etc...
         this.loggerOptions = loggerOptions;
     }
+
+    abstract openConnection(): Promise<Connection>;
 
     abstract upsertIndexes(indexEntities: ENTITY[]): Promise<void>;
 
@@ -51,25 +50,6 @@ export abstract class IndexDatabase<ENTITY, WHERE = any> {
 
     async saveIndex(indexEntity: ENTITY): Promise<ENTITY> {
         return await this.repository.save(indexEntity as any);
-    }
-
-    async openConnection(): Promise<Connection> {
-        if(!existsSync(this.databasePath)) {
-            mkdirSync(this.databasePath, { recursive: true });
-        }
-
-        this._connection = await createConnection({
-            type: 'better-sqlite3',
-            database: join(this.databasePath, `${this.gameBuild}.index.sqlite3`),
-            entities: [ this.entityType ],
-            synchronize: true,
-            logging: this.loggerOptions,
-            name: 'index-repository'
-        });
-
-        this._repository = this._connection.getRepository(this.entityType);
-
-        return this._connection;
     }
 
     async closeConnection(): Promise<void> {

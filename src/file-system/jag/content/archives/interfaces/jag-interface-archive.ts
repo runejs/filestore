@@ -1,83 +1,21 @@
-import { JagFileStore } from '../../../jag-file-store';
-import { JagArchive } from '../../../jag-archive';
+import { Buffer } from 'buffer';
 import { ByteBuffer } from '@runejs/common';
+import { JagFileStore } from '../../../jag-file-store';
+import { JagGameInterfaceEntity } from '../../../../../db/jag';
 
 
-export class JagGameInterface {
-    id: number;
-    parentId: number;
-    type: number;
-    actionType: number;
-    contentType: number;
-    width: number;
-    height: number;
-    alpha: number;
-    hoveredPopup: number;
-    conditionTypes: number[];
-    conditionValues: number[];
-    cs1Opcodes: number[][];
-    scrollLimit: number;
-    hiddenUntilHovered: boolean;
-    children: number[];
-    childrenX: number[];
-    childrenY: number[];
-    unknownServerAttribute1: number;
-    unknownServerAttribute2: boolean;
-    items: number[];
-    itemAmounts: number[];
-    itemsSwappable: boolean;
-    isInventory: boolean;
-    itemsUsable: boolean;
-    deleteDraggedItems: boolean;
-    itemSpritesPadX: number;
-    itemSpritesPadY: number;
-    images: string[];
-    imagesX: number[];
-    imagesY: number[];
-    options: string[];
-    filled: boolean;
-    textCentered: boolean;
-    fontType: number;
-    textShadowed: boolean;
-    disabledText: string;
-    enabledText: string;
-    disabledColor: number;
-    enabledColor: number;
-    disabledHoverColor: number;
-    enabledHoverColor: number;
-    disabledImage: string;
-    enabledImage: string;
-    disabledModelType: number;
-    disabledModelId: number;
-    enabledModelType: number;
-    enabledModelId: number;
-    disabledAnimationId: number;
-    enabledAnimationId: number;
-    modelZoom: number;
-    modelRotationX: number;
-    modelRotationY: number;
-    actionAdditions: string;
-    actionText: string;
-    actionAttributes: number;
-    tooltip: string;
-}
-
-
-export class InterfaceArchive {
+export class JagInterfaceArchive {
 
     readonly jagStore: JagFileStore;
-    readonly interfaces: Map<number, JagGameInterface>;
-    readonly archive: JagArchive;
+    readonly interfaces: Map<number, JagGameInterfaceEntity>;
 
     constructor(jagStore: JagFileStore) {
         this.jagStore = jagStore;
-        this.interfaces = new Map<number, JagGameInterface>();
-        this.archive = this.jagStore.getIndex('archives')
-            .getArchive('interface.jag');
+        this.interfaces = new Map<number, JagGameInterfaceEntity>();
     }
 
-    decode(data: ByteBuffer): JagGameInterface {
-        const gameInterface = new JagGameInterface();
+    decode(data: ByteBuffer): JagGameInterfaceEntity {
+        const gameInterface = new JagGameInterfaceEntity();
         gameInterface.id = data.get('short', 'unsigned');
 
         if (gameInterface.id === 65535) {
@@ -279,7 +217,14 @@ export class InterfaceArchive {
     }
 
     decodeAll(): void {
-        const dataFile = this.archive.getFile('data');
+        const archive = this.jagStore.getIndex('archives')
+            .getArchive('interface.jag');
+
+        if (!archive) {
+            throw new Error('interface.jag archive is not loaded!');
+        }
+
+        const dataFile = archive.getFile('data');
         if (!dataFile?.index?.data) {
             throw new Error('interface.jag data file is not loaded!');
         }
@@ -291,6 +236,31 @@ export class InterfaceArchive {
             const gameInterface = this.decode(data);
             this.interfaces.set(gameInterface.id, gameInterface);
         }
+    }
+
+    encode(gameInterface: JagGameInterfaceEntity): Buffer | null {
+        // @todo stubbed - 15/08/22 - Kiko
+        return null;
+    }
+
+    encodeAll(): Buffer | null {
+        // @todo stubbed - 15/08/22 - Kiko
+        return null;
+    }
+
+    toJS5(gameInterface: JagGameInterfaceEntity): null {
+        // @todo stubbed - 15/08/22 - Kiko
+        return null;
+    }
+
+    async loadAll(): Promise<void> {
+        const entities = (await this.jagStore.database.interfaceRepo.find())
+            .sort((a, b) => a.id - b.id);
+        entities.forEach(entity => this.interfaces.set(entity.id, entity));
+    }
+
+    async saveAll(): Promise<void> {
+        await this.jagStore.database.saveInterfaces(Array.from(this.interfaces.values()));
     }
 
 }

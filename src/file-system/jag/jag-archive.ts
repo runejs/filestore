@@ -1,5 +1,5 @@
 import { JagFileStore } from './jag-file-store';
-import { archives, indexes } from './jag';
+import { archives, caches } from './jag';
 import { JagFile } from './jag-file';
 import { JagFileBase } from './jag-file-base';
 
@@ -12,7 +12,7 @@ export class JagArchive extends JagFileBase {
         jagStore: JagFileStore,
         archiveKey: number,
     ) {
-        super(jagStore, 'ARCHIVE', archiveKey, indexes.archives, -1);
+        super(jagStore, 'ARCHIVE', archiveKey, caches.archives, -1);
         const archiveNames = Object.keys(archives);
         for (const name of archiveNames) {
             if (archives[name] === archiveKey) {
@@ -30,7 +30,7 @@ export class JagArchive extends JagFileBase {
     async loadFileIndexes(): Promise<void> {
         const fileIndexes = await this.fileStore.database.getIndexes({
             fileType: 'FILE',
-            indexKey: this.index.indexKey,
+            cacheKey: this.index.cacheKey,
             archiveKey: this.index.key,
         });
 
@@ -42,7 +42,7 @@ export class JagArchive extends JagFileBase {
             const fileKey = fileIndex.key;
 
             if (!this.files.has(fileKey)) {
-                const file = new JagFile(this.fileStore, fileKey, this.index.indexKey, this.index.key);
+                const file = new JagFile(this.fileStore, fileKey, this.index.cacheKey, this.index.key);
                 file.index = fileIndex;
                 this.files.set(fileKey, file);
             }

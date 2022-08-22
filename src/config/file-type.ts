@@ -8,4 +8,4 @@ export type JagFileType =
     'FILE' |
     'ARCHIVE' |
     'STORE' |
-    'INDEX';
+    'CACHE';

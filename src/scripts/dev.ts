@@ -1,41 +1,12 @@
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { logger } from '@runejs/common';
-import { indexes, JagArchive, JagFileStore } from '../file-system/jag';
+import { JagFileStore } from '../file-system/jag';
 import { JagInterfaceArchive } from '../file-system/jag/content/archives/interfaces/jag-interface-archive';
+import { join } from 'path';
+import { Js5FileStore } from '../file-system/js5';
 
 
-const dev = async () => {
-    const start = Date.now();
-
-    const store = new JagFileStore(317);
-
-    logger.info(`Loading JAG store for build ${store.gameBuild}...`);
-
-    await store.load();
-
-    logger.info(`Loading index entities...`);
-
-    const indexNames = Object.keys(indexes);
-    for (const indexName of indexNames) {
-        store.createIndex(indexes[indexName]);
-    }
-
-    await store.loadIndexEntities();
-
-    logger.info(`Loading index file entities...`);
-
-    for (const [ , indexFile ] of store.indexes) {
-        await indexFile.loadFileIndexes();
-    }
-
-    logger.info(`Loading archive file entities...`);
-
-    const archiveIndex = store.getIndex('archives');
-
-    for (const [ , file ] of archiveIndex.files) {
-        const archive = file as JagArchive;
-        await archive.loadFileIndexes();
-    }
-
+const saveInterfaces = async (store: JagFileStore) => {
     logger.info(`Decoding game interfaces...`);
 
     const interfaceArchive = new JagInterfaceArchive(store);
@@ -45,6 +16,51 @@ const dev = async () => {
     logger.info(`${interfaceArchive.interfaces.size} interfaces decoded. Saving interface entities...`);
 
     await interfaceArchive.saveAll();
+};
+
+
+const dumpInterfaceFile = (store: JagFileStore) => {
+    const archive = store.getCache('archives')
+        .getArchive('interface.jag');
+
+    if (!archive) {
+        throw new Error('interface.jag archive is not loaded!');
+    }
+
+    const dataFile = archive.getFile('data');
+    const binaryData = dataFile?.index?.data;
+    if (!binaryData) {
+        throw new Error('interface.jag data file is not loaded!');
+    }
+
+    const outputDir = join('.', 'unpacked', 'jag', 'interface.jag');
+    if (!existsSync(outputDir)) {
+        mkdirSync(outputDir, { recursive: true });
+    }
+
+    const outputFile = join(outputDir, 'data');
+
+    logger.info(`Writing file ${outputFile}`);
+
+    writeFileSync(outputFile, binaryData);
+};
+
+
+const dev = async () => {
+    const start = Date.now();
+
+    const store = new Js5FileStore(435);
+    await store.load(true, true, false);
+
+    const fileNames = [
+        'compass',
+        'mapback'
+    ];
+
+    fileNames.forEach(name => {
+        const spriteFile = store.getArchive('sprites').getGroup(name);
+        store.js5.decompress(spriteFile);
+    });
 
     const end = Date.now();
     logger.info(`Operations completed in ${(end - start) / 1000} seconds.`);

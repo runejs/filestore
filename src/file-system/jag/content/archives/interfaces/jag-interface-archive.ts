@@ -29,8 +29,10 @@ export class JagInterfaceArchive {
         const width = gameInterface.width = data.get('short', 'unsigned');
         const height = gameInterface.height = data.get('short', 'unsigned');
         gameInterface.alpha = data.get('byte', 'unsigned');
-        gameInterface.hoveredPopup = data.get('byte', 'unsigned');
 
+        // hoveredPopup = u_short, but only a single u_byte is written if there is no hovered popup
+        // use u_smart_short ?
+        gameInterface.hoveredPopup = data.get('byte', 'unsigned');
         if (gameInterface.hoveredPopup !== 0) {
             gameInterface.hoveredPopup = (gameInterface.hoveredPopup - 1 << 8) +
                 data.get('byte', 'unsigned'); // why?
@@ -143,7 +145,7 @@ export class JagInterfaceArchive {
 
         if (gameInterface.type === 5) {
             gameInterface.disabledImage = data.getString(10);
-            gameInterface.enabledImage= data.getString(10);
+            gameInterface.enabledImage = data.getString(10);
         }
 
         if (gameInterface.type === 6) {
@@ -217,7 +219,7 @@ export class JagInterfaceArchive {
     }
 
     decodeAll(): void {
-        const archive = this.jagStore.getIndex('archives')
+        const archive = this.jagStore.getCache('archives')
             .getArchive('interface.jag');
 
         if (!archive) {

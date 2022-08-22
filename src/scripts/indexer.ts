@@ -3,12 +3,11 @@ import { existsSync, mkdirSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { ScriptExecutor, ArgumentOptions } from './script-executor';
 import { Js5FileStore } from '../file-system/js5';
-import { indexes, JagArchive, JagFileStore } from '../file-system/jag';
+import { caches, JagArchive, JagFileStore } from '../file-system/jag';
 import {
     getOpenRS2CacheFilesByBuild,
 } from '../openrs2';
-import { fileTarget, prettyPrintTarget } from '../../../common/src';
-import { CacheFile, getCacheFormat } from '../file-system/cache';
+import { PackedCacheFile, getPackedCacheFormat } from '../file-system/packed';
 
 
 interface IndexerOptions {
@@ -157,18 +156,18 @@ const indexJS5Archive = async (store: Js5FileStore, archiveName: string) => {
 const indexJagStore = async (store: JagFileStore) => {
     logger.info(`Decoding JAG store indexes...`);
 
-    const indexNames = Object.keys(indexes);
+    const indexNames = Object.keys(caches);
     for (const indexName of indexNames) {
-        store.jag.decodeIndex(indexName);
+        store.jag.decodeCache(indexName);
     }
 
     logger.info(`Saving indexes...`);
 
-    for (const [ , indexFile ] of store.indexes) {
+    for (const [ , indexFile ] of store.caches) {
         await indexFile.saveIndex().catch(e => logger.error(e));
     }
 
-    for (const [, indexFile ] of store.indexes) {
+    for (const [, indexFile ] of store.caches) {
         logger.info(`Unpacking JAG files for index ${indexFile.index.name}...`);
 
         for (const [ , file ] of indexFile.files) {
@@ -178,7 +177,7 @@ const indexJagStore = async (store: JagFileStore) => {
 
     logger.info(`Decoding JAG archives...`);
 
-    const archiveIndex = store.getIndex(indexes.archives);
+    const archiveIndex = store.getCache(caches.archives);
 
     for (const [ , archive ] of archiveIndex.files) {
         if (archive instanceof JagArchive) {
@@ -189,7 +188,7 @@ const indexJagStore = async (store: JagFileStore) => {
 
     logger.info(`Saving JAG file indexes...`);
 
-    for (const [, index ] of store.indexes) {
+    for (const [, index ] of store.caches) {
         await index.upsertFileIndexes().catch(e => logger.error(e));
     }
 
@@ -214,7 +213,7 @@ const indexerScript = async (
     const start = Date.now();
     const logDir = join(dir, 'logs');
     const numericBuildNumber: number = /^\d+$/.test(build) ? parseInt(build, 10) : -1;
-    let cacheFiles: CacheFile[] | 'local' = 'local';
+    let cacheFiles: PackedCacheFile[] | 'local' = 'local';
 
     if (!existsSync(logDir)) {
         mkdirSync(logDir, { recursive: true });
@@ -239,7 +238,7 @@ const indexerScript = async (
         }
     }
 
-    const storeType = cacheFiles !== 'local' ? getCacheFormat(cacheFiles) : 'flat';
+    const storeType = cacheFiles !== 'local' ? getPackedCacheFormat(cacheFiles) : 'flat';
 
     logger.info(`Indexing ${ storeType === 'flat' ? storeType : storeType.toUpperCase() } file store...`);
 
@@ -265,9 +264,9 @@ const indexerScript = async (
         await store.load();
 
         if (cacheFiles === 'local') {
-            store.jag.readLocalCacheFiles();
+            store.jag.readLocalPackedCacheFiles();
         } else {
-            store.jag.readOpenRS2CacheFiles(cacheFiles);
+            store.jag.readOpenRS2PackedCacheFiles(cacheFiles);
         }
 
         if (archiveName === 'main') {

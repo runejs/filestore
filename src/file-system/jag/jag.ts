@@ -7,14 +7,14 @@ import { Buffer } from 'buffer';
 import { JagArchive } from './jag-archive';
 import { decompressHeadlessBzip2 } from '../../compress';
 import { JagFileBase } from './jag-file-base';
-import { CacheFile } from '../cache';
+import { PackedCacheFile } from '../packed';
 
 
 const dataFileName = 'main_file_cache.dat';
 const indexFileNamePrefix = 'main_file_cache.idx';
 
 
-export const indexes = {
+export const caches = {
     archives: 0,
     models: 1,
     animations: 2,
@@ -46,7 +46,7 @@ export interface JagSectorHeader {
     fileKey: number;
     filePartNumber: number;
     sectorNumber: number;
-    indexKey: number;
+    cacheKey: number;
 }
 
 
@@ -62,7 +62,7 @@ export class Jag {
         this.indexFiles = new Map<number, ByteBuffer>();
     }
 
-    readOpenRS2CacheFiles(cacheFiles: CacheFile[]): void {
+    readOpenRS2PackedCacheFiles(cacheFiles: PackedCacheFile[]): void {
         const dataFileBuffer = cacheFiles.find(file => file.name === dataFileName)?.data || null;
         if (!dataFileBuffer?.length) {
             throw new Error(`The main ${ dataFileName } data file could not be found.`);
@@ -95,13 +95,13 @@ export class Jag {
             }
 
             this.indexFiles.set(indexKey, new ByteBuffer(cacheFile.data));
-            this.jagStore.createIndex(indexKey);
+            this.jagStore.createCache(indexKey);
         }
 
         logger.info(`JAG store files loaded for game build ${this.jagStore.gameBuild}.`);
     }
 
-    readLocalCacheFiles(): void {
+    readLocalPackedCacheFiles(): void {
         const jagStorePath = join(this.jagStore.fileStorePath, 'jag');
 
         if (!existsSync(jagStorePath)) {
@@ -143,22 +143,22 @@ export class Jag {
             }
 
             this.indexFiles.set(indexKey, new ByteBuffer(readFileSync(join(jagStorePath, fileName))));
-            this.jagStore.createIndex(indexKey);
+            this.jagStore.createCache(indexKey);
         }
 
         logger.info(`JAG store files loaded for game build ${this.jagStore.gameBuild}.`);
     }
 
-    decodeIndex(indexName: string): void {
-        logger.info(`Decoding JAG index ${indexName}...`);
+    decodeCache(indexName: string): void {
+        logger.info(`Decoding JAG cache index ${indexName}...`);
 
-        const indexKey = indexes[indexName];
-        const indexFile = this.indexFiles.get(indexKey);
+        const cacheKey = caches[indexName];
+        const indexFile = this.indexFiles.get(cacheKey);
         const fileCount = indexFile.length / 6;
 
         logger.info(`${fileCount} file indexes found.`);
 
-        const index = this.jagStore.getIndex(indexKey);
+        const index = this.jagStore.getCache(cacheKey);
         index.fileIndexes = new Array(fileCount);
 
         for (let fileKey = 0; fileKey < fileCount; fileKey++) {
@@ -173,17 +173,17 @@ export class Jag {
             if (indexName === 'archives') {
                 file = new JagArchive(this.jagStore, fileKey);
             } else {
-                file = new JagFile(this.jagStore, fileKey, indexKey);
+                file = new JagFile(this.jagStore, fileKey, cacheKey);
             }
 
             index.files.set(fileKey, file);
         }
 
-        logger.info(`Index ${indexName} has been loaded.`);
+        logger.info(`Cache index ${indexName} has been decoded.`);
     }
 
     unpack(file: JagArchive | JagFile): Buffer | null {
-        const fileIndexData = this.jagStore.getIndex(file.index.indexKey);
+        const fileIndexData = this.jagStore.getCache(file.index.cacheKey);
         const { fileSize, sectorNumber } = fileIndexData.fileIndexes[file.index.key];
         const fileData = new ByteBuffer(fileSize);
         const sectorDataLength = 512;
@@ -205,7 +205,7 @@ export class Jag {
             const sectorFileKey = block.get('short', 'unsigned');
             const sectorFilePartNumber = block.get('short', 'unsigned');
             const sectorNumber = block.get('int24', 'unsigned');
-            const sectorIndexKey = block.get('byte', 'unsigned');
+            const sectorCacheKey = block.get('byte', 'unsigned');
 
             readableSectorData -= 8;
 
@@ -232,8 +232,8 @@ export class Jag {
 
             if (remainingData > 0) {
                 // saved index keys have 1 added to them for some reason
-                if (sectorIndexKey !== file.index.indexKey + 1) {
-                    logger.error(`Index key mismatch, expected index ${ file.index.indexKey } but found ${ sectorIndexKey }`);
+                if (sectorCacheKey !== file.index.cacheKey + 1) {
+                    logger.error(`Index key mismatch, expected cache ${ file.index.cacheKey } but found ${ sectorCacheKey }`);
                     return null;
                 }
 
@@ -293,7 +293,7 @@ export class Jag {
             fileDataOffsets[fileKey] = fileDataOffset;
             fileDataOffset += compressedFileLength;
 
-            const file = new JagFile(this.jagStore, fileKey, archive.index.indexKey, archive.index.key);
+            const file = new JagFile(this.jagStore, fileKey, archive.index.cacheKey, archive.index.key);
             file.index.nameHash = fileNameHash;
             file.index.name = fileName;
             file.index.fileSize = decompressedFileLength;

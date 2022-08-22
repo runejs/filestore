@@ -17,7 +17,7 @@ export abstract class JagFileBase {
         fileStore: JagFileStore,
         fileType: JagFileType,
         key: number,
-        indexKey: number = -1,
+        cacheKey: number = -1,
         archiveKey: number = -1,
     ) {
         this.fileStore = fileStore;
@@ -25,7 +25,7 @@ export abstract class JagFileBase {
         this.index.gameBuild = fileStore.gameBuild;
         this.index.fileType = fileType;
         this.index.key = key;
-        this.index.indexKey = indexKey;
+        this.index.cacheKey = cacheKey;
         this.index.archiveKey = archiveKey;
     }
 
@@ -111,7 +111,7 @@ export abstract class JagFileBase {
         const indexEntity = await this.fileStore.database.getIndex({
             fileType: this.index.fileType,
             key: this.index.key,
-            indexKey: this.index.indexKey,
+            cacheKey: this.index.cacheKey,
             archiveKey: this.index.archiveKey,
         });
 

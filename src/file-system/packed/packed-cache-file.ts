@@ -1,7 +1,7 @@
 import { Buffer } from 'buffer';
 
 
-export interface CacheFile {
+export interface PackedCacheFile {
     name: string;
     data: Buffer;
 }

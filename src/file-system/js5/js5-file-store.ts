@@ -6,7 +6,8 @@ import { JS5 } from './js5';
 import { Js5Archive } from './js5-archive';
 import { FileStoreBase } from '../file-store-base';
 import { logger } from '../../../../common';
-import { Js5Database } from '../../db/js5/js5-database';
+import { Js5Database } from '../../db/js5';
+import { Js5File } from './js5-file';
 
 
 export class Js5FileStore extends FileStoreBase<Js5Database>{
@@ -33,14 +34,64 @@ export class Js5FileStore extends FileStoreBase<Js5Database>{
         return this._database;
     }
 
-    override async load(): Promise<void> {
+    override async load(
+        loadArchiveEntities: boolean = false,
+        loadArchiveChildEntities: boolean = false,
+        loadGroupChildEntities: boolean = false,
+    ): Promise<void> {
         await this.js5.loadEncryptionKeys();
         await this.openDatabase();
+
+        if (loadArchiveEntities) {
+            await this.loadArchiveEntities(loadArchiveChildEntities, loadGroupChildEntities);
+        }
     }
 
-    async loadArchiveEntities(): Promise<void> {
-        for (const [ , archive ] of this.archives) {
-            await archive.loadIndex();
+    /**
+     * Load all archive entities for this file store.
+     * @param loadArchiveChildEntities Whether or not to load group entities under each archive.
+     * Defaults to `false`.
+     * @param loadGroupChildEntities Whether or not to load flat file entities under each group.
+     * Only works if `loadArchiveChildEntities` is also set to `true`. Defaults to `false`.
+     */
+    async loadArchiveEntities(
+        loadArchiveChildEntities: boolean = false,
+        loadGroupChildEntities: boolean = false,
+    ): Promise<void> {
+        if (!this.archives.size) {
+            const archiveEntities = await this.database.getIndexes({
+                fileType: 'ARCHIVE'
+            });
+
+            for (const entity of archiveEntities) {
+                const archive = this.createArchive(entity.key);
+                archive.index = entity;
+            }
+        } else {
+            for (const [ , archive ] of this.archives) {
+                await archive.loadIndex();
+            }
+        }
+
+        if (loadArchiveChildEntities) {
+            for (const [ , archive ] of this.archives) {
+                await archive.loadGroupIndexes();
+            }
+
+            if (loadGroupChildEntities) {
+                // Bulk load grouped files to save computing time
+                const files = await this.database.getIndexes({
+                    fileType: 'FILE',
+                });
+
+                for (const fileEntity of files) {
+                    const archive = this.getArchive(fileEntity.archiveKey);
+                    const group = archive.getGroup(fileEntity.groupKey);
+                    const file = new Js5File(this, fileEntity.key, group);
+                    file.index = fileEntity;
+                    group.setFile(fileEntity.key, file);
+                }
+            }
         }
     }
 
@@ -62,8 +113,10 @@ export class Js5FileStore extends FileStoreBase<Js5Database>{
         }
     }
 
-    createArchive(archiveKey: number): void {
-        this.setArchive(archiveKey, new Js5Archive(this, archiveKey));
+    createArchive(archiveKey: number): Js5Archive {
+        const archive = new Js5Archive(this, archiveKey);
+        this.setArchive(archiveKey, archive);
+        return archive;
     }
 
     getArchive(archiveKey: number): Js5Archive | null;

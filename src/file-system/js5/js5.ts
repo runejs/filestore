@@ -6,7 +6,7 @@ import { ByteBuffer, logger } from '@runejs/common';
 import { getCompressionMethod } from '@runejs/common/compress';
 import { Xtea, XteaKeys, XteaConfig } from '@runejs/common/encrypt';
 
-import { Js5FileStore, Js5Archive, JS5Group, JS5File } from '.';
+import { Js5FileStore, Js5Archive, Js5Group, Js5File } from '.';
 import { archiveFlags, ArchiveFormat } from '../../config';
 import { getXteaKeysByBuild } from '../../openrs2';
 import {
@@ -15,7 +15,7 @@ import {
     compressGzip,
     decompressGzip
 } from '../../compress';
-import { CacheFile } from '../cache';
+import { PackedCacheFile } from '../packed';
 
 
 const dataFileName = 'main_file_cache.dat2';
@@ -39,7 +39,7 @@ export class JS5 {
         this.indexFiles = new Map<number, ByteBuffer>();
     }
 
-    readOpenRS2CacheFiles(cacheFiles: CacheFile[]): void {
+    readOpenRS2CacheFiles(cacheFiles: PackedCacheFile[]): void {
         const dataFileBuffer = cacheFiles.find(file => file.name === dataFileName)?.data || null;
         if (!dataFileBuffer?.length) {
             throw new Error(`The main ${ dataFileName } data file could not be found.`);
@@ -136,7 +136,7 @@ export class JS5 {
         logger.info(`JS5 store file loaded for game build ${ this.fileStore.gameBuild }.`);
     }
 
-    unpack(file: JS5Group | Js5Archive): Buffer | null {
+    unpack(file: Js5Group | Js5Archive): Buffer | null {
         const fileIndex = file.index;
         const fileKey = fileIndex.key;
         const archiveKey: number = file instanceof Js5Archive ? 255 : file.archive.index.key;
@@ -241,7 +241,7 @@ export class JS5 {
         return fileIndex.compressedData;
     }
 
-    readCompressedFileHeader(file: JS5Group | Js5Archive): { compressedLength: number, readerIndex: number } {
+    readCompressedFileHeader(file: Js5Group | Js5Archive): { compressedLength: number, readerIndex: number } {
         const fileDetails = file.index;
 
         if (!fileDetails.compressedData?.length) {
@@ -259,7 +259,7 @@ export class JS5 {
         return { compressedLength, readerIndex };
     }
 
-    decrypt(file: JS5Group | Js5Archive): Buffer {
+    decrypt(file: Js5Group | Js5Archive): Buffer {
         const fileDetails = file.index;
         const fileName = fileDetails.name;
 
@@ -269,7 +269,6 @@ export class JS5 {
             return null;
         }
 
-        // @todo move to JS5.decodeArchive
         const archiveName = file instanceof Js5Archive ? 'main' : file.archive.index.name;
         const archiveConfig = this.fileStore.archiveConfig[archiveName];
 
@@ -321,6 +320,7 @@ export class JS5 {
                 dataCopy.readerIndex = readerIndex;
                 fileDetails.compressedData = dataCopy.toNodeBuffer();
                 fileDetails.encrypted = false;
+                file.validate(false);
                 return fileDetails.compressedData;
             } else {
                 logger.warn(`Invalid XTEA decryption keys found for file ` +
@@ -336,7 +336,7 @@ export class JS5 {
         return null;
     }
 
-    decompress(file: JS5Group | Js5Archive): Buffer | null {
+    decompress(file: Js5Group | Js5Archive): Buffer | null {
         const fileDetails = file.index;
 
         if (!fileDetails.compressedData?.length) {
@@ -372,15 +372,20 @@ export class JS5 {
                     fileDetails.fileError = 'MISSING_ENCRYPTION_KEYS';
                 }
             } else {
-                const decompressedData = new ByteBuffer(fileDetails.compressionMethod === 'bzip' ?
-                    decompressedLength : (compressedData.length - compressedData.readerIndex + 2));
+                const fileData = new ByteBuffer(compressedLength);
 
-                compressedData.copy(decompressedData, 0, compressedData.readerIndex);
+                logger.info(`Decompress ${fileDetails.compressionMethod}, ` +
+                    `compressed len = ${fileDetails.compressedData.length}, ` +
+                    `recorded compressed len = ${compressedLength}, ` +
+                    `compressed data buffer len = ${fileData.length}, ` +
+                    `decompressed len = ${decompressedLength}`);
+
+                compressedData.copy(fileData, 0, compressedData.readerIndex);
 
                 try {
                     data = fileDetails.compressionMethod === 'bzip' ?
-                        decompressHeadlessBzip2(decompressedData) :
-                        decompressGzip(decompressedData);
+                        decompressHeadlessBzip2(fileData) :
+                        decompressGzip(fileData);
 
                     compressedData.readerIndex = compressedData.readerIndex + compressedLength;
 
@@ -405,10 +410,11 @@ export class JS5 {
             fileDetails.data = data;
         }
 
+        file.validate(false);
         return fileDetails.data;
     }
 
-    async decodeGroup(group: JS5Group): Promise<void> {
+    async decodeGroup(group: Js5Group): Promise<void> {
         const groupDetails = group.index;
         const { key: groupKey, name: groupName } = groupDetails;
         const files = group.files;
@@ -529,7 +535,7 @@ export class JS5 {
         archiveDetails.version = format >= ArchiveFormat.versioned ? archiveData.get('int') : 0;
         const flags = archiveFlags(archiveData.get('byte', 'unsigned'));
         const groupCount = archiveData.get(mainDataType, 'unsigned');
-        const groups: JS5Group[] = new Array(groupCount);
+        const groups: Js5Group[] = new Array(groupCount);
         let accumulator = 0;
 
         logger.info(`${ groupCount } groups were found within the ${ archiveName } archive.`);
@@ -538,7 +544,7 @@ export class JS5 {
         for (let i = 0; i < groupCount; i++) {
             const delta = archiveData.get(mainDataType, 'unsigned');
             const groupKey = accumulator += delta;
-            const group = groups[i] = new JS5Group(this.fileStore, groupKey, archive);
+            const group = groups[i] = new Js5Group(this.fileStore, groupKey, archive);
             archive.setGroup(groupKey, group);
         }
 
@@ -599,7 +605,7 @@ export class JS5 {
             for (let i = 0; i < fileCount; i++) {
                 const delta = archiveData.get(mainDataType, 'unsigned');
                 const childFileIndex = accumulator += delta;
-                const flatFile = new JS5File(this.fileStore, childFileIndex, group);
+                const flatFile = new Js5File(this.fileStore, childFileIndex, group);
                 group.setFile(childFileIndex, flatFile);
             }
         }
@@ -626,16 +632,16 @@ export class JS5 {
     }
 
     // @todo stubbed - 21/07/22 - Kiko
-    pack(file: JS5Group | Js5Archive): Buffer | null {
+    pack(file: Js5Group | Js5Archive): Buffer | null {
         return null;
     }
 
     // @todo stubbed - 21/07/22 - Kiko
-    encrypt(file: JS5Group | Js5Archive): Buffer | null {
+    encrypt(file: Js5Group | Js5Archive): Buffer | null {
         return null;
     }
 
-    compress(file: JS5Group | Js5Archive): Buffer | null {
+    compress(file: Js5Group | Js5Archive): Buffer | null {
         const fileDetails = file.index;
 
         if (!fileDetails.data?.length) {
@@ -688,7 +694,7 @@ export class JS5 {
         return fileDetails.compressedData;
     }
 
-    encodeGroup(group: JS5Group): Buffer | null {
+    encodeGroup(group: Js5Group): Buffer | null {
         const { files: fileMap, index, stripes } = group;
         const fileCount = fileMap.size;
 

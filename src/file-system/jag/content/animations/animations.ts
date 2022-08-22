@@ -1,7 +1,7 @@
 import { JagFileStore } from '../../jag-file-store';
 import { Buffer } from 'buffer';
 import { ByteBuffer, logger } from '@runejs/common';
-import { JagIndex } from '../../jag-index';
+import { JagCache } from '../../jag-cache';
 
 
 export interface AnimationFile {
@@ -16,18 +16,18 @@ export class Animations {
 
     readonly jagStore: JagFileStore;
     readonly animations: Map<number, AnimationFile>;
-    readonly animationsIndex: JagIndex;
+    readonly animationsIndex: JagCache;
 
     versionListDecoded: boolean = false;
 
     constructor(jagStore: JagFileStore) {
         this.jagStore = jagStore;
         this.animations = new Map<number, any>();
-        this.animationsIndex = this.jagStore.getIndex('animations');
+        this.animationsIndex = this.jagStore.getCache('animations');
     }
 
     decodeVersionList(): void {
-        const archiveIndex = this.jagStore.getIndex('archives');
+        const archiveIndex = this.jagStore.getCache('archives');
         if (!archiveIndex) {
             throw new Error(`Archive Index is not loaded!`);
         }

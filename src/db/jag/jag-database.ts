@@ -10,7 +10,7 @@ import { join } from 'path';
 export interface JagIndexEntityWhere {
     fileType?: JagFileType;
     key?: number;
-    indexKey?: number;
+    cacheKey?: number;
     archiveKey?: number;
 }
 
@@ -55,7 +55,7 @@ export class JagDatabase extends IndexDatabase<JagIndexEntity, JagIndexEntityWhe
         for (let i = 0; i < indexEntities.length; i += chunkSize) {
             const chunk = indexEntities.slice(i, i + chunkSize);
             await this.repository.upsert(chunk, {
-                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'indexKey', 'archiveKey' ],
+                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'cacheKey', 'archiveKey' ],
                 skipUpdateIfNoValuesChanged: true,
             });
         }

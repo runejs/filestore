@@ -1,21 +1,21 @@
 import { JagFileStore } from './jag-file-store';
-import { JagFileIndex, indexes } from './jag';
+import { JagFileIndex, caches } from './jag';
 import { JagArchive } from './jag-archive';
 import { JagFile } from './jag-file';
 import { JagFileBase } from './jag-file-base';
 
 
-export class JagIndex extends JagFileBase {
+export class JagCache extends JagFileBase {
 
     readonly files: Map<number, JagArchive | JagFile>;
 
     fileIndexes: JagFileIndex[];
 
-    constructor(jagStore: JagFileStore, indexKey: number) {
-        super(jagStore, 'INDEX', indexKey);
-        const indexNames = Object.keys(indexes);
+    constructor(jagStore: JagFileStore, cacheKey: number) {
+        super(jagStore, 'CACHE', cacheKey);
+        const indexNames = Object.keys(caches);
         for (const name of indexNames) {
-            if (indexes[name] === indexKey) {
+            if (caches[name] === cacheKey) {
                 this.index.name = name;
             }
         }
@@ -29,7 +29,7 @@ export class JagIndex extends JagFileBase {
 
     async loadFileIndexes(): Promise<void> {
         const fileIndexes = await this.fileStore.database.getIndexes({
-            indexKey: this.index.key,
+            cacheKey: this.index.key,
             archiveKey: -1,
         });
 

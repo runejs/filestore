@@ -6,7 +6,7 @@ import { Buffer } from 'buffer';
 
 @Entity('jag_index')
 @Index('index_identifier', [
-    'fileType', 'gameBuild', 'key', 'indexKey', 'archiveKey'
+    'fileType', 'gameBuild', 'key', 'cacheKey', 'archiveKey'
 ], { unique: true })
 export class JagIndexEntity {
 
@@ -19,8 +19,8 @@ export class JagIndexEntity {
     @PrimaryColumn('integer', { nullable: false, unique: false })
     key: number;
 
-    @PrimaryColumn('integer', { name: 'index_key', nullable: false, unique: false })
-    indexKey: number;
+    @PrimaryColumn('integer', { name: 'cache_key', nullable: false, unique: false })
+    cacheKey: number;
 
     @PrimaryColumn('integer', { name: 'archive_key', nullable: false, unique: false, default: -1 })
     archiveKey: number = -1;

@@ -1,14 +1,14 @@
 import { Js5FileStore } from './js5-file-store';
 import { Js5Archive } from './js5-archive';
-import { JS5File } from './js5-file';
+import { Js5File } from './js5-file';
 import { logger } from '@runejs/common';
 import { Js5FileBase } from './js5-file-base';
 
 
-export class JS5Group extends Js5FileBase {
+export class Js5Group extends Js5FileBase {
 
     readonly archive: Js5Archive;
-    readonly files: Map<number, JS5File>;
+    readonly files: Map<number, Js5File>;
 
     constructor(
         fileStore: Js5FileStore,
@@ -17,7 +17,7 @@ export class JS5Group extends Js5FileBase {
     ) {
         super(fileStore, 'GROUP', groupKey, archive.index.key);
         this.archive = archive;
-        this.files = new Map<number, JS5File>();
+        this.files = new Map<number, Js5File>();
     }
 
     override validate(trackChanges: boolean = true): void {
@@ -59,17 +59,17 @@ export class JS5Group extends Js5FileBase {
             const fileKey = fileIndex.key;
 
             if (!this.files.has(fileKey)) {
-                const file = new JS5File(this.fileStore, fileKey, this);
+                const file = new Js5File(this.fileStore, fileKey, this);
                 file.index = fileIndex;
                 this.files.set(fileKey, file);
             }
         }
     }
 
-    getFile(fileKey: number): JS5File | null;
-    getFile(fileName: string): JS5File | null;
-    getFile(fileKeyOrName: number | string): JS5File | null;
-    getFile(fileKeyOrName: number | string): JS5File | null {
+    getFile(fileKey: number): Js5File | null;
+    getFile(fileName: string): Js5File | null;
+    getFile(fileKeyOrName: number | string): Js5File | null;
+    getFile(fileKeyOrName: number | string): Js5File | null {
         if (typeof fileKeyOrName === 'string') {
             return Array.from(this.files.values()).find(
                 file => file?.index?.name === fileKeyOrName
@@ -79,7 +79,7 @@ export class JS5Group extends Js5FileBase {
         }
     }
 
-    setFile(fileKey: number, file: JS5File): void {
+    setFile(fileKey: number, file: Js5File): void {
         this.files.set(fileKey, file);
     }
 

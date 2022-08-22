@@ -14,7 +14,7 @@ export class ScriptExecutor {
 
     public executeScript<T>(
         argumentOptions: ArgumentOptions,
-        script: (args: T) => Promise<void>
+        script: (args: T) => Promise<void | unknown>
     ): void {
         (async function(args: T) {
             await script(args);

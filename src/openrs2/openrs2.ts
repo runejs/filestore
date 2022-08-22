@@ -3,7 +3,7 @@ import AdmZip from 'adm-zip';
 import { Buffer } from 'buffer';
 import { logger } from '@runejs/common';
 import { XteaConfig } from '@runejs/common/encrypt';
-import { CacheFile } from '../file-system/cache';
+import { PackedCacheFile } from '../file-system/packed';
 
 
 const openRS2Endpoint = 'https://archive.openrs2.org';
@@ -97,7 +97,7 @@ export const getOpenRS2CacheDetailsByBuild = async (
 export const getOpenRS2CacheFilesById = async (
     id: number,
     scope: string = 'runescape'
-): Promise<CacheFile[]> => {
+): Promise<PackedCacheFile[]> => {
     const response = await axios.get(
         `${ openRS2Endpoint }/caches/${ scope }/${ id }/disk.zip`,
         { responseType: 'arraybuffer' }
@@ -117,7 +117,7 @@ export const getOpenRS2CacheFilesById = async (
 
 export const getOpenRS2CacheFilesByBuild = async (
     build: number
-): Promise<CacheFile[] | null> => {
+): Promise<PackedCacheFile[] | null> => {
     logger.info(`Searching OpenRS2 for build ${ build }...`);
 
     const cacheList = (await getOpenRS2CacheList())

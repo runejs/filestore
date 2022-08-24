@@ -1,6 +1,5 @@
 import yargs from 'yargs/yargs';
 import { Options } from 'yargs';
-import { logger } from '@runejs/common';
 
 
 export type ArgumentOptions = { [key: string]: Options };
@@ -19,7 +18,6 @@ export class ScriptExecutor {
         (async function(args: T) {
             await script(args);
         }(this.getArguments<T>(argumentOptions)));
-            //.finally(() => process.exit(0));
     }
 
 }

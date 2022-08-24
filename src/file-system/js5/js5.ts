@@ -3,18 +3,12 @@ import { Buffer } from 'buffer';
 import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
 
 import { ByteBuffer, logger } from '@runejs/common';
-import { getCompressionMethod } from '@runejs/common/compress';
+import { getCompressionMethod, Gzip, Bzip2 } from '@runejs/common/compress';
 import { Xtea, XteaKeys, XteaConfig } from '@runejs/common/encrypt';
 
 import { Js5FileStore, Js5Archive, Js5Group, Js5File } from '.';
 import { archiveFlags, ArchiveFormat } from '../../config';
 import { getXteaKeysByBuild } from '../../openrs2';
-import {
-    compressHeadlessBzip2,
-    decompressHeadlessBzip2,
-    compressGzip,
-    decompressGzip
-} from '../../compress';
 import { PackedCacheFile } from '../packed';
 
 
@@ -297,40 +291,41 @@ export class JS5 {
             }
         }
 
-        const { compressedLength, readerIndex } = this.readCompressedFileHeader(file);
-        const encryptedData = new ByteBuffer(fileDetails.compressedData);
-        const keySet = keySets.find(keySet => keySet.gameBuild === gameBuild);
+        try {
+            const { compressedLength, readerIndex } = this.readCompressedFileHeader(file);
+            const encryptedData = new ByteBuffer(fileDetails.compressedData);
+            const keySet = keySets.find(keySet => keySet.gameBuild === gameBuild);
 
-        if (Xtea.validKeys(keySet?.key)) {
-            logger.info(`XTEA decryption keys found for file ` +
-                `${ fileName || fileDetails.key }.`);
-
-            const dataCopy = encryptedData.clone();
-            dataCopy.readerIndex = readerIndex;
-
-            let lengthOffset = readerIndex;
-            if (dataCopy.length - (compressedLength + readerIndex + 4) >= 2) {
-                lengthOffset += 2;
-            }
-
-            const decryptedData = Xtea.decrypt(dataCopy, keySet.key, dataCopy.length - lengthOffset);
-
-            if (decryptedData?.length) {
-                decryptedData.copy(dataCopy, readerIndex, 0);
+            if (Xtea.validKeys(keySet?.key)) {
+                const dataCopy = encryptedData.clone();
                 dataCopy.readerIndex = readerIndex;
-                fileDetails.compressedData = dataCopy.toNodeBuffer();
-                fileDetails.encrypted = false;
-                file.validate(false);
-                return fileDetails.compressedData;
+
+                let lengthOffset = readerIndex;
+                if (dataCopy.length - (compressedLength + readerIndex + 4) >= 2) {
+                    lengthOffset += 2;
+                }
+
+                const decryptedData = Xtea.decrypt(dataCopy, keySet.key, dataCopy.length - lengthOffset);
+
+                if (decryptedData?.length) {
+                    decryptedData.copy(dataCopy, readerIndex, 0);
+                    dataCopy.readerIndex = readerIndex;
+                    fileDetails.compressedData = dataCopy.toNodeBuffer();
+                    fileDetails.encrypted = false;
+                    file.validate(false);
+                    return fileDetails.compressedData;
+                } else {
+                    logger.warn(`Invalid XTEA decryption keys found for file ` +
+                        `${ fileName || fileDetails.key } using game build ${ gameBuild }.`);
+                    fileDetails.fileError = 'MISSING_ENCRYPTION_KEYS';
+                }
             } else {
-                logger.warn(`Invalid XTEA decryption keys found for file ` +
+                logger.warn(`No XTEA decryption keys found for file ` +
                     `${ fileName || fileDetails.key } using game build ${ gameBuild }.`);
                 fileDetails.fileError = 'MISSING_ENCRYPTION_KEYS';
             }
-        } else {
-            logger.warn(`No XTEA decryption keys found for file ` +
-                `${ fileName || fileDetails.key } using game build ${ gameBuild }.`);
-            fileDetails.fileError = 'MISSING_ENCRYPTION_KEYS';
+        } catch (err) {
+            logger.error(err);
         }
 
         return null;
@@ -348,44 +343,39 @@ export class JS5 {
             return null;
         }
 
-        const { compressedLength, readerIndex } = this.readCompressedFileHeader(file);
-
-        // JS5.decrypt will set compressedData to the new decrypted data after completion
-        const compressedData = new ByteBuffer(fileDetails.compressedData);
-        compressedData.readerIndex = readerIndex;
         let data: Buffer;
 
-        if (fileDetails.compressionMethod === 'none') {
-            // Uncompressed file
-            data = Buffer.alloc(compressedLength);
-            compressedData.copy(data, 0, compressedData.readerIndex, compressedLength);
-            compressedData.readerIndex = (compressedData.readerIndex + compressedLength);
-        } else {
-            // BZIP or GZIP compressed file
-            const decompressedLength = compressedData.get('int', 'unsigned');
-            if (decompressedLength < 0) {
-                const errorPrefix = `Unable to decompress file ${ fileDetails.name || fileDetails.key }:`;
-                if (fileDetails.fileError === 'FILE_MISSING') {
-                    logger.error(`${ errorPrefix } Missing file data.`);
-                } else {
-                    logger.error(`${ errorPrefix } Missing or invalid XTEA key.`);
-                    fileDetails.fileError = 'MISSING_ENCRYPTION_KEYS';
-                }
+        try {
+            const { compressedLength, readerIndex } = this.readCompressedFileHeader(file);
+
+            // JS5.decrypt will set compressedData to the new decrypted data after completion
+            const compressedData = new ByteBuffer(fileDetails.compressedData);
+            compressedData.readerIndex = readerIndex;
+
+            if (fileDetails.compressionMethod === 'none') {
+                // Uncompressed file
+                data = Buffer.alloc(compressedLength);
+                compressedData.copy(data, 0, compressedData.readerIndex, compressedLength);
+                compressedData.readerIndex = (compressedData.readerIndex + compressedLength);
             } else {
-                const fileData = new ByteBuffer(compressedLength);
+                // BZIP or GZIP compressed file
+                const decompressedLength = compressedData.get('int', 'unsigned');
+                if (decompressedLength < 0) {
+                    const errorPrefix = `Unable to decompress file ${ fileDetails.name || fileDetails.key }:`;
+                    if (fileDetails.fileError === 'FILE_MISSING') {
+                        logger.error(`${ errorPrefix } Missing file data.`);
+                    } else {
+                        logger.error(`${ errorPrefix } Missing or invalid XTEA key.`);
+                        fileDetails.fileError = 'MISSING_ENCRYPTION_KEYS';
+                    }
+                } else {
+                    const fileData = new ByteBuffer(compressedLength);
 
-                logger.info(`Decompress ${fileDetails.compressionMethod}, ` +
-                    `compressed len = ${fileDetails.compressedData.length}, ` +
-                    `recorded compressed len = ${compressedLength}, ` +
-                    `compressed data buffer len = ${fileData.length}, ` +
-                    `decompressed len = ${decompressedLength}`);
+                    compressedData.copy(fileData, 0, compressedData.readerIndex);
 
-                compressedData.copy(fileData, 0, compressedData.readerIndex);
-
-                try {
-                    data = fileDetails.compressionMethod === 'bzip' ?
-                        decompressHeadlessBzip2(fileData) :
-                        decompressGzip(fileData);
+                    data = fileDetails.compressionMethod === 'bzip2' ?
+                        Bzip2.decompress(fileData) :
+                        Gzip.decompress(fileData);
 
                     compressedData.readerIndex = compressedData.readerIndex + compressedLength;
 
@@ -393,23 +383,22 @@ export class JS5 {
                         logger.error(`Compression length mismatch.`);
                         data = null;
                     }
-                } catch (error) {
-                    logger.error(`Error decompressing file ${ fileDetails.name || fileDetails.key }: ` +
-                        `${ error?.message ?? error }`);
-                    data = null;
                 }
             }
-        }
 
-        if (data?.length) {
-            // Read the file footer, if it has one
-            if (compressedData.readable >= 2) {
-                fileDetails.version = compressedData.get('short', 'unsigned');
+            if (data?.length) {
+                // Read the file footer, if it has one
+                if (compressedData.readable >= 2) {
+                    fileDetails.version = compressedData.get('short', 'unsigned');
+                }
             }
-
-            fileDetails.data = data;
+        } catch (error) {
+            logger.error(`Error decompressing file ${ fileDetails.name || fileDetails.key }: ` +
+                `${ error?.message ?? error }`);
+            data = null;
         }
 
+        fileDetails.data = data;
         file.validate(false);
         return fileDetails.data;
     }
@@ -666,16 +655,16 @@ export class JS5 {
         } else {
             // compressed Bzip2 or Gzip file
 
-            const compressedData: Buffer = fileDetails.compressionMethod === 'bzip' ?
-                compressHeadlessBzip2(decompressedData) :
-                compressGzip(decompressedData);
+            const compressedData: Buffer = fileDetails.compressionMethod === 'bzip2' ?
+                Bzip2.compress(decompressedData) :
+                Gzip.compress(decompressedData);
 
             const compressedLength: number = compressedData.length;
 
             data = new ByteBuffer(compressedData.length + 9);
 
             // indicate which type of file compression was used (1 or 2)
-            data.put(fileDetails.compressionMethod === 'bzip' ? 1 : 2);
+            data.put(fileDetails.compressionMethod === 'bzip2' ? 1 : 2);
 
             // write the compressed file length
             data.put(compressedLength, 'int');

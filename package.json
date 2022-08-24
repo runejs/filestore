@@ -18,7 +18,7 @@
         "start": "ts-node-dev src/scripts/dev.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
-        "http:js5": "ts-node-dev --max-old-space-size=2048 src/http/js5-server.ts",
+        "http:js5": "ts-node-dev --max-old-space-size=2048 src/http/server.ts",
         "namehash": "ts-node-dev --max-old-space-size=2048 src/scripts/name-hasher.ts",
         "unpack": "ts-node-dev --max-old-space-size=2048 src/scripts/unpacker.ts",
         "index": "ts-node-dev --max-old-space-size=2048 src/scripts/indexer.ts",
@@ -49,13 +49,13 @@
     },
     "homepage": "https://github.com/runejs/filestore#readme",
     "peerDependencies": {
-        "@runejs/common": "2.0.2-beta.2",
+        "@runejs/common": "3.0.0-beta.8",
         "graceful-fs": ">=4.2.0",
-        "tslib": ">=2.3.0",
+        "tslib": ">=2.4.0",
         "typescript": ">=4.5.0"
     },
     "dependencies": {
-        "@runejs/common": "2.0.2-beta.2",
+        "@runejs/common": "3.0.0-beta.8",
         "adm-zip": "^0.5.9",
         "axios": "^0.27.2",
         "compressjs": "^1.0.3",
@@ -64,7 +64,7 @@
         "json5": "^2.2.0",
         "reflect-metadata": "^0.1.13",
         "sqlite": "^4.0.25",
-        "tslib": ">=2.3.0",
+        "tslib": ">=2.4.0",
         "typeorm": "^0.2.44",
         "yargs": "^17.3.1",
         "zlib": "^1.0.5"
@@ -84,6 +84,6 @@
         "rimraf": "^3.0.2",
         "source-map-support": "^0.5.21",
         "ts-node-dev": "^2.0.0",
-        "typescript": "^4.5.5"
+        "typescript": "^4.7.4"
     }
 }

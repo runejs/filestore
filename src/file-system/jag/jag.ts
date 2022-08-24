@@ -5,9 +5,9 @@ import { JagFileStore } from './jag-file-store';
 import { JagFile } from './jag-file';
 import { Buffer } from 'buffer';
 import { JagArchive } from './jag-archive';
-import { decompressHeadlessBzip2 } from '../../compress';
 import { JagFileBase } from './jag-file-base';
 import { PackedCacheFile } from '../packed';
+import { Bzip2 } from '@runejs/common/compress';
 
 
 const dataFileName = 'main_file_cache.dat';
@@ -271,8 +271,8 @@ export class Jag {
 
         if (uncompressed !== compressed) {
             const compressedData = archiveData.getSlice(archiveData.readerIndex, archiveData.length - archiveData.readerIndex);
-            archiveData = new ByteBuffer(decompressHeadlessBzip2(compressedData));
-            archive.index.compressionMethod = 'bzip';
+            archiveData = new ByteBuffer(Bzip2.decompress(compressedData));
+            archive.index.compressionMethod = 'bzip2';
         } else {
             archive.index.compressionMethod = 'none';
         }
@@ -319,8 +319,8 @@ export class Jag {
             try {
                 const { compressedFileSize, fileSize, compressedData } = file.index;
                 if (compressedData?.length && compressedFileSize !== fileSize) {
-                    file.index.data = decompressHeadlessBzip2(file.index.compressedData);
-                    file.index.compressionMethod = 'bzip';
+                    file.index.data = Bzip2.decompress(file.index.compressedData);
+                    file.index.compressionMethod = 'bzip2';
                 } else {
                     file.index.data = file.index.compressedData;
                     file.index.compressedData = null;

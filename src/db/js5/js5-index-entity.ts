@@ -52,8 +52,8 @@ export class Js5IndexEntity {
     @Column('blob', { name: 'data', nullable: true, default: null })
     data: Buffer = null;
 
-    @Column('text', { name: 'compression_method', nullable: true, default: null })
-    compressionMethod: CompressionMethod = null;
+    @Column('text', { name: 'compression_method', nullable: true, default: 'none' })
+    compressionMethod: CompressionMethod = 'none';
 
     @Column('integer', { name: 'compressed_checksum', nullable: false, default: -1 })
     compressedChecksum: number = -1;

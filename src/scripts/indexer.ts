@@ -1,5 +1,3 @@
-import { join } from 'path';
-import { existsSync, mkdirSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
 import { ScriptExecutor, ArgumentOptions } from './script-executor';
 import { Js5FileStore } from '../file-system/js5';
@@ -64,13 +62,13 @@ const indexJS5Store = async (store: Js5FileStore) => {
     logger.info(`Decoding JS5 archives...`);
 
     for (const [ , archive ] of store.archives) {
-        await store.js5.decodeArchive(archive).catch(e => logger.error(e));
+        await store.js5.decodeArchive(archive);
     }
 
     logger.info(`Saving archive indexes...`);
 
     for (const [ , archive ] of store.archives) {
-        await archive.saveIndex().catch(e => logger.error(e));
+        await archive.saveIndex();
     }
 
     logger.info(`Unpacking groups from JS5 store...`);
@@ -87,7 +85,7 @@ const indexJS5Store = async (store: Js5FileStore) => {
 
     for (const [ , archive ] of store.archives) {
         for (const [ , group ] of archive.groups) {
-            await store.js5.decodeGroup(group).catch(e => logger.error(e));
+            await store.js5.decodeGroup(group);
         }
 
         logger.info(`Finished decoding archive ${ archive.index.name } groups.`);
@@ -96,14 +94,14 @@ const indexJS5Store = async (store: Js5FileStore) => {
     logger.info(`Saving group indexes...`);
 
     for (const [ , archive ] of store.archives) {
-        await archive.upsertGroupIndexes().catch(e => logger.error(e));
+        await archive.upsertGroupIndexes();
     }
 
     logger.info(`Saving flat file indexes...`);
 
     for (const [ , archive ] of store.archives) {
         for (const [ , group ] of archive.groups) {
-            await group.upsertFileIndexes().catch(e => logger.error(e));
+            await group.upsertFileIndexes();
         }
     }
 };
@@ -123,11 +121,11 @@ const indexJS5Archive = async (store: Js5FileStore, archiveName: string) => {
 
     logger.info(`Decoding archive ${ archiveName }...`);
 
-    await store.js5.decodeArchive(archive).catch(e => logger.error(e));
+    await store.js5.decodeArchive(archive);
 
     logger.info(`Saving archive ${ archiveName } index...`);
 
-    await archive.saveIndex().catch(e => logger.error(e));
+    await archive.saveIndex();
 
     logger.info(`Unpacking groups from archive ${ archiveName }...`);
 
@@ -138,17 +136,17 @@ const indexJS5Archive = async (store: Js5FileStore, archiveName: string) => {
     logger.info(`Decoding archive ${ archiveName } groups...`);
 
     for (const [ , group ] of archive.groups) {
-        await store.js5.decodeGroup(group).catch(e => logger.error(e));
+        await store.js5.decodeGroup(group);
     }
 
     logger.info(`Saving group indexes...`);
 
-    await archive.upsertGroupIndexes().catch(e => logger.error(e));
+    await archive.upsertGroupIndexes();
 
     logger.info(`Saving flat file indexes...`);
 
     for (const [ , group ] of archive.groups) {
-        await group.upsertFileIndexes().catch(e => logger.error(e));
+        await group.upsertFileIndexes();
     }
 };
 
@@ -164,7 +162,7 @@ const indexJagStore = async (store: JagFileStore) => {
     logger.info(`Saving indexes...`);
 
     for (const [ , indexFile ] of store.caches) {
-        await indexFile.saveIndex().catch(e => logger.error(e));
+        await indexFile.saveIndex();
     }
 
     for (const [, indexFile ] of store.caches) {
@@ -189,14 +187,14 @@ const indexJagStore = async (store: JagFileStore) => {
     logger.info(`Saving JAG file indexes...`);
 
     for (const [, index ] of store.caches) {
-        await index.upsertFileIndexes().catch(e => logger.error(e));
+        await index.upsertFileIndexes();
     }
 
     logger.info(`Saving JAG archive file indexes...`);
 
     for (const [ , archive ] of archiveIndex.files) {
         if (archive instanceof JagArchive) {
-            await archive.upsertFileIndexes().catch(e => logger.error(e));
+            await archive.upsertFileIndexes();
         }
     }
 };
@@ -211,18 +209,8 @@ const indexerScript = async (
     { build, dir, format, archive: archiveName, source }
 ) => {
     const start = Date.now();
-    const logDir = join(dir, 'logs');
     const numericBuildNumber: number = /^\d+$/.test(build) ? parseInt(build, 10) : -1;
     let cacheFiles: PackedCacheFile[] | 'local' = 'local';
-
-    if (!existsSync(logDir)) {
-        mkdirSync(logDir, { recursive: true });
-    }
-
-    /*logger.setTargets([
-        prettyPrintTarget(),
-        fileTarget(join(logDir, `index-${ build }.log`))
-    ]);*/
 
     if (source === 'openrs2') {
         if (numericBuildNumber) {
@@ -281,8 +269,6 @@ const indexerScript = async (
     }
 
     logger.info(`Indexing completed in ${ (Date.now() - start) / 1000 } seconds.`);
-    // logger.boom.flushSync();
-    // logger.boom.end();
 };
 
 

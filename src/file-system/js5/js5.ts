@@ -226,23 +226,23 @@ export class JS5 {
         } while (remainingData > 0);
 
         if (data.length) {
-            fileIndex.compressedData = data.toNodeBuffer();
+            file.compressedData.buffer = data.toNodeBuffer();
         } else {
-            fileIndex.compressedData = null;
+            file.compressedData.buffer = null;
             fileIndex.fileError = 'FILE_MISSING';
         }
 
-        return fileIndex.compressedData;
+        return file.compressedData.buffer;
     }
 
     readCompressedFileHeader(file: Js5Group | Js5Archive): { compressedLength: number, readerIndex: number } {
         const fileDetails = file.index;
 
-        if (!fileDetails.compressedData?.length) {
+        if (!file.compressedData.buffer?.length) {
             return { compressedLength: 0, readerIndex: 0 };
         }
 
-        const compressedData = new ByteBuffer(fileDetails.compressedData);
+        const compressedData = new ByteBuffer(file.compressedData.buffer);
 
         fileDetails.compressionMethod = getCompressionMethod(
             compressedData.get('byte', 'unsigned'));
@@ -257,7 +257,7 @@ export class JS5 {
         const fileDetails = file.index;
         const fileName = fileDetails.name;
 
-        if (!fileDetails.compressedData?.length) {
+        if (!file.compressedData.buffer?.length) {
             logger.error(`Error decrypting file ${ fileName || fileDetails.key }, file data not found.`,
                 `Please ensure that the file has been unpacked from an existing JS5 file store using JS5.unpack(file);`);
             return null;
@@ -273,10 +273,10 @@ export class JS5 {
             // Only XTEA encryption is supported at this time
             if (encryption !== 'xtea' || !patternRegex.test(fileName)) {
                 // FileBase name does not match the pattern, data should be unencrypted
-                return fileDetails.compressedData;
+                return file.compressedData.buffer;
             }
         } else {
-            return fileDetails.compressedData;
+            return file.compressedData.buffer;
         }
 
         const gameBuild = this.fileStore.gameBuild;
@@ -293,7 +293,7 @@ export class JS5 {
 
         try {
             const { compressedLength, readerIndex } = this.readCompressedFileHeader(file);
-            const encryptedData = new ByteBuffer(fileDetails.compressedData);
+            const encryptedData = new ByteBuffer(file.compressedData.buffer);
             const keySet = keySets.find(keySet => keySet.gameBuild === gameBuild);
 
             if (Xtea.validKeys(keySet?.key)) {
@@ -310,10 +310,10 @@ export class JS5 {
                 if (decryptedData?.length) {
                     decryptedData.copy(dataCopy, readerIndex, 0);
                     dataCopy.readerIndex = readerIndex;
-                    fileDetails.compressedData = dataCopy.toNodeBuffer();
+                    file.compressedData.buffer = dataCopy.toNodeBuffer();
                     fileDetails.encrypted = false;
                     file.validate(false);
-                    return fileDetails.compressedData;
+                    return file.compressedData.buffer;
                 } else {
                     logger.warn(`Invalid XTEA decryption keys found for file ` +
                         `${ fileName || fileDetails.key } using game build ${ gameBuild }.`);
@@ -334,7 +334,7 @@ export class JS5 {
     decompress(file: Js5Group | Js5Archive): Buffer | null {
         const fileDetails = file.index;
 
-        if (!fileDetails.compressedData?.length) {
+        if (!file.compressedData.buffer?.length) {
             return null;
         }
 
@@ -349,7 +349,7 @@ export class JS5 {
             const { compressedLength, readerIndex } = this.readCompressedFileHeader(file);
 
             // JS5.decrypt will set compressedData to the new decrypted data after completion
-            const compressedData = new ByteBuffer(fileDetails.compressedData);
+            const compressedData = new ByteBuffer(file.compressedData.buffer);
             compressedData.readerIndex = readerIndex;
 
             if (fileDetails.compressionMethod === 'none') {
@@ -398,9 +398,9 @@ export class JS5 {
             data = null;
         }
 
-        fileDetails.data = data;
+        file.uncompressedData.buffer = data;
         file.validate(false);
-        return fileDetails.data;
+        return file.uncompressedData.buffer;
     }
 
     async decodeGroup(group: Js5Group): Promise<void> {
@@ -408,10 +408,10 @@ export class JS5 {
         const { key: groupKey, name: groupName } = groupDetails;
         const files = group.files;
 
-        if (!groupDetails.data) {
+        if (!group.uncompressedData.buffer) {
             this.decompress(group);
 
-            if (!groupDetails.data) {
+            if (!group.uncompressedData.buffer) {
                 if (!groupDetails.fileError) {
                     logger.warn(`Unable to decode group ${ groupName || groupKey }.`);
                 }
@@ -419,7 +419,7 @@ export class JS5 {
             }
         }
 
-        const data = new ByteBuffer(groupDetails.data);
+        const data = new ByteBuffer(group.uncompressedData.buffer);
 
         if (groupDetails.childCount === 1) {
             return;
@@ -491,7 +491,7 @@ export class JS5 {
         }
 
         for (const [ fileIndex, file ] of files) {
-            file.index.data = fileDataMap.get(fileIndex).toNodeBuffer();
+            file.uncompressedData.buffer = fileDataMap.get(fileIndex).toNodeBuffer();
             file.validate(false);
         }
 
@@ -509,16 +509,16 @@ export class JS5 {
 
         logger.info(`Decoding archive ${ archiveName }...`);
 
-        if (!archiveDetails.data) {
+        if (!archive.uncompressedData.buffer) {
             this.decompress(archive);
 
-            if (!archiveDetails.data) {
+            if (!archive.uncompressedData.buffer) {
                 logger.error(`Unable to decode archive ${ archiveName }.`);
                 return;
             }
         }
 
-        const archiveData = new ByteBuffer(archiveDetails.data);
+        const archiveData = new ByteBuffer(archive.uncompressedData.buffer);
         const format = archiveDetails.archiveFormat = archiveData.get('byte', 'unsigned');
         const mainDataType = format >= ArchiveFormat.smart ? 'smart_int' : 'short';
         archiveDetails.version = format >= ArchiveFormat.versioned ? archiveData.get('int') : 0;
@@ -633,11 +633,11 @@ export class JS5 {
     compress(file: Js5Group | Js5Archive): Buffer | null {
         const fileDetails = file.index;
 
-        if (!fileDetails.data?.length) {
+        if (!file.uncompressedData.buffer?.length) {
             return null;
         }
 
-        const decompressedData = new ByteBuffer(fileDetails.data);
+        const decompressedData = new ByteBuffer(file.uncompressedData.buffer);
         let data: ByteBuffer;
 
         if (fileDetails.compressionMethod === 'none') {
@@ -677,10 +677,10 @@ export class JS5 {
         }
 
         if (data?.length) {
-            fileDetails.compressedData = data.toNodeBuffer();
+            file.compressedData.buffer = data.toNodeBuffer();
         }
 
-        return fileDetails.compressedData;
+        return file.compressedData.buffer;
     }
 
     encodeGroup(group: Js5Group): Buffer | null {
@@ -689,8 +689,8 @@ export class JS5 {
 
         // Single-file group
         if (fileCount <= 1) {
-            index.data = fileMap.get(0)?.index?.data || null;
-            return index.data;
+            group.uncompressedData.buffer = fileMap.get(0)?.uncompressedData?.buffer || null;
+            return group.uncompressedData.buffer;
         }
 
         // Multi-file group
@@ -709,7 +709,7 @@ export class JS5 {
         // Write child file data
         for (let stripe = 0; stripe < stripeCount; stripe++) {
             files.forEach(file => {
-                const fileData = file.index.data;
+                const fileData = file.uncompressedData.buffer;
                 if (!fileData?.length) {
                     return;
                 }
@@ -729,7 +729,7 @@ export class JS5 {
         for (let stripe = 0; stripe < stripeCount; stripe++) {
             let prevSize = 0;
             files.forEach(file => {
-                const fileData = file.index.data;
+                const fileData = file.uncompressedData.buffer;
                 if (!fileData?.length) {
                     return;
                 }
@@ -744,12 +744,12 @@ export class JS5 {
         groupBuffer.put(stripeCount, 'byte');
 
         if (groupBuffer.length) {
-            index.data = groupBuffer.toNodeBuffer();
+            group.uncompressedData.buffer = groupBuffer.toNodeBuffer();
         } else {
-            index.data = null;
+            group.uncompressedData.buffer = null;
         }
 
-        return index.data;
+        return group.uncompressedData.buffer;
     }
 
     // @todo support newer archive fields & formats - 21/07/22 - Kiko
@@ -819,12 +819,12 @@ export class JS5 {
         const archiveIndexData = buffer?.flipWriter();
 
         if (archiveIndexData?.length) {
-            index.data = archiveIndexData.toNodeBuffer();
+            archive.uncompressedData.buffer = archiveIndexData.toNodeBuffer();
         } else {
-            index.data = null;
+            archive.uncompressedData.buffer = null;
         }
 
-        return index.data;
+        return archive.uncompressedData.buffer;
     }
 
     encodeMainIndex(): ByteBuffer {

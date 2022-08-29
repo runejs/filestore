@@ -1,10 +1,10 @@
-import { Js5IndexEntity } from '../../db/js5/js5-index-entity';
-import { Js5FileType } from '../../config';
-import { logger } from '@runejs/common';
 import { Buffer } from 'buffer';
-import { Crc32 } from '@runejs/common/crc32';
 import { createHash } from 'crypto';
+import { logger } from '@runejs/common';
+import { Crc32 } from '@runejs/common/crc32';
 import { Js5FileStore } from './js5-file-store';
+import { Js5FileType } from '../../config';
+import { Js5IndexEntity, Js5CompressedDataEntity, Js5UncompressedDataEntity } from '../../db/js5';
 
 
 export abstract class Js5FileBase {
@@ -12,6 +12,8 @@ export abstract class Js5FileBase {
     readonly fileStore: Js5FileStore;
 
     index: Js5IndexEntity;
+    uncompressedData: Js5UncompressedDataEntity;
+    compressedData: Js5CompressedDataEntity;
 
     protected constructor(
         fileStore: Js5FileStore,
@@ -22,16 +24,19 @@ export abstract class Js5FileBase {
     ) {
         this.fileStore = fileStore;
         this.index = new Js5IndexEntity();
-        this.index.gameBuild = fileStore.gameBuild;
-        this.index.fileType = fileType;
-        this.index.key = key;
-        this.index.archiveKey = archiveKey;
-        this.index.groupKey = groupKey;
+        this.uncompressedData = new Js5UncompressedDataEntity();
+        this.compressedData = new Js5CompressedDataEntity();
+        this.uncompressedData.gameBuild = this.compressedData.gameBuild = this.index.gameBuild = fileStore.gameBuild;
+        this.uncompressedData.fileType = this.compressedData.fileType = this.index.fileType = fileType;
+        this.uncompressedData.key = this.compressedData.key = this.index.key = key;
+        this.uncompressedData.archiveKey = this.compressedData.archiveKey = this.index.archiveKey = archiveKey;
+        this.uncompressedData.groupKey = this.compressedData.groupKey = this.index.groupKey = groupKey;
     }
 
     validate(trackChanges: boolean = true): void {
+        const data = this.uncompressedData.buffer;
+        const compressedData = this.compressedData.buffer;
         const {
-            data, compressedData,
             checksum, shaDigest, fileSize,
             compressedChecksum, compressedShaDigest, compressedFileSize,
             name, nameHash,
@@ -95,10 +100,100 @@ export abstract class Js5FileBase {
             fileModified = true;
         }
 
+        if (compressedFileSize === fileSize && this.compressedData?.buffer?.length) {
+            // File has no compression, clear the compressed data buffer so that we do not create a
+            // duplicate data entity record for it
+            this.compressedData.buffer = null;
+        }
+
         if (fileModified && trackChanges) {
             logger.info(`File ${this.index.name || this.index.key} has been modified.`);
             this.index.version++;
         }
+    }
+
+    async saveUncompressedData(): Promise<Js5UncompressedDataEntity | null> {
+        if (!this.uncompressedData?.buffer?.length) {
+            // Do not save a record for files with missing or empty data
+            return null;
+        }
+
+        this.uncompressedData = await this.fileStore.database.saveUncompressedData(this.uncompressedData);
+        return this.uncompressedData;
+    }
+
+    async loadUncompressedData(): Promise<Js5UncompressedDataEntity> {
+        const entity = await this.fileStore.database.getUncompressedData({
+            fileType: this.index.fileType,
+            key: this.index.key,
+            archiveKey: this.index.archiveKey,
+            groupKey: this.index.groupKey,
+        });
+
+        if (entity) {
+            this.uncompressedData = entity;
+        }
+
+        return this.uncompressedData;
+    }
+
+    async getUncompressedData(): Promise<Buffer | null> {
+        if (this.uncompressedData?.buffer?.length) {
+            return this.uncompressedData.buffer;
+        }
+
+        const uncompressedData = await this.loadUncompressedData();
+        if (uncompressedData?.buffer?.length) {
+            return uncompressedData.buffer;
+        }
+
+        return null;
+    }
+
+    async saveCompressedData(): Promise<Js5CompressedDataEntity | null> {
+        if (!this.compressedData?.buffer?.length) {
+            // Do not save a record for files with missing or empty data
+            return null;
+        }
+
+        this.compressedData = await this.fileStore.database.saveCompressedData(this.compressedData);
+        return this.compressedData;
+    }
+
+    async loadCompressedData(): Promise<Js5CompressedDataEntity> {
+        const entity = await this.fileStore.database.getCompressedData({
+            fileType: this.index.fileType,
+            key: this.index.key,
+            archiveKey: this.index.archiveKey,
+            groupKey: this.index.groupKey,
+        });
+
+        if (entity) {
+            this.compressedData = entity;
+        }
+
+        return this.compressedData;
+    }
+
+    async getCompressedData(): Promise<Buffer | null> {
+        if (!this.index) {
+            await this.loadIndex();
+        }
+
+        if (this.index.compressionMethod === 'none') {
+            return this.getUncompressedData();
+        }
+
+        if (this.compressedData?.buffer?.length) {
+            return this.compressedData.buffer;
+        }
+
+        const compressedData = await this.loadCompressedData();
+        if (compressedData?.buffer?.length) {
+            return compressedData.buffer;
+        }
+
+        return null;
     }
 
     async saveIndex(): Promise<Js5IndexEntity> {

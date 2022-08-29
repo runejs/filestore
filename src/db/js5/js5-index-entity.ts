@@ -49,8 +49,8 @@ export class Js5IndexEntity {
     @Column('integer', { name: 'file_size', nullable: false, default: 0 })
     fileSize: number = 0;
 
-    @Column('blob', { name: 'data', nullable: true, default: null })
-    data: Buffer = null;
+    // @Column('blob', { name: 'data', nullable: true, default: null })
+    // data: Buffer = null;
 
     @Column('text', { name: 'compression_method', nullable: true, default: 'none' })
     compressionMethod: CompressionMethod = 'none';
@@ -64,8 +64,8 @@ export class Js5IndexEntity {
     @Column('integer', { name: 'compressed_file_size', nullable: false, default: 0 })
     compressedFileSize: number = 0;
 
-    @Column('blob', { name: 'compressed_data', nullable: true, default: null })
-    compressedData: Buffer = null;
+    // @Column('blob', { name: 'compressed_data', nullable: true, default: null })
+    // compressedData: Buffer = null;
 
     @Column('boolean', { nullable: true, default: false })
     encrypted: boolean = false;

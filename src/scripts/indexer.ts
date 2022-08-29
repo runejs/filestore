@@ -104,6 +104,27 @@ const indexJS5Store = async (store: Js5FileStore) => {
             await group.upsertFileIndexes();
         }
     }
+
+    logger.info(`Saving archive data...`);
+
+    for (const [ , archive ] of store.archives) {
+        await archive.saveUncompressedData();
+        await archive.saveCompressedData();
+    }
+
+    logger.info(`Saving group data...`);
+
+    for (const [ , archive ] of store.archives) {
+        await archive.upsertGroupData();
+    }
+
+    logger.info(`Saving flat file data...`);
+
+    for (const [ , archive ] of store.archives) {
+        for (const [ , group ] of archive.groups) {
+            await group.upsertFileData();
+        }
+    }
 };
 
 
@@ -147,6 +168,21 @@ const indexJS5Archive = async (store: Js5FileStore, archiveName: string) => {
 
     for (const [ , group ] of archive.groups) {
         await group.upsertFileIndexes();
+    }
+
+    logger.info(`Saving archive ${ archiveName } data...`);
+
+    await archive.saveUncompressedData();
+    await archive.saveCompressedData();
+
+    logger.info(`Saving group data...`);
+
+    await archive.upsertGroupData();
+
+    logger.info(`Saving flat file data...`);
+
+    for (const [ , group ] of archive.groups) {
+        await group.upsertFileData();
     }
 };
 

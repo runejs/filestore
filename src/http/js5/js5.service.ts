@@ -23,12 +23,12 @@ export class Js5Service {
         archiveIdentifier: string | number,
         groupIdentifier: string | number,
         fileIdentifier: string | number
-    ): Promise<Buffer> {
+    ): Promise<Buffer | null> {
         const fileStore = await this.getFileStore(gameBuild);
         const archive = await fileStore.getArchive(archiveIdentifier);
         const group = await archive.getGroup(groupIdentifier);
         const file = await group.getFile(fileIdentifier);
-        return file.index.compressedData;
+        return file.getCompressedData();
     }
 
     async getArchiveGroupFile(
@@ -41,12 +41,7 @@ export class Js5Service {
         const archive = await fileStore.getArchive(archiveIdentifier);
         const group = await archive.getGroup(groupIdentifier);
         const file = await group.getFile(fileIdentifier);
-
-        const index = { ...file.index };
-        delete index.data;
-        delete index.compressedData;
-
-        return index;
+        return file.index;
     }
 
     async getArchiveGroupFileList(
@@ -60,27 +55,18 @@ export class Js5Service {
 
         await group.loadFileIndexes();
 
-        const files = Array.from(group.files.values());
-        const results: Js5IndexEntity[] = new Array(files.length);
-
-        for (let i = 0; i < files.length; i++) {
-            results[i] = { ...files[i].index };
-            delete results[i].data;
-            delete results[i].compressedData;
-        }
-
-        return results;
+        return Array.from(group.files.values()).map(file => file.index);
     }
 
     async getArchiveGroupData(
         gameBuild: string | number,
         archiveIdentifier: string | number,
         groupIdentifier: string | number
-    ): Promise<Buffer> {
+    ): Promise<Buffer | null> {
         const fileStore = await this.getFileStore(gameBuild);
         const archive = await fileStore.getArchive(archiveIdentifier);
         const group = await archive.getGroup(groupIdentifier);
-        return group.index.compressedData;
+        return group.getCompressedData();
     }
 
     async getArchiveGroup(
@@ -91,12 +77,7 @@ export class Js5Service {
         const fileStore = await this.getFileStore(gameBuild);
         const archive = await fileStore.getArchive(archiveIdentifier);
         const group = await archive.getGroup(groupIdentifier);
-
-        const index = { ...group.index };
-        delete index.data;
-        delete index.compressedData;
-
-        return index;
+        return group.index;
     }
 
     async getArchiveGroupList(
@@ -108,25 +89,16 @@ export class Js5Service {
 
         await archive.loadGroupIndexes();
 
-        const groups = Array.from(archive.groups.values());
-        const results: Js5IndexEntity[] = new Array(groups.length);
-
-        for (let i = 0; i < groups.length; i++) {
-            results[i] = { ...groups[i].index };
-            delete results[i].data;
-            delete results[i].compressedData;
-        }
-
-        return results;
+        return Array.from(archive.groups.values()).map(group => group.index);
     }
 
     async getArchiveData(
         gameBuild: string | number,
         archiveIdentifier: string | number
-    ): Promise<Buffer> {
+    ): Promise<Buffer | null> {
         const fileStore = await this.getFileStore(gameBuild);
         const archive = await fileStore.getArchive(archiveIdentifier);
-        return archive.index.compressedData;
+        return archive.getCompressedData();
     }
 
     async getArchive(
@@ -135,27 +107,12 @@ export class Js5Service {
     ): Promise<Js5IndexEntity> {
         const fileStore = await this.getFileStore(gameBuild);
         const archive = await fileStore.getArchive(archiveIdentifier);
-
-        const index = { ...archive.index };
-        delete index.data;
-        delete index.compressedData;
-
-        return index;
+        return archive.index;
     }
 
     async getArchiveList(gameBuild: string | number): Promise<Js5IndexEntity[]> {
         const fileStore = await this.getFileStore(gameBuild);
-
-        const archives = Array.from(fileStore.archives.values());
-        const results: Js5IndexEntity[] = new Array(archives.length);
-
-        for (let i = 0; i < archives.length; i++) {
-            results[i] = { ...archives[i].index };
-            delete results[i].data;
-            delete results[i].compressedData;
-        }
-
-        return results;
+        return Array.from(fileStore.archives.values()).map(archive => archive.index);
     }
 
     async getFileStore(gameBuild: string | number): Promise<Js5FileStore> {

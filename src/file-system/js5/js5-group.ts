@@ -67,6 +67,18 @@ export class Js5Group extends Js5FileBase {
         }
     }
 
+    async upsertFileData(): Promise<void> {
+        const files = Array.from(this.files.values());
+        const uncompressed = files.map(group => group.uncompressedData).filter(data => data?.buffer && data?.buffer?.length !== 0);
+        const compressed = files.map(group => group.compressedData).filter(data => data?.buffer && data?.buffer?.length !== 0);
+        if (uncompressed.length) {
+            await this.fileStore.database.upsertAllUncompressedData(uncompressed);
+        }
+        if (compressed.length) {
+            await this.fileStore.database.upsertAllCompressedData(compressed);
+        }
+    }
+
     async getFile(fileKey: number): Promise<Js5File | null>;
     async getFile(fileName: string): Promise<Js5File | null>;
     async getFile(fileIdentifier: number | string): Promise<Js5File | null>;

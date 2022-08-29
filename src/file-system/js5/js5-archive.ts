@@ -66,6 +66,18 @@ export class Js5Archive extends Js5FileBase {
         }
     }
 
+    async upsertGroupData(): Promise<void> {
+        const groups = Array.from(this.groups.values());
+        const uncompressed = groups.map(group => group.uncompressedData).filter(data => data?.buffer && data?.buffer?.length !== 0);
+        const compressed = groups.map(group => group.compressedData).filter(data => data?.buffer && data?.buffer?.length !== 0);
+        if (uncompressed.length) {
+            await this.fileStore.database.upsertAllUncompressedData(uncompressed);
+        }
+        if (compressed.length) {
+            await this.fileStore.database.upsertAllCompressedData(compressed);
+        }
+    }
+
     async getGroup(groupKey: number): Promise<Js5Group | null>;
     async getGroup(groupName: string): Promise<Js5Group | null>;
     async getGroup(groupIdentifier: number | string): Promise<Js5Group | null>;

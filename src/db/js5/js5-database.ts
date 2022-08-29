@@ -9,6 +9,7 @@ import { join } from 'path';
 export interface Js5IndexEntityWhere {
     fileType?: Js5FileType;
     key?: number;
+    name?: string;
     archiveKey?: number;
     groupKey?: number;
 }

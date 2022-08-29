@@ -8,17 +8,16 @@
         ".": "./index.js",
         "./config": "./config/index.js",
         "./db": "./db/index.js",
-        "./scripts": "./scripts/index.js",
-        "./util": "./util/index.js",
-        "./indexer": "./scripts/indexer.js",
-        "./unpacker": "./scripts/unpacker.js"
+        "./file-system": "./file-system/index.js",
+        "./http": "./http/index.js",
+        "./openrs2": "./openrs2/index.js"
     },
     "scripts": {
         "build": "tsc",
         "start": "ts-node-dev src/scripts/dev.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
-        "http:js5": "ts-node-dev --max-old-space-size=2048 src/http/server.ts",
+        "http": "ts-node-dev --max-old-space-size=2048 src/http/server.ts",
         "namehash": "ts-node-dev --max-old-space-size=2048 src/scripts/name-hasher.ts",
         "unpack": "ts-node-dev --max-old-space-size=2048 src/scripts/unpacker.ts",
         "index": "ts-node-dev --max-old-space-size=2048 src/scripts/indexer.ts",
@@ -55,6 +54,8 @@
         "typescript": ">=4.5.0"
     },
     "dependencies": {
+        "@decorators/di": "^1.0.3",
+        "@decorators/express": "^2.6.0",
         "@runejs/common": "3.0.0-beta.8",
         "adm-zip": "^0.5.9",
         "axios": "^0.27.2",

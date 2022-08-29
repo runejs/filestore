@@ -3,6 +3,7 @@ import { Js5Archive } from './js5-archive';
 import { Js5File } from './js5-file';
 import { logger } from '@runejs/common';
 import { Js5FileBase } from './js5-file-base';
+import { Js5IndexEntity } from '../../db/js5';
 
 
 export class Js5Group extends Js5FileBase {
@@ -66,17 +67,50 @@ export class Js5Group extends Js5FileBase {
         }
     }
 
-    getFile(fileKey: number): Js5File | null;
-    getFile(fileName: string): Js5File | null;
-    getFile(fileKeyOrName: number | string): Js5File | null;
-    getFile(fileKeyOrName: number | string): Js5File | null {
-        if (typeof fileKeyOrName === 'string') {
-            return Array.from(this.files.values()).find(
-                file => file?.index?.name === fileKeyOrName
+    async getFile(fileKey: number): Promise<Js5File | null>;
+    async getFile(fileName: string): Promise<Js5File | null>;
+    async getFile(fileIdentifier: number | string): Promise<Js5File | null>;
+    async getFile(fileIdentifier: number | string): Promise<Js5File | null> {
+        let file: Js5File;
+
+        if (typeof fileIdentifier === 'string') {
+            file = Array.from(this.files.values()).find(
+                file => file?.index?.name === fileIdentifier
             ) || null;
         } else {
-            return this.files.get(fileKeyOrName) || null;
+            file = this.files.get(fileIdentifier) || null;
         }
+
+        if (!file?.index) {
+            let fileEntity: Js5IndexEntity;
+
+            if (typeof fileIdentifier === 'number' || /^\d*$/.test(fileIdentifier)) {
+                const fileKey = typeof fileIdentifier === 'string' ? parseInt(fileIdentifier, 10) : fileIdentifier;
+                fileEntity = await this.fileStore.database.getIndex({
+                    fileType: 'GROUP',
+                    archiveKey: this.index.archiveKey,
+                    groupKey: this.index.key,
+                    key: fileKey
+                });
+            } else {
+                fileEntity = await this.fileStore.database.getIndex({
+                    fileType: 'GROUP',
+                    archiveKey: this.index.archiveKey,
+                    groupKey: this.index.key,
+                    name: String(fileIdentifier)
+                });
+            }
+
+            if (!file) {
+                file = new Js5File(this.fileStore, fileEntity.key, this);
+                file.index = fileEntity;
+                this.files.set(fileEntity.key, file);
+            } else {
+                file.index = fileEntity;
+            }
+        }
+
+        return file;
     }
 
     setFile(fileKey: number, file: Js5File): void {

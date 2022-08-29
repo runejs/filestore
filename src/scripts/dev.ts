@@ -1,14 +1,9 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
-import { logger, prettyPrintTarget } from '@runejs/common';
+import { logger } from '@runejs/common';
 import { JagFileStore } from '../file-system/jag';
 import { JagInterfaceArchive } from '../file-system/jag/content/archives/interfaces/jag-interface-archive';
 import { join } from 'path';
 import { Js5FileStore } from '../file-system/js5';
-
-
-logger.setTargets([
-    prettyPrintTarget()
-]);
 
 
 const saveInterfaces = async (store: JagFileStore) => {

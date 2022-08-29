@@ -3,6 +3,7 @@ import { Js5Group } from './js5-group';
 import { logger } from '@runejs/common';
 import { Js5FileBase } from './js5-file-base';
 import { Js5ArchiveConfig } from '../../config';
+import { Js5IndexEntity } from '../../db/js5';
 
 
 export class Js5Archive extends Js5FileBase {
@@ -65,17 +66,48 @@ export class Js5Archive extends Js5FileBase {
         }
     }
 
-    getGroup(groupKey: number): Js5Group | null;
-    getGroup(groupName: string): Js5Group | null;
-    getGroup(groupKeyOrName: number | string): Js5Group | null;
-    getGroup(groupKeyOrName: number | string): Js5Group | null {
-        if (typeof groupKeyOrName === 'string') {
-            return Array.from(this.groups.values()).find(
-                group => group?.index?.name === groupKeyOrName
+    async getGroup(groupKey: number): Promise<Js5Group | null>;
+    async getGroup(groupName: string): Promise<Js5Group | null>;
+    async getGroup(groupIdentifier: number | string): Promise<Js5Group | null>;
+    async getGroup(groupIdentifier: number | string): Promise<Js5Group | null> {
+        let group: Js5Group;
+
+        if (typeof groupIdentifier === 'string') {
+            group = Array.from(this.groups.values()).find(
+                group => group?.index?.name === groupIdentifier
             ) || null;
         } else {
-            return this.groups.get(groupKeyOrName) || null;
+            group = this.groups.get(groupIdentifier) || null;
         }
+
+        if (!group?.index) {
+            let groupEntity: Js5IndexEntity;
+
+            if (typeof groupIdentifier === 'number' || /^\d*$/.test(groupIdentifier)) {
+                const groupKey = typeof groupIdentifier === 'string' ? parseInt(groupIdentifier, 10) : groupIdentifier;
+                groupEntity = await this.fileStore.database.getIndex({
+                    fileType: 'GROUP',
+                    archiveKey: this.index.key,
+                    key: groupKey
+                });
+            } else {
+                groupEntity = await this.fileStore.database.getIndex({
+                    fileType: 'GROUP',
+                    archiveKey: this.index.key,
+                    name: String(groupIdentifier)
+                });
+            }
+
+            if (!group) {
+                group = new Js5Group(this.fileStore, groupEntity.key, this);
+                group.index = groupEntity;
+                this.groups.set(groupEntity.key, group);
+            } else {
+                group.index = groupEntity;
+            }
+        }
+
+        return group;
     }
 
     setGroup(groupKey: number, group: Js5Group): void {

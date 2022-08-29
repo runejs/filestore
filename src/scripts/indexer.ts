@@ -108,7 +108,7 @@ const indexJS5Store = async (store: Js5FileStore) => {
 
 
 const indexJS5Archive = async (store: Js5FileStore, archiveName: string) => {
-    const archive = store.getArchive(archiveName);
+    const archive = await store.getArchive(archiveName);
 
     if (!archive) {
         logger.error(`Archive ${ archiveName } was not found.`);

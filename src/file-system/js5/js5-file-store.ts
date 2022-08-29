@@ -6,7 +6,7 @@ import { JS5 } from './js5';
 import { Js5Archive } from './js5-archive';
 import { FileStoreBase } from '../file-store-base';
 import { logger } from '../../../../common';
-import { Js5Database } from '../../db/js5';
+import { Js5Database, Js5IndexEntity } from '../../db/js5';
 import { Js5File } from './js5-file';
 
 
@@ -16,6 +16,7 @@ export class Js5FileStore extends FileStoreBase<Js5Database>{
     readonly archives: Map<number, Js5Archive>;
 
     private _archiveConfig: { [key: string]: Js5ArchiveConfig };
+    private _loaded: boolean = false;
 
     constructor(gameBuild: string | number, storePath: string = './') {
         super(gameBuild, storePath);
@@ -39,12 +40,18 @@ export class Js5FileStore extends FileStoreBase<Js5Database>{
         loadArchiveChildEntities: boolean = false,
         loadGroupChildEntities: boolean = false,
     ): Promise<void> {
+        if (this._loaded) {
+            return;
+        }
+
         await this.js5.loadEncryptionKeys();
         await this.openDatabase();
 
         if (loadArchiveEntities) {
             await this.loadArchiveEntities(loadArchiveChildEntities, loadGroupChildEntities);
         }
+
+        this._loaded = true;
     }
 
     /**
@@ -85,8 +92,8 @@ export class Js5FileStore extends FileStoreBase<Js5Database>{
                 });
 
                 for (const fileEntity of files) {
-                    const archive = this.getArchive(fileEntity.archiveKey);
-                    const group = archive.getGroup(fileEntity.groupKey);
+                    const archive = await this.getArchive(fileEntity.archiveKey);
+                    const group = await archive.getGroup(fileEntity.groupKey);
                     const file = new Js5File(this, fileEntity.key, group);
                     file.index = fileEntity;
                     group.setFile(fileEntity.key, file);
@@ -119,17 +126,46 @@ export class Js5FileStore extends FileStoreBase<Js5Database>{
         return archive;
     }
 
-    getArchive(archiveKey: number): Js5Archive | null;
-    getArchive(archiveName: string): Js5Archive | null;
-    getArchive(archiveKeyOrName: number | string): Js5Archive | null;
-    getArchive(archiveKeyOrName: number | string): Js5Archive | null {
-        if (typeof archiveKeyOrName === 'string') {
-            return Array.from(this.archives.values()).find(
-                a => a?.index?.name === archiveKeyOrName
+    async getArchive(archiveKey: number): Promise<Js5Archive | null>;
+    async getArchive(archiveName: string): Promise<Js5Archive | null>;
+    async getArchive(archiveIdentifier: number | string): Promise<Js5Archive | null>;
+    async getArchive(archiveIdentifier: number | string): Promise<Js5Archive | null> {
+        let archive: Js5Archive;
+
+        if (typeof archiveIdentifier === 'string') {
+            archive = Array.from(this.archives.values()).find(
+                a => a?.index?.name === archiveIdentifier
             ) || null;
         } else {
-            return this.archives.get(archiveKeyOrName) || null;
+            archive = this.archives.get(archiveIdentifier) || null;
         }
+
+        if (!archive?.index) {
+            let archiveEntity: Js5IndexEntity;
+
+            if (typeof archiveIdentifier === 'number' || /^\d*$/.test(archiveIdentifier)) {
+                const archiveKey = typeof archiveIdentifier === 'string' ? parseInt(archiveIdentifier, 10) : archiveIdentifier;
+                archiveEntity = await this.database.getIndex({
+                    fileType: 'ARCHIVE',
+                    key: archiveKey
+                });
+            } else {
+                archiveEntity = await this.database.getIndex({
+                    fileType: 'ARCHIVE',
+                    name: String(archiveIdentifier)
+                });
+            }
+
+            if (!archive) {
+                archive = new Js5Archive(this, archiveEntity.key);
+                archive.index = archiveEntity;
+                this.archives.set(archiveEntity.key, archive);
+            } else {
+                archive.index = archiveEntity;
+            }
+        }
+
+        return archive;
     }
 
     setArchive(archiveKey: number, archive: Js5Archive): void;

@@ -47,16 +47,10 @@
         "url": "https://github.com/runejs/filestore/issues"
     },
     "homepage": "https://github.com/runejs/filestore#readme",
-    "peerDependencies": {
-        "@runejs/common": "3.0.0-beta.8",
-        "graceful-fs": ">=4.2.0",
-        "tslib": ">=2.4.0",
-        "typescript": ">=4.5.0"
-    },
     "dependencies": {
         "@decorators/di": "^1.0.3",
         "@decorators/express": "^2.6.0",
-        "@runejs/common": "3.0.0-beta.8",
+        "@runejs/common": "3.0.0-beta.9",
         "adm-zip": "^0.5.9",
         "axios": "^0.27.2",
         "compressjs": "^1.0.3",

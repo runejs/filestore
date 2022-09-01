@@ -1,11 +1,10 @@
+import { join } from 'path';
+import { existsSync, mkdirSync } from 'graceful-fs';
+import { Connection, createConnection, LoggerOptions, Repository } from 'typeorm';
 import { IndexDatabase } from '../index-database';
 import { Js5IndexEntity } from './js5-index-entity';
-import { Connection, createConnection, LoggerOptions, Repository } from 'typeorm';
 import { Js5FileType } from '../../config';
-import { existsSync, mkdirSync } from 'graceful-fs';
-import { join } from 'path';
-import { Js5UncompressedDataEntity } from './js5-uncompressed-data-entity';
-import { Js5CompressedDataEntity } from './js5-compressed-data-entity';
+import { Js5DataEntity } from './js5-data-entity';
 
 
 export interface Js5IndexEntityWhere {
@@ -19,8 +18,7 @@ export interface Js5IndexEntityWhere {
 
 export class Js5Database extends IndexDatabase<Js5IndexEntity, Js5IndexEntityWhere> {
 
-    private _uncompressedDataRepo: Repository<Js5UncompressedDataEntity>;
-    private _compressedDataRepo: Repository<Js5CompressedDataEntity>;
+    private _dataRepo: Repository<Js5DataEntity>;
 
     constructor(
         gameBuild: string,
@@ -38,43 +36,44 @@ export class Js5Database extends IndexDatabase<Js5IndexEntity, Js5IndexEntityWhe
         this._connection = await createConnection({
             type: 'better-sqlite3',
             database: join(this.databasePath, `${this.gameBuild}.index.sqlite3`),
-            entities: [ Js5IndexEntity, Js5UncompressedDataEntity, Js5CompressedDataEntity ],
+            entities: [ Js5IndexEntity, Js5DataEntity ],
             synchronize: true,
             logging: this.loggerOptions,
             name: 'js5-index-repository'
         });
 
         this._repository = this._connection.getRepository(Js5IndexEntity);
-        this._uncompressedDataRepo = this._connection.getRepository(Js5UncompressedDataEntity);
-        this._compressedDataRepo = this._connection.getRepository(Js5CompressedDataEntity);
+        this._dataRepo = this._connection.getRepository(Js5DataEntity);
 
         return this._connection;
     }
 
-    async getUncompressedData(where: Js5IndexEntityWhere): Promise<Js5UncompressedDataEntity> {
-        return this._uncompressedDataRepo.findOne({
+    async getUncompressedData(where: Js5IndexEntityWhere): Promise<Js5DataEntity> {
+        return this._dataRepo.findOne({
             where: {
                 gameBuild: this.gameBuild,
+                compressed: false,
                 ...where
             }
         });
     }
 
-    async getAllUncompressedData(where: Js5IndexEntityWhere): Promise<Js5UncompressedDataEntity[]> {
-        return this._uncompressedDataRepo.find({
+    async getAllUncompressedData(where: Js5IndexEntityWhere): Promise<Js5DataEntity[]> {
+        return this._dataRepo.find({
             where: {
                 gameBuild: this.gameBuild,
+                compressed: false,
                 ...where
             }
         });
     }
 
-    async saveUncompressedData(uncompressedDataEntity: Js5UncompressedDataEntity): Promise<Js5UncompressedDataEntity> {
-        return this._uncompressedDataRepo.save(uncompressedDataEntity);
+    async saveUncompressedData(uncompressedDataEntity: Js5DataEntity): Promise<Js5DataEntity> {
+        return this._dataRepo.save({ ...uncompressedDataEntity, compressed: false });
     }
 
-    async saveAllUncompressedData(uncompressedDataEntities: Js5UncompressedDataEntity[]): Promise<void> {
-        await this._uncompressedDataRepo.save(uncompressedDataEntities, {
+    async saveAllUncompressedData(uncompressedDataEntities: Js5DataEntity[]): Promise<void> {
+        await this._dataRepo.save({ ...uncompressedDataEntities, compressed: false }, {
             chunk: 500,
             transaction: false,
             reload: false,
@@ -82,41 +81,43 @@ export class Js5Database extends IndexDatabase<Js5IndexEntity, Js5IndexEntityWhe
         });
     }
 
-    async upsertAllUncompressedData(uncompressedDataEntities: Js5UncompressedDataEntity[]): Promise<void> {
+    async upsertAllUncompressedData(uncompressedDataEntities: Js5DataEntity[]): Promise<void> {
         const chunkSize = 100;
         for (let i = 0; i < uncompressedDataEntities.length; i += chunkSize) {
-            const chunk = uncompressedDataEntities.slice(i, i + chunkSize);
-            await this._uncompressedDataRepo.upsert(chunk, {
+            const chunk = uncompressedDataEntities.slice(i, i + chunkSize).map(d => ({ ...d, compressed: false }));
+            await this._dataRepo.upsert(chunk, {
                 conflictPaths: [ 'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey' ],
                 skipUpdateIfNoValuesChanged: true,
             });
         }
     }
 
-    async getCompressedData(where: Js5IndexEntityWhere): Promise<Js5CompressedDataEntity> {
-        return this._compressedDataRepo.findOne({
+    async getCompressedData(where: Js5IndexEntityWhere): Promise<Js5DataEntity> {
+        return this._dataRepo.findOne({
             where: {
                 gameBuild: this.gameBuild,
+                compressed: true,
                 ...where
             }
         });
     }
 
-    async getAllCompressedData(where: Js5IndexEntityWhere): Promise<Js5CompressedDataEntity[]> {
-        return this._compressedDataRepo.find({
+    async getAllCompressedData(where: Js5IndexEntityWhere): Promise<Js5DataEntity[]> {
+        return this._dataRepo.find({
             where: {
                 gameBuild: this.gameBuild,
+                compressed: true,
                 ...where
             }
         });
     }
 
-    async saveCompressedData(compressedDataEntity: Js5CompressedDataEntity): Promise<Js5CompressedDataEntity> {
-        return this._compressedDataRepo.save(compressedDataEntity);
+    async saveCompressedData(compressedDataEntity: Js5DataEntity): Promise<Js5DataEntity> {
+        return this._dataRepo.save({ ...compressedDataEntity, compressed: true });
     }
 
-    async saveAllCompressedData(compressedDataEntities: Js5CompressedDataEntity[]): Promise<void> {
-        await this._compressedDataRepo.save(compressedDataEntities, {
+    async saveAllCompressedData(compressedDataEntities: Js5DataEntity[]): Promise<void> {
+        await this._dataRepo.save({ ...compressedDataEntities, compressed: true }, {
             chunk: 500,
             transaction: false,
             reload: false,
@@ -124,11 +125,11 @@ export class Js5Database extends IndexDatabase<Js5IndexEntity, Js5IndexEntityWhe
         });
     }
 
-    async upsertAllCompressedData(compressedDataEntities: Js5CompressedDataEntity[]): Promise<void> {
+    async upsertAllCompressedData(compressedDataEntities: Js5DataEntity[]): Promise<void> {
         const chunkSize = 100;
         for (let i = 0; i < compressedDataEntities.length; i += chunkSize) {
-            const chunk = compressedDataEntities.slice(i, i + chunkSize);
-            await this._compressedDataRepo.upsert(chunk, {
+            const chunk = compressedDataEntities.slice(i, i + chunkSize).map(d => ({ ...d, compressed: true }));
+            await this._dataRepo.upsert(chunk, {
                 conflictPaths: [ 'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey' ],
                 skipUpdateIfNoValuesChanged: true,
             });
@@ -144,6 +145,10 @@ export class Js5Database extends IndexDatabase<Js5IndexEntity, Js5IndexEntityWhe
                 skipUpdateIfNoValuesChanged: true,
             });
         }
+    }
+
+    get dataRepo(): Repository<Js5DataEntity> {
+        return this._dataRepo;
     }
 
 }

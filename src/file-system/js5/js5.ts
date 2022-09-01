@@ -2,7 +2,8 @@ import { join } from 'path';
 import { Buffer } from 'buffer';
 import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
 
-import { ByteBuffer, logger } from '@runejs/common';
+import { logger } from '@runejs/common';
+import { ByteBuffer } from '@runejs/common/buffer';
 import { getCompressionMethod, Gzip, Bzip2 } from '@runejs/common/compress';
 import { Xtea, XteaKeys, XteaConfig } from '@runejs/common/encrypt';
 
@@ -398,9 +399,9 @@ export class JS5 {
             data = null;
         }
 
-        file.uncompressedData.buffer = data;
+        file.data.buffer = data;
         file.validate(false);
-        return file.uncompressedData.buffer;
+        return file.data.buffer;
     }
 
     async decodeGroup(group: Js5Group): Promise<void> {
@@ -408,10 +409,10 @@ export class JS5 {
         const { key: groupKey, name: groupName } = groupDetails;
         const files = group.files;
 
-        if (!group.uncompressedData.buffer) {
+        if (!group.data.buffer) {
             this.decompress(group);
 
-            if (!group.uncompressedData.buffer) {
+            if (!group.data.buffer) {
                 if (!groupDetails.fileError) {
                     logger.warn(`Unable to decode group ${ groupName || groupKey }.`);
                 }
@@ -419,7 +420,7 @@ export class JS5 {
             }
         }
 
-        const data = new ByteBuffer(group.uncompressedData.buffer);
+        const data = new ByteBuffer(group.data.buffer);
 
         if (groupDetails.childCount === 1) {
             return;
@@ -491,7 +492,7 @@ export class JS5 {
         }
 
         for (const [ fileIndex, file ] of files) {
-            file.uncompressedData.buffer = fileDataMap.get(fileIndex).toNodeBuffer();
+            file.data.buffer = fileDataMap.get(fileIndex).toNodeBuffer();
             file.validate(false);
         }
 
@@ -509,16 +510,16 @@ export class JS5 {
 
         logger.info(`Decoding archive ${ archiveName }...`);
 
-        if (!archive.uncompressedData.buffer) {
+        if (!archive.data.buffer) {
             this.decompress(archive);
 
-            if (!archive.uncompressedData.buffer) {
+            if (!archive.data.buffer) {
                 logger.error(`Unable to decode archive ${ archiveName }.`);
                 return;
             }
         }
 
-        const archiveData = new ByteBuffer(archive.uncompressedData.buffer);
+        const archiveData = new ByteBuffer(archive.data.buffer);
         const format = archiveDetails.archiveFormat = archiveData.get('byte', 'unsigned');
         const mainDataType = format >= ArchiveFormat.smart ? 'smart_int' : 'short';
         archiveDetails.version = format >= ArchiveFormat.versioned ? archiveData.get('int') : 0;
@@ -633,11 +634,11 @@ export class JS5 {
     compress(file: Js5Group | Js5Archive): Buffer | null {
         const fileDetails = file.index;
 
-        if (!file.uncompressedData.buffer?.length) {
+        if (!file.data.buffer?.length) {
             return null;
         }
 
-        const decompressedData = new ByteBuffer(file.uncompressedData.buffer);
+        const decompressedData = new ByteBuffer(file.data.buffer);
         let data: ByteBuffer;
 
         if (fileDetails.compressionMethod === 'none') {
@@ -689,8 +690,8 @@ export class JS5 {
 
         // Single-file group
         if (fileCount <= 1) {
-            group.uncompressedData.buffer = fileMap.get(0)?.uncompressedData?.buffer || null;
-            return group.uncompressedData.buffer;
+            group.data.buffer = fileMap.get(0)?.data?.buffer || null;
+            return group.data.buffer;
         }
 
         // Multi-file group
@@ -709,7 +710,7 @@ export class JS5 {
         // Write child file data
         for (let stripe = 0; stripe < stripeCount; stripe++) {
             files.forEach(file => {
-                const fileData = file.uncompressedData.buffer;
+                const fileData = file.data.buffer;
                 if (!fileData?.length) {
                     return;
                 }
@@ -729,7 +730,7 @@ export class JS5 {
         for (let stripe = 0; stripe < stripeCount; stripe++) {
             let prevSize = 0;
             files.forEach(file => {
-                const fileData = file.uncompressedData.buffer;
+                const fileData = file.data.buffer;
                 if (!fileData?.length) {
                     return;
                 }
@@ -744,12 +745,12 @@ export class JS5 {
         groupBuffer.put(stripeCount, 'byte');
 
         if (groupBuffer.length) {
-            group.uncompressedData.buffer = groupBuffer.toNodeBuffer();
+            group.data.buffer = groupBuffer.toNodeBuffer();
         } else {
-            group.uncompressedData.buffer = null;
+            group.data.buffer = null;
         }
 
-        return group.uncompressedData.buffer;
+        return group.data.buffer;
     }
 
     // @todo support newer archive fields & formats - 21/07/22 - Kiko
@@ -819,12 +820,12 @@ export class JS5 {
         const archiveIndexData = buffer?.flipWriter();
 
         if (archiveIndexData?.length) {
-            archive.uncompressedData.buffer = archiveIndexData.toNodeBuffer();
+            archive.data.buffer = archiveIndexData.toNodeBuffer();
         } else {
-            archive.uncompressedData.buffer = null;
+            archive.data.buffer = null;
         }
 
-        return archive.uncompressedData.buffer;
+        return archive.data.buffer;
     }
 
     encodeMainIndex(): ByteBuffer {

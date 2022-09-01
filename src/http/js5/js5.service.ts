@@ -4,6 +4,7 @@ import { Js5FileStore } from '../../file-system';
 import { Js5IndexEntity } from '../../db/js5';
 import { logger } from '@runejs/common';
 import { Buffer } from 'buffer';
+import { Js5ArchiveConfig } from '../../config';
 
 
 @Injectable()
@@ -113,6 +114,11 @@ export class Js5Service {
     async getArchiveList(gameBuild: string | number): Promise<Js5IndexEntity[]> {
         const fileStore = await this.getFileStore(gameBuild);
         return Array.from(fileStore.archives.values()).map(archive => archive.index);
+    }
+
+    async getArchiveConfig(gameBuild): Promise<{ [key: string]: Js5ArchiveConfig }> {
+        const fileStore = await this.getFileStore(gameBuild);
+        return fileStore.archiveConfig;
     }
 
     async getFileStore(gameBuild: string | number): Promise<Js5FileStore> {

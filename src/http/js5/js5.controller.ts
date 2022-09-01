@@ -121,4 +121,12 @@ export class Js5Controller {
         res.send(await this.js5Service.getArchiveList(gameBuild));
     }
 
+    @Get('/:gameBuild/archive-config')
+    async getArchiveConfig(
+        @Response() res: ExpressResponse,
+        @Params('gameBuild') gameBuild: string | number
+    ) {
+        res.send(await this.js5Service.getArchiveConfig(gameBuild));
+    }
+
 }

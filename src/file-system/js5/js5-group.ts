@@ -69,7 +69,7 @@ export class Js5Group extends Js5FileBase {
 
     async upsertFileData(): Promise<void> {
         const files = Array.from(this.files.values());
-        const uncompressed = files.map(group => group.uncompressedData).filter(data => data?.buffer && data?.buffer?.length !== 0);
+        const uncompressed = files.map(group => group.data).filter(data => data?.buffer && data?.buffer?.length !== 0);
         const compressed = files.map(group => group.compressedData).filter(data => data?.buffer && data?.buffer?.length !== 0);
         if (uncompressed.length) {
             await this.fileStore.database.upsertAllUncompressedData(uncompressed);

@@ -1,9 +1,9 @@
 import express from 'express';
+import { Container } from '@decorators/di';
+import { attachControllers } from '@decorators/express';
 import { logger } from '@runejs/common';
 import { ArgumentOptions, ScriptExecutor } from '../scripts/script-executor';
-import { Container } from '@decorators/di';
 import { FILESTORE_DIR } from './config';
-import { attachControllers } from '@decorators/express';
 import { Js5Controller } from './js5/js5.controller';
 
 

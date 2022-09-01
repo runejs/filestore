@@ -1,4 +1,4 @@
-import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 import { Js5FileType } from '../../config';
 import { Buffer } from 'buffer';
 
@@ -7,7 +7,7 @@ import { Buffer } from 'buffer';
 @Index('compressed_data_identifier', [
     'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey'
 ], { unique: true })
-export class Js5CompressedDataEntity {
+export class Js5DataEntity {
 
     @PrimaryColumn('text', { name: 'file_type', nullable: false, unique: false })
     fileType: Js5FileType;
@@ -26,5 +26,14 @@ export class Js5CompressedDataEntity {
 
     @Column('blob', { name: 'buffer', nullable: true, default: null })
     buffer: Buffer = null;
+
+    @Column('boolean', { nullable: true, default: false })
+    compressed: boolean = false;
+
+    @CreateDateColumn()
+    created?: Date;
+
+    @UpdateDateColumn()
+    updated?: Date;
 
 }

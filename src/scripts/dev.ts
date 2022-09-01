@@ -1,9 +1,8 @@
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { logger } from '@runejs/common';
-import { JagFileStore } from '../file-system/jag';
 import { JagInterfaceArchive } from '../file-system/jag/content/archives/interfaces/jag-interface-archive';
 import { join } from 'path';
-import { Js5FileStore } from '../file-system/js5';
+import { Js5FileStore, JagFileStore } from '../file-system';
 
 
 const saveInterfaces = async (store: JagFileStore) => {
@@ -57,10 +56,10 @@ const dev = async () => {
         'mapback'
     ];
 
-    fileNames.forEach(name => {
-        const spriteFile = store.getArchive('sprites').getGroup(name);
+    for (const name of fileNames) {
+        const spriteFile = await (await store.getArchive('sprites')).getGroup(name);
         store.js5.decompress(spriteFile);
-    });
+    }
 
     const end = Date.now();
     logger.info(`Operations completed in ${(end - start) / 1000} seconds.`);

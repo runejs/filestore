@@ -1,13 +1,14 @@
 import { join } from 'path';
 import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
-import { ByteBuffer, logger } from '@runejs/common';
+import { Buffer } from 'buffer';
+import { logger } from '@runejs/common';
+import { ByteBuffer } from '@runejs/common/buffer';
+import { Bzip2 } from '@runejs/common/compress';
 import { JagFileStore } from './jag-file-store';
 import { JagFile } from './jag-file';
-import { Buffer } from 'buffer';
 import { JagArchive } from './jag-archive';
 import { JagFileBase } from './jag-file-base';
 import { PackedCacheFile } from '../packed';
-import { Bzip2 } from '@runejs/common/compress';
 
 
 const dataFileName = 'main_file_cache.dat';

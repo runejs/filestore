@@ -49,6 +49,18 @@ export class JagArchive extends JagFileBase {
         }
     }
 
+    async upsertFileData(): Promise<void> {
+        const files = Array.from(this.files.values());
+        const uncompressed = files.map(file => file.data).filter(data => data?.buffer && data?.buffer?.length !== 0);
+        const compressed = files.map(file => file.compressedData).filter(data => data?.buffer && data?.buffer?.length !== 0);
+        if (uncompressed.length) {
+            await this.fileStore.database.upsertAllUncompressedData(uncompressed);
+        }
+        if (compressed.length) {
+            await this.fileStore.database.upsertAllCompressedData(compressed);
+        }
+    }
+
     getFile(fileKey: number): JagFile | null;
     getFile(fileName: string): JagFile | null;
     getFile(fileKeyOrName: number | string): JagFile | null;

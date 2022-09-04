@@ -8,6 +8,7 @@ import { FileStoreBase } from '../file-store-base';
 import { logger } from '../../../../common';
 import { Js5Database, Js5IndexEntity } from '../../db/js5';
 import { Js5File } from './js5-file';
+import { Js5FileBase } from './js5-file-base';
 
 
 export class Js5FileStore extends FileStoreBase<Js5Database>{
@@ -118,6 +119,32 @@ export class Js5FileStore extends FileStoreBase<Js5Database>{
             throw new Error(`Error reading archive configuration file. ` +
                 `Please ensure that the ${configPath} file exists and is valid.`);
         }
+    }
+
+    findFileName(file: Js5FileBase): string | null {
+        const nameHash = file.index.nameHash || -1;
+
+        if (nameHash !== -1) {
+            return this.nameHasher.findFileName(nameHash, file.index.name || String(file.index.nameHash) || String(file.index.key));
+        }
+
+        const { key, groupKey, archiveKey, fileType } = file.index;
+
+        const archiveConfig = this.getArchiveConfig(fileType === 'ARCHIVE' ? key : archiveKey);
+
+        if (archiveConfig) {
+            if (fileType === 'GROUP' && archiveConfig.groupNames) {
+                const groupNames = Array.from(Object.entries(archiveConfig.groupNames));
+                return groupNames.find(([ , k ]) => k === key)?.[0] || null;
+            } else if (fileType === 'ARCHIVE') {
+                const configs = Array.from(Object.entries(this.archiveConfig));
+                return configs.find(([ , config ]) => config.key === archiveKey)?.[0] || null;
+            } else if (fileType === 'FILE') {
+                // @todo 2/9/22 - Kiko
+            }
+        }
+
+        return null;
     }
 
     createArchive(archiveKey: number): Js5Archive {

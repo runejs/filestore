@@ -41,21 +41,21 @@ export class Animations {
         const animChecksumList = versionListArchive.getFile('anim_crc');
         const animIndexList = versionListArchive.getFile('anim_index');
 
-        if (!animVersionList?.index?.data) {
+        if (!animVersionList?.data?.buffer?.length) {
             throw new Error(`anim_version file is not loaded!`);
         }
-        if (!animChecksumList?.index?.data) {
+        if (!animChecksumList?.data?.buffer?.length) {
             throw new Error(`anim_crc file is not loaded!`);
         }
-        if (!animIndexList?.index?.data) {
+        if (!animIndexList?.data?.buffer?.length) {
             throw new Error(`anim_index file is not loaded!`);
         }
 
         this.animations.clear();
 
-        const versionData = new ByteBuffer(animVersionList.index.data);
-        const checksumData = new ByteBuffer(animVersionList.index.data);
-        const indexData = new ByteBuffer(animVersionList.index.data);
+        const versionData = new ByteBuffer(animVersionList.data.buffer);
+        const checksumData = new ByteBuffer(animVersionList.data.buffer);
+        const indexData = new ByteBuffer(animVersionList.data.buffer);
         const animCount = versionData.length / 2;
 
         for (let i = 0; i < animCount; i++) {
@@ -84,12 +84,12 @@ export class Animations {
     decode(animKey: number): AnimationFile | null {
         const animFile = this.animationsIndex.getFile(animKey);
 
-        if (!animFile?.index?.data) {
+        if (!animFile?.data?.buffer?.length) {
             logger.warn(`Animation ${animKey} is empty or missing.`);
             return null;
         }
 
-        const animData = new ByteBuffer(animFile.index.data);
+        const animData = new ByteBuffer(animFile.data.buffer);
 
         //@todo stopped here - 12/08/22 - Kiko
         return null;

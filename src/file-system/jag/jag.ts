@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'graceful-fs';
 import { Buffer } from 'buffer';
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common/buffer';
-import { Bzip2 } from '@runejs/common/compress';
+import { Bzip2, Gzip } from '@runejs/common/compress';
 import { JagFileStore } from './jag-file-store';
 import { JagFile } from './jag-file';
 import { JagArchive } from './jag-archive';
@@ -159,13 +159,16 @@ export class Jag {
 
         logger.info(`${fileCount} file indexes found.`);
 
-        const index = this.jagStore.getCache(cacheKey);
-        index.fileIndexes = new Array(fileCount);
+        const cache = this.jagStore.getCache(cacheKey);
+        cache.fileIndexes = new Array(fileCount);
+        cache.index.childCount = fileCount;
+        cache.index.compressionMethod = 'none';
+        cache.data.buffer = indexFile.toNodeBuffer();
 
         for (let fileKey = 0; fileKey < fileCount; fileKey++) {
             const fileSize = indexFile.get('int24', 'unsigned');
             const sectorPos = indexFile.get('int24', 'unsigned');
-            index.fileIndexes[fileKey] = {
+            cache.fileIndexes[fileKey] = {
                 fileSize, sectorNumber: sectorPos
             };
 
@@ -177,8 +180,10 @@ export class Jag {
                 file = new JagFile(this.jagStore, fileKey, cacheKey);
             }
 
-            index.files.set(fileKey, file);
+            cache.files.set(fileKey, file);
         }
+
+        cache.validate(false);
 
         logger.info(`Cache index ${indexName} has been decoded.`);
     }
@@ -248,33 +253,46 @@ export class Jag {
             currentSectorNumber = sectorNumber;
         }
 
+        if (!(file instanceof JagArchive)) {
+            file.index.compressionMethod = 'gzip';
+        }
+
         if (fileData.length) {
-            file.index.compressedData = fileData.toNodeBuffer();
+            file.compressedData.buffer = fileData.toNodeBuffer();
+
+            if (!(file instanceof JagArchive)) {
+                file.data.buffer = Gzip.decompress(fileData);
+            }
         } else {
-            file.index.compressedData = null;
+            file.compressedData.buffer = null;
             file.index.fileError = 'FILE_MISSING';
         }
 
-        file.validate(false);
+        if (!(file instanceof JagArchive)) {
+            file.validate(false);
+        }
 
-        return file.index.compressedData;
+        return file.compressedData.buffer;
     }
 
     decodeArchive(archive: JagArchive): Buffer | null {
-        if (!archive.index.compressedData?.length) {
+        if (!archive.compressedData?.buffer?.length) {
             return null;
         }
 
-        let archiveData = new ByteBuffer(archive.index.compressedData);
+        let archiveData = new ByteBuffer(archive.compressedData.buffer);
 
         const uncompressed = archiveData.get('int24', 'unsigned');
         const compressed = archiveData.get('int24', 'unsigned');
 
         if (uncompressed !== compressed) {
             const compressedData = archiveData.getSlice(archiveData.readerIndex, archiveData.length - archiveData.readerIndex);
-            archiveData = new ByteBuffer(Bzip2.decompress(compressedData));
+            const decompressedData = Bzip2.decompress(compressedData);
+            archiveData = new ByteBuffer(decompressedData);
+            archive.data.buffer = decompressedData;
             archive.index.compressionMethod = 'bzip2';
         } else {
+            archive.data.buffer = archiveData.toNodeBuffer();
             archive.index.compressionMethod = 'none';
         }
 
@@ -309,7 +327,7 @@ export class Jag {
                 const fileDataOffset = fileDataOffsets[fileKey];
                 const fileData = Buffer.alloc(file.index.compressedFileSize);
                 archiveData.copy(fileData, 0, fileDataOffset);
-                file.index.compressedData = fileData;
+                file.compressedData.buffer = fileData;
             } catch (error) {
                 logger.error(`Error reading archive ${archive.index.name } file ${fileKey}`, error);
             }
@@ -318,13 +336,12 @@ export class Jag {
         // Decompress archive file data (if needed)
         for (const [ fileKey, file ] of archive.files) {
             try {
-                const { compressedFileSize, fileSize, compressedData } = file.index;
-                if (compressedData?.length && compressedFileSize !== fileSize) {
-                    file.index.data = Bzip2.decompress(file.index.compressedData);
+                const { compressedFileSize, fileSize } = file.index;
+                if (file.compressedData?.buffer?.length && compressedFileSize !== fileSize) {
+                    file.data.buffer = Bzip2.decompress(file.compressedData.buffer);
                     file.index.compressionMethod = 'bzip2';
                 } else {
-                    file.index.data = file.index.compressedData;
-                    file.index.compressedData = null;
+                    file.data.buffer = file.compressedData.buffer;
                     file.index.compressionMethod = 'none';
                 }
             } catch (error) {
@@ -337,13 +354,9 @@ export class Jag {
             file.validate(false);
         }
 
-        if (archiveData.length) {
-            archive.index.data = archiveData.toNodeBuffer();
-        }
-
         archive.validate(false);
 
-        return archive.index.data;
+        return archive.data.buffer;
     }
 
 }

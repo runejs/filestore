@@ -10,7 +10,7 @@ const saveInterfaces = async (store: JagFileStore) => {
 
     const interfaceArchive = new JagInterfaceArchive(store);
 
-    interfaceArchive.decodeAll();
+    await interfaceArchive.decodeAll();
 
     logger.info(`${interfaceArchive.interfaces.size} interfaces decoded. Saving interface entities...`);
 
@@ -27,8 +27,8 @@ const dumpInterfaceFile = (store: JagFileStore) => {
     }
 
     const dataFile = archive.getFile('data');
-    const binaryData = dataFile?.index?.data;
-    if (!binaryData) {
+    const binaryData = dataFile?.data?.buffer;
+    if (!binaryData?.length) {
         throw new Error('interface.jag data file is not loaded!');
     }
 
@@ -48,18 +48,10 @@ const dumpInterfaceFile = (store: JagFileStore) => {
 const dev = async () => {
     const start = Date.now();
 
-    const store = new Js5FileStore(435);
-    await store.load(true, true, false);
+    const store = new JagFileStore(327);
+    await store.load(true, true, true);
 
-    const fileNames = [
-        'compass',
-        'mapback'
-    ];
-
-    for (const name of fileNames) {
-        const spriteFile = await (await store.getArchive('sprites')).getGroup(name);
-        store.js5.decompress(spriteFile);
-    }
+    await saveInterfaces(store);
 
     const end = Date.now();
     logger.info(`Operations completed in ${(end - start) / 1000} seconds.`);

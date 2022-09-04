@@ -39,7 +39,7 @@ export class Js5Database extends IndexDatabase<Js5IndexEntity, Js5IndexEntityWhe
             entities: [ Js5IndexEntity, Js5DataEntity ],
             synchronize: true,
             logging: this.loggerOptions,
-            name: 'js5-index-repository'
+            name: 'js5-repository'
         });
 
         this._repository = this._connection.getRepository(Js5IndexEntity);
@@ -86,7 +86,7 @@ export class Js5Database extends IndexDatabase<Js5IndexEntity, Js5IndexEntityWhe
         for (let i = 0; i < uncompressedDataEntities.length; i += chunkSize) {
             const chunk = uncompressedDataEntities.slice(i, i + chunkSize).map(d => ({ ...d, compressed: false }));
             await this._dataRepo.upsert(chunk, {
-                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey' ],
+                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey', 'compressed' ],
                 skipUpdateIfNoValuesChanged: true,
             });
         }
@@ -130,7 +130,7 @@ export class Js5Database extends IndexDatabase<Js5IndexEntity, Js5IndexEntityWhe
         for (let i = 0; i < compressedDataEntities.length; i += chunkSize) {
             const chunk = compressedDataEntities.slice(i, i + chunkSize).map(d => ({ ...d, compressed: true }));
             await this._dataRepo.upsert(chunk, {
-                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey' ],
+                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey', 'compressed' ],
                 skipUpdateIfNoValuesChanged: true,
             });
         }

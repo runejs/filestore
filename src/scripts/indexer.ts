@@ -1,11 +1,14 @@
 import { logger } from '@runejs/common';
 import { ScriptExecutor, ArgumentOptions } from './script-executor';
 import { Js5FileStore } from '../file-system/js5';
-import { caches, JagArchive, JagFileStore } from '../file-system/jag';
+import { archives, caches, JagArchive, JagFileStore } from '../file-system/jag';
 import {
     getOpenRS2CacheFilesByBuild,
 } from '../openrs2';
 import { PackedCacheFile, getPackedCacheFormat } from '../file-system/packed';
+import {
+    JagInterfaceArchive
+} from '../file-system/jag/content/archives/interfaces/jag-interface-archive';
 
 
 interface IndexerOptions {
@@ -195,16 +198,16 @@ const indexJagStore = async (store: JagFileStore) => {
         store.jag.decodeCache(indexName);
     }
 
-    logger.info(`Saving indexes...`);
+    logger.info(`Saving JAG caches...`);
 
-    for (const [ , indexFile ] of store.caches) {
-        await indexFile.saveIndex();
+    for (const [ , cache ] of store.caches) {
+        await cache.saveIndex();
     }
 
-    for (const [, indexFile ] of store.caches) {
-        logger.info(`Unpacking JAG files for index ${indexFile.index.name}...`);
+    for (const [, cache ] of store.caches) {
+        logger.info(`Unpacking JAG files for index ${cache.index.name}...`);
 
-        for (const [ , file ] of indexFile.files) {
+        for (const [ , file ] of cache.files) {
             store.jag.unpack(file);
         }
     }
@@ -233,6 +236,41 @@ const indexJagStore = async (store: JagFileStore) => {
             await archive.upsertFileIndexes();
         }
     }
+
+    logger.info(`Saving JAG cache data...`);
+
+    for (const [ , cache ] of store.caches) {
+        await cache.saveCompressedData();
+        await cache.saveUncompressedData();
+    }
+
+    logger.info(`Saving JAG cache file data...`);
+
+    for (const [ , cache ] of store.caches) {
+        await cache.upsertFileData();
+    }
+
+    logger.info(`Saving JAG archive file data...`);
+
+    for (const [ , archive ] of archiveIndex.files) {
+        if (archive instanceof JagArchive) {
+            await archive.upsertFileData();
+        }
+    }
+
+    const saveInterfaces = async (store: JagFileStore) => {
+        logger.info(`Decoding game interfaces...`);
+
+        const interfaceArchive = new JagInterfaceArchive(store);
+
+        await interfaceArchive.decodeAll();
+
+        logger.info(`${interfaceArchive.interfaces.size} interfaces decoded. Saving interface entities...`);
+
+        await interfaceArchive.saveAll();
+    };
+
+    await saveInterfaces(store);
 };
 
 

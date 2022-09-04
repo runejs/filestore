@@ -542,10 +542,7 @@ export class JS5 {
         if (flags.groupNames) {
             for (const group of groups) {
                 group.index.nameHash = archiveData.get('int');
-                group.index.name = this.fileStore.nameHasher.findFileName(
-                    group.index.nameHash,
-                    group.index.name || String(group.index.nameHash) || String(group.index.key)
-                );
+                group.index.name = this.fileStore.findFileName(group);
             }
         }
 
@@ -605,10 +602,7 @@ export class JS5 {
             for (const group of groups) {
                 for (const [ , flatFile ] of group.files) {
                     flatFile.index.nameHash = archiveData.get('int');
-                    flatFile.index.name = this.fileStore.nameHasher.findFileName(
-                        flatFile.index.nameHash,
-                        flatFile.index.name || String(flatFile.index.nameHash) || String(flatFile.index.key)
-                    );
+                    flatFile.index.name = this.fileStore.findFileName(flatFile);
                 }
             }
         }

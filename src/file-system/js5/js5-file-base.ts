@@ -26,6 +26,7 @@ export abstract class Js5FileBase {
         this.index = new Js5IndexEntity();
         this.data = new Js5DataEntity();
         this.compressedData = new Js5DataEntity();
+        this.compressedData.compressed = true;
         this.data.gameBuild = this.compressedData.gameBuild = this.index.gameBuild = fileStore.gameBuild;
         this.data.fileType = this.compressedData.fileType = this.index.fileType = fileType;
         this.data.key = this.compressedData.key = this.index.key = key;
@@ -58,7 +59,7 @@ export abstract class Js5FileBase {
 
         if (nameHash !== -1 && !name) {
             // name not set
-            const lookupTableName = this.fileStore.nameHasher.findFileName(nameHash);
+            const lookupTableName = this.fileStore.findFileName(this);
             if (lookupTableName) {
                 this.index.name = lookupTableName;
             }
@@ -100,11 +101,14 @@ export abstract class Js5FileBase {
             fileModified = true;
         }
 
-        if (compressionMethod === 'none' ||
-            (compressedFileSize === fileSize && this.compressedData?.buffer?.length)) {
+        if ((!this.index.compressionMethod || this.index.compressionMethod === 'none' || this.index.compressedFileSize === fileSize)
+            && this.compressedData?.buffer?.length) {
             // File has no compression, clear the compressed data buffer so that we do not create a
             // duplicate data entity record for it
             this.compressedData.buffer = null;
+            this.index.compressedFileSize = 0;
+            this.index.compressedChecksum = -1;
+            this.index.compressedShaDigest = null;
         }
 
         if (fileModified && trackChanges) {
@@ -181,7 +185,7 @@ export abstract class Js5FileBase {
             await this.loadIndex();
         }
 
-        if (this.index.compressionMethod === 'none') {
+        if (!this.index.compressionMethod || this.index.compressionMethod === 'none') {
             return this.getUncompressedData();
         }
 

@@ -50,7 +50,7 @@
     "dependencies": {
         "@decorators/di": "^1.0.3",
         "@decorators/express": "^2.6.0",
-        "@runejs/common": "3.0.0-beta.9",
+        "@runejs/common": "3.0.0-beta.10",
         "adm-zip": "^0.5.9",
         "axios": "^0.27.2",
         "compressjs": "^1.0.3",

@@ -1,16 +1,16 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryColumn, UpdateDateColumn } from 'typeorm';
-import { Js5FileType } from '../../config';
+import { JagFileType } from '../../config';
 import { Buffer } from 'buffer';
 
 
-@Entity('js5_data')
+@Entity('jag_data')
 @Index('data_identifier', [
-    'fileType', 'gameBuild', 'key', 'archiveKey', 'groupKey', 'compressed'
+    'fileType', 'gameBuild', 'key', 'cacheKey', 'archiveKey', 'compressed'
 ], { unique: true })
-export class Js5DataEntity {
+export class JagDataEntity {
 
     @PrimaryColumn('text', { name: 'file_type', nullable: false, unique: false })
-    fileType: Js5FileType;
+    fileType: JagFileType;
 
     @PrimaryColumn('text', { name: 'game_build', nullable: false, unique: false })
     gameBuild: string;
@@ -18,11 +18,11 @@ export class Js5DataEntity {
     @PrimaryColumn('integer', { nullable: false, unique: false })
     key: number;
 
+    @PrimaryColumn('integer', { name: 'cache_key', nullable: false, unique: false })
+    cacheKey: number;
+
     @PrimaryColumn('integer', { name: 'archive_key', nullable: false, unique: false, default: -1 })
     archiveKey: number = -1;
-
-    @PrimaryColumn('integer', { name: 'group_key', nullable: false, unique: false, default: -1 })
-    groupKey: number = -1;
 
     @PrimaryColumn('boolean', { nullable: false, default: false })
     compressed: boolean = false;

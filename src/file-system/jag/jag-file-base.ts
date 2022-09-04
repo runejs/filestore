@@ -4,7 +4,7 @@ import { Buffer } from 'buffer';
 import { Crc32 } from '@runejs/common/crc32';
 import { createHash } from 'crypto';
 import { JagFileStore } from './jag-file-store';
-import { JagIndexEntity } from '../../db/jag/jag-index-entity';
+import { JagDataEntity, JagIndexEntity } from '../../db/jag';
 
 
 export abstract class JagFileBase {
@@ -12,6 +12,8 @@ export abstract class JagFileBase {
     readonly fileStore: JagFileStore;
 
     index: JagIndexEntity;
+    data: JagDataEntity;
+    compressedData: JagDataEntity;
 
     protected constructor(
         fileStore: JagFileStore,
@@ -22,19 +24,23 @@ export abstract class JagFileBase {
     ) {
         this.fileStore = fileStore;
         this.index = new JagIndexEntity();
-        this.index.gameBuild = fileStore.gameBuild;
-        this.index.fileType = fileType;
-        this.index.key = key;
-        this.index.cacheKey = cacheKey;
-        this.index.archiveKey = archiveKey;
+        this.data = new JagDataEntity();
+        this.compressedData = new JagDataEntity();
+        this.compressedData.compressed = true;
+        this.data.gameBuild = this.compressedData.gameBuild = this.index.gameBuild = fileStore.gameBuild;
+        this.data.fileType = this.compressedData.fileType = this.index.fileType = fileType;
+        this.data.key = this.compressedData.key = this.index.key = key;
+        this.data.cacheKey = this.compressedData.cacheKey = this.index.cacheKey = cacheKey;
+        this.data.archiveKey = this.compressedData.archiveKey = this.index.archiveKey = archiveKey;
     }
 
     validate(trackChanges: boolean = true): void {
+        const data = this.data.buffer;
+        const compressedData = this.compressedData.buffer;
         const {
-            data, compressedData,
             checksum, shaDigest, fileSize,
             compressedChecksum, compressedShaDigest, compressedFileSize,
-            name, nameHash,
+            name, nameHash, compressionMethod,
         } = this.index;
         let fileModified: boolean = false;
 
@@ -95,10 +101,104 @@ export abstract class JagFileBase {
             fileModified = true;
         }
 
+        if ((!this.index.compressionMethod || this.index.compressionMethod === 'none' || this.index.compressedFileSize === fileSize)
+            && this.compressedData?.buffer?.length) {
+            // File has no compression, clear the compressed data buffer so that we do not create a
+            // duplicate data entity record for it
+            this.compressedData.buffer = null;
+            this.index.compressedFileSize = 0;
+            this.index.compressedChecksum = -1;
+            this.index.compressedShaDigest = null;
+        }
+
         if (fileModified && trackChanges) {
             logger.info(`File ${this.index.name || this.index.key} has been modified.`);
             this.index.version++;
         }
+    }
+
+    async saveUncompressedData(): Promise<JagDataEntity | null> {
+        if (!this.data?.buffer?.length) {
+            // Do not save a record for files with missing or empty data
+            return null;
+        }
+
+        this.data = await this.fileStore.database.saveUncompressedData(this.data);
+        return this.data;
+    }
+
+    async loadUncompressedData(): Promise<JagDataEntity> {
+        const entity = await this.fileStore.database.getUncompressedData({
+            fileType: this.index.fileType,
+            key: this.index.key,
+            archiveKey: this.index.archiveKey,
+            cacheKey: this.index.cacheKey,
+        });
+
+        if (entity) {
+            this.data = entity;
+        }
+
+        return this.data;
+    }
+
+    async getUncompressedData(): Promise<Buffer | null> {
+        if (this.data?.buffer?.length) {
+            return this.data.buffer;
+        }
+
+        const uncompressedData = await this.loadUncompressedData();
+        if (uncompressedData?.buffer?.length) {
+            return uncompressedData.buffer;
+        }
+
+        return null;
+    }
+
+    async saveCompressedData(): Promise<JagDataEntity | null> {
+        if (!this.compressedData?.buffer?.length) {
+            // Do not save a record for files with missing or empty data
+            return null;
+        }
+
+        this.compressedData = await this.fileStore.database.saveCompressedData(this.compressedData);
+        return this.compressedData;
+    }
+
+    async loadCompressedData(): Promise<JagDataEntity> {
+        const entity = await this.fileStore.database.getCompressedData({
+            fileType: this.index.fileType,
+            key: this.index.key,
+            archiveKey: this.index.archiveKey,
+            cacheKey: this.index.cacheKey,
+        });
+
+        if (entity) {
+            this.compressedData = entity;
+        }
+
+        return this.compressedData;
+    }
+
+    async getCompressedData(): Promise<Buffer | null> {
+        if (!this.index) {
+            await this.loadIndex();
+        }
+
+        if (!this.index.compressionMethod || this.index.compressionMethod === 'none') {
+            return this.getUncompressedData();
+        }
+
+        if (this.compressedData?.buffer?.length) {
+            return this.compressedData.buffer;
+        }
+
+        const compressedData = await this.loadCompressedData();
+        if (compressedData?.buffer?.length) {
+            return compressedData.buffer;
+        }
+
+        return null;
     }
 
     async saveIndex(): Promise<JagIndexEntity> {

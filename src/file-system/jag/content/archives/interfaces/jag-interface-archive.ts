@@ -1,5 +1,5 @@
 import { Buffer } from 'buffer';
-import { ByteBuffer } from '@runejs/common';
+import { ByteBuffer, logger } from '@runejs/common';
 import { JagFileStore } from '../../../jag-file-store';
 import { JagGameInterfaceEntity } from '../../../../../db/jag';
 
@@ -15,210 +15,210 @@ export class JagInterfaceArchive {
     }
 
     decode(data: ByteBuffer): JagGameInterfaceEntity {
-        const gameInterface = new JagGameInterfaceEntity();
-        gameInterface.id = data.get('short', 'unsigned');
+        const inter = new JagGameInterfaceEntity();
+        inter.id = data.get('short', 'unsigned');
 
-        if (gameInterface.id === 65535) {
-            gameInterface.parentId = data.get('short', 'unsigned');
-            gameInterface.id = data.get('short', 'unsigned');
+        if (inter.id === 65535) {
+            inter.parentId = data.get('short', 'unsigned');
+            inter.id = data.get('short', 'unsigned');
         }
 
-        const type = gameInterface.type = data.get('byte', 'unsigned');
-        gameInterface.actionType = data.get('byte', 'unsigned');
-        gameInterface.contentType = data.get('short', 'unsigned');
-        const width = gameInterface.width = data.get('short', 'unsigned');
-        const height = gameInterface.height = data.get('short', 'unsigned');
-        gameInterface.alpha = data.get('byte', 'unsigned');
+        const type = inter.type = data.get('byte', 'unsigned');
+        inter.actionType = data.get('byte', 'unsigned');
+        inter.contentType = data.get('short', 'unsigned');
+        const width = inter.width = data.get('short', 'unsigned');
+        const height = inter.height = data.get('short', 'unsigned');
+        inter.alpha = data.get('byte', 'unsigned');
 
         // hoveredPopup = u_short, but only a single u_byte is written if there is no hovered popup
         // use u_smart_short ?
-        gameInterface.hoveredPopup = data.get('byte', 'unsigned');
-        if (gameInterface.hoveredPopup !== 0) {
-            gameInterface.hoveredPopup = (gameInterface.hoveredPopup - 1 << 8) +
+        inter.hoveredPopup = data.get('byte', 'unsigned');
+        if (inter.hoveredPopup !== 0) {
+            inter.hoveredPopup = (inter.hoveredPopup - 1 << 8) +
                 data.get('byte', 'unsigned'); // why?
         } else {
-            gameInterface.hoveredPopup = -1;
+            inter.hoveredPopup = -1;
         }
 
         const conditionCount = data.get('byte', 'unsigned');
 
         if (conditionCount > 0) {
-            gameInterface.conditionTypes = new Array(conditionCount);
-            gameInterface.conditionValues = new Array(conditionCount);
+            inter.conditionTypes = new Array(conditionCount);
+            inter.conditionValues = new Array(conditionCount);
 
             for (let i = 0; i < conditionCount; i++) {
-                gameInterface.conditionTypes[i] = data.get('byte', 'unsigned');
-                gameInterface.conditionValues[i] = data.get('short', 'unsigned');
+                inter.conditionTypes[i] = data.get('byte', 'unsigned');
+                inter.conditionValues[i] = data.get('short', 'unsigned');
             }
         }
 
         const cs1OpcodeCount = data.get('byte', 'unsigned');
 
         if (cs1OpcodeCount > 0) {
-            gameInterface.cs1Opcodes = new Array(cs1OpcodeCount);
+            inter.cs1Opcodes = new Array(cs1OpcodeCount);
 
             for (let i = 0; i < cs1OpcodeCount; i++) {
                 const cs1BlockCount = data.get('short', 'unsigned');
-                gameInterface.cs1Opcodes[i] = new Array(cs1BlockCount);
+                inter.cs1Opcodes[i] = new Array(cs1BlockCount);
 
                 for (let j = 0; j < cs1BlockCount; j++) {
-                    gameInterface.cs1Opcodes[i][j] = data.get('short', 'unsigned');
+                    inter.cs1Opcodes[i][j] = data.get('short', 'unsigned');
                 }
             }
         }
 
         if (type === 0) {
-            gameInterface.scrollLimit = data.get('short', 'unsigned');
-            gameInterface.hiddenUntilHovered = data.get('byte', 'unsigned') === 1;
+            inter.scrollLimit = data.get('short', 'unsigned');
+            inter.hiddenUntilHovered = data.get('byte', 'unsigned') === 1;
 
             const childCount = data.get('short', 'unsigned');
 
-            gameInterface.children = new Array(childCount);
-            gameInterface.childrenX = new Array(childCount);
-            gameInterface.childrenY = new Array(childCount);
+            inter.children = new Array(childCount);
+            inter.childrenX = new Array(childCount);
+            inter.childrenY = new Array(childCount);
 
             for (let i = 0; i < childCount; i++) {
-                gameInterface.children[i] = data.get('short', 'unsigned');
-                gameInterface.childrenX[i] = data.get('short');
-                gameInterface.childrenY[i] = data.get('short');
+                inter.children[i] = data.get('short', 'unsigned');
+                inter.childrenX[i] = data.get('short');
+                inter.childrenY[i] = data.get('short');
             }
         }
 
         if (type === 1) {
-            gameInterface.unknownServerAttribute1 = data.get('short', 'unsigned');
-            gameInterface.unknownServerAttribute2 = data.get('byte', 'unsigned') === 1;
+            inter.unknownServerAttribute1 = data.get('short', 'unsigned');
+            inter.unknownServerAttribute2 = data.get('byte', 'unsigned') === 1;
         }
 
         if (type === 2) {
-            gameInterface.items = new Array(width * height);
-            gameInterface.itemAmounts = new Array(width * height);
-            gameInterface.itemsSwappable = data.get('byte', 'unsigned') === 1;
-            gameInterface.isInventory = data.get('byte', 'unsigned') === 1;
-            gameInterface.itemsUsable = data.get('byte', 'unsigned') === 1;
-            gameInterface.deleteDraggedItems = data.get('byte', 'unsigned') === 1;
-            gameInterface.itemSpritesPadX = data.get('byte', 'unsigned');
-            gameInterface.itemSpritesPadY = data.get('byte', 'unsigned');
-            gameInterface.images = new Array(20);
-            gameInterface.imagesX = new Array(20);
-            gameInterface.imagesY = new Array(20);
+            inter.items = new Array(width * height);
+            inter.itemAmounts = new Array(width * height);
+            inter.itemsSwappable = data.get('byte', 'unsigned') === 1;
+            inter.isInventory = data.get('byte', 'unsigned') === 1;
+            inter.itemsUsable = data.get('byte', 'unsigned') === 1;
+            inter.deleteDraggedItems = data.get('byte', 'unsigned') === 1;
+            inter.itemSpritesPadX = data.get('byte', 'unsigned');
+            inter.itemSpritesPadY = data.get('byte', 'unsigned');
+            inter.images = new Array(20);
+            inter.imagesX = new Array(20);
+            inter.imagesY = new Array(20);
 
             for (let i = 0; i < 20; i++) {
                 const hasSprite = data.get('byte', 'unsigned') === 1;
                 if (hasSprite) {
-                    gameInterface.imagesX[i] = data.get('short');
-                    gameInterface.imagesY[i] = data.get('short');
-                    gameInterface.images[i] = data.getString(10);
+                    inter.imagesX[i] = data.get('short');
+                    inter.imagesY[i] = data.get('short');
+                    inter.images[i] = data.getString(10);
                 }
             }
 
-            gameInterface.options = new Array(5);
+            inter.options = new Array(5);
 
             for (let i = 0; i < 5; i++) {
-                gameInterface.options[i] = data.getString(10);
+                inter.options[i] = data.getString(10);
             }
         }
 
         if (type === 3) {
-            gameInterface.filled = data.get('byte', 'unsigned') === 1;
+            inter.filled = data.get('byte', 'unsigned') === 1;
         }
 
         if (type === 4 || type === 1) {
-            gameInterface.textCentered = data.get('byte', 'unsigned') === 1;
-            gameInterface.fontType = data.get('byte', 'unsigned');
-            gameInterface.textShadowed = data.get('byte', 'unsigned') === 1;
+            inter.textCentered = data.get('byte', 'unsigned') === 1;
+            inter.fontType = data.get('byte', 'unsigned');
+            inter.textShadowed = data.get('byte', 'unsigned') === 1;
         }
 
         if (type === 4) {
-            gameInterface.disabledText = data.getString(10);
-            gameInterface.enabledText = data.getString(10);
+            inter.disabledText = data.getString(10);
+            inter.enabledText = data.getString(10);
         }
 
-        if (gameInterface.type === 1 || gameInterface.type === 3 || gameInterface.type === 4) {
-            gameInterface.disabledColor = data.get('int');
+        if (inter.type === 1 || inter.type === 3 || inter.type === 4) {
+            inter.disabledColor = data.get('int');
         }
 
-        if (gameInterface.type === 3 || gameInterface.type === 4) {
-            gameInterface.enabledColor = data.get('int');
-            gameInterface.disabledHoverColor = data.get('int');
-            gameInterface.enabledHoverColor = data.get('int');
+        if (inter.type === 3 || inter.type === 4) {
+            inter.enabledColor = data.get('int');
+            inter.disabledHoverColor = data.get('int');
+            inter.enabledHoverColor = data.get('int');
         }
 
-        if (gameInterface.type === 5) {
-            gameInterface.disabledImage = data.getString(10);
-            gameInterface.enabledImage = data.getString(10);
+        if (inter.type === 5) {
+            inter.disabledImage = data.getString(10);
+            inter.enabledImage = data.getString(10);
         }
 
-        if (gameInterface.type === 6) {
+        if (inter.type === 6) {
             let identifier = data.get('byte', 'unsigned');
 
             if (identifier !== 0) {
-                gameInterface.disabledModelType = 1;
-                gameInterface.disabledModelId = (identifier - 1 << 8) + data.get('byte', 'unsigned');
+                inter.disabledModelType = 1;
+                inter.disabledModelId = (identifier - 1 << 8) + data.get('byte', 'unsigned');
             }
 
             identifier = data.get('byte', 'unsigned');
 
             if (identifier !== 0) {
-                gameInterface.enabledModelType = 1;
-                gameInterface.enabledModelId = (identifier - 1 << 8) + data.get('byte', 'unsigned');
+                inter.enabledModelType = 1;
+                inter.enabledModelId = (identifier - 1 << 8) + data.get('byte', 'unsigned');
             }
 
             identifier = data.get('byte', 'unsigned');
 
             if (identifier !== 0) {
-                gameInterface.disabledAnimationId = (identifier - 1 << 8) + data.get('byte', 'unsigned');
+                inter.disabledAnimationId = (identifier - 1 << 8) + data.get('byte', 'unsigned');
             } else {
-                gameInterface.disabledAnimationId = -1;
+                inter.disabledAnimationId = -1;
             }
 
             identifier = data.get('byte', 'unsigned');
 
             if (identifier !== 0) {
-                gameInterface.enabledAnimationId = (identifier - 1 << 8) + data.get('byte', 'unsigned');
+                inter.enabledAnimationId = (identifier - 1 << 8) + data.get('byte', 'unsigned');
             } else {
-                gameInterface.enabledAnimationId = -1;
+                inter.enabledAnimationId = -1;
             }
 
-            gameInterface.modelZoom = data.get('short', 'unsigned');
-            gameInterface.modelRotationX = data.get('short', 'unsigned');
-            gameInterface.modelRotationY = data.get('short', 'unsigned');
+            inter.modelZoom = data.get('short', 'unsigned');
+            inter.modelRotationX = data.get('short', 'unsigned');
+            inter.modelRotationY = data.get('short', 'unsigned');
         }
 
-        if (gameInterface.type === 7) {
-            gameInterface.items = new Array(width * height);
-            gameInterface.itemAmounts = new Array(width * height);
-            gameInterface.textCentered = data.get('byte', 'unsigned') === 1;
-            gameInterface.fontType = data.get('byte', 'unsigned');
-            gameInterface.textShadowed = data.get('byte', 'unsigned') === 1;
-            gameInterface.disabledColor = data.get('int');
-            gameInterface.itemSpritesPadX = data.get('short');
-            gameInterface.itemSpritesPadY = data.get('short');
-            gameInterface.isInventory = data.get('byte', 'unsigned') === 1;
-            gameInterface.options = new Array(5);
+        if (inter.type === 7) {
+            inter.items = new Array(width * height);
+            inter.itemAmounts = new Array(width * height);
+            inter.textCentered = data.get('byte', 'unsigned') === 1;
+            inter.fontType = data.get('byte', 'unsigned');
+            inter.textShadowed = data.get('byte', 'unsigned') === 1;
+            inter.disabledColor = data.get('int');
+            inter.itemSpritesPadX = data.get('short');
+            inter.itemSpritesPadY = data.get('short');
+            inter.isInventory = data.get('byte', 'unsigned') === 1;
+            inter.options = new Array(5);
 
             for (let i = 0; i < 5; i++) {
-                gameInterface.options[i] = data.getString(10);
+                inter.options[i] = data.getString(10);
             }
         }
 
-        if (gameInterface.type === 8) {
-            gameInterface.disabledText = data.getString(10);
+        if (inter.type === 8) {
+            inter.disabledText = data.getString(10);
         }
 
-        if (gameInterface.actionType === 2 || gameInterface.type === 2) {
-            gameInterface.actionAdditions = data.getString(10);
-            gameInterface.actionText = data.getString(10);
-            gameInterface.actionAttributes = data.get('short', 'unsigned');
+        if (inter.actionType === 2 || inter.type === 2) {
+            inter.actionAdditions = data.getString(10);
+            inter.actionText = data.getString(10);
+            inter.actionAttributes = data.get('short', 'unsigned');
         }
 
-        if (gameInterface.actionType === 1 || gameInterface.actionType === 4 || gameInterface.actionType === 5 || gameInterface.actionType === 6) {
-            gameInterface.tooltip = data.getString(10);
+        if (inter.actionType === 1 || inter.actionType === 4 || inter.actionType === 5 || inter.actionType === 6) {
+            inter.tooltip = data.getString(10);
         }
 
-        return gameInterface;
+        return inter;
     }
 
-    decodeAll(): void {
+    async decodeAll(): Promise<void> {
         const archive = this.jagStore.getCache('archives')
             .getArchive('interface.jag');
 
@@ -227,16 +227,26 @@ export class JagInterfaceArchive {
         }
 
         const dataFile = archive.getFile('data');
-        if (!dataFile?.index?.data) {
+
+        await dataFile.loadUncompressedData();
+
+        if (!dataFile?.data?.buffer?.length) {
             throw new Error('interface.jag data file is not loaded!');
         }
 
-        const data = new ByteBuffer(dataFile.index.data);
+        const data = new ByteBuffer(dataFile.data.buffer);
         this.interfaces.clear();
 
+        data.get('short', 'unsigned'); // interface count
+
         while (data.readerIndex < data.length) {
-            const gameInterface = this.decode(data);
-            this.interfaces.set(gameInterface.id, gameInterface);
+            try {
+                const gameInterface = this.decode(data);
+                this.interfaces.set(gameInterface.id, gameInterface);
+            } catch (e) {
+                logger.error(e);
+                break;
+            }
         }
     }
 

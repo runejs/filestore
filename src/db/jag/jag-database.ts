@@ -5,11 +5,13 @@ import { JagFileType } from '../../config';
 import { JagGameInterfaceEntity } from './content/jag-game-interface-entity';
 import { existsSync, mkdirSync } from 'graceful-fs';
 import { join } from 'path';
+import { JagDataEntity } from './jag-data-entity';
 
 
 export interface JagIndexEntityWhere {
     fileType?: JagFileType;
     key?: number;
+    name?: string;
     cacheKey?: number;
     archiveKey?: number;
 }
@@ -18,6 +20,7 @@ export interface JagIndexEntityWhere {
 export class JagDatabase extends IndexDatabase<JagIndexEntity, JagIndexEntityWhere> {
 
     private _interfaceRepo: Repository<JagGameInterfaceEntity>;
+    private _dataRepo: Repository<JagDataEntity>;
 
     constructor(
         gameBuild: string,
@@ -37,17 +40,107 @@ export class JagDatabase extends IndexDatabase<JagIndexEntity, JagIndexEntityWhe
             database: join(this.databasePath, `${this.gameBuild}.index.sqlite3`),
             entities: [
                 JagIndexEntity,
+                JagDataEntity,
                 JagGameInterfaceEntity
             ],
             synchronize: true,
             logging: this.loggerOptions,
-            name: 'jag-index-repository'
+            name: 'jag-repository'
         });
 
         this._repository = this._connection.getRepository(JagIndexEntity);
         this._interfaceRepo = this._connection.getRepository(JagGameInterfaceEntity);
+        this._dataRepo = this._connection.getRepository(JagDataEntity);
 
         return this._connection;
+    }
+
+    async getUncompressedData(where: JagIndexEntityWhere): Promise<JagDataEntity> {
+        return this._dataRepo.findOne({
+            where: {
+                gameBuild: this.gameBuild,
+                compressed: false,
+                ...where
+            }
+        });
+    }
+
+    async getAllUncompressedData(where: JagIndexEntityWhere): Promise<JagDataEntity[]> {
+        return this._dataRepo.find({
+            where: {
+                gameBuild: this.gameBuild,
+                compressed: false,
+                ...where
+            }
+        });
+    }
+
+    async saveUncompressedData(uncompressedDataEntity: JagDataEntity): Promise<JagDataEntity> {
+        return this._dataRepo.save({ ...uncompressedDataEntity, compressed: false });
+    }
+
+    async saveAllUncompressedData(uncompressedDataEntities: JagDataEntity[]): Promise<void> {
+        await this._dataRepo.save({ ...uncompressedDataEntities, compressed: false }, {
+            chunk: 500,
+            transaction: false,
+            reload: false,
+            listeners: false,
+        });
+    }
+
+    async upsertAllUncompressedData(uncompressedDataEntities: JagDataEntity[]): Promise<void> {
+        const chunkSize = 100;
+        for (let i = 0; i < uncompressedDataEntities.length; i += chunkSize) {
+            const chunk = uncompressedDataEntities.slice(i, i + chunkSize).map(d => ({ ...d, compressed: false }));
+            await this._dataRepo.upsert(chunk, {
+                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'cacheKey', 'archiveKey', 'compressed' ],
+                skipUpdateIfNoValuesChanged: true,
+            });
+        }
+    }
+
+    async getCompressedData(where: JagIndexEntityWhere): Promise<JagDataEntity> {
+        return this._dataRepo.findOne({
+            where: {
+                gameBuild: this.gameBuild,
+                compressed: true,
+                ...where
+            }
+        });
+    }
+
+    async getAllCompressedData(where: JagIndexEntityWhere): Promise<JagDataEntity[]> {
+        return this._dataRepo.find({
+            where: {
+                gameBuild: this.gameBuild,
+                compressed: true,
+                ...where
+            }
+        });
+    }
+
+    async saveCompressedData(compressedDataEntity: JagDataEntity): Promise<JagDataEntity> {
+        return this._dataRepo.save({ ...compressedDataEntity, compressed: true });
+    }
+
+    async saveAllCompressedData(compressedDataEntities: JagDataEntity[]): Promise<void> {
+        await this._dataRepo.save({ ...compressedDataEntities, compressed: true }, {
+            chunk: 500,
+            transaction: false,
+            reload: false,
+            listeners: false,
+        });
+    }
+
+    async upsertAllCompressedData(compressedDataEntities: JagDataEntity[]): Promise<void> {
+        const chunkSize = 100;
+        for (let i = 0; i < compressedDataEntities.length; i += chunkSize) {
+            const chunk = compressedDataEntities.slice(i, i + chunkSize).map(d => ({ ...d, compressed: true }));
+            await this._dataRepo.upsert(chunk, {
+                conflictPaths: [ 'fileType', 'gameBuild', 'key', 'cacheKey', 'archiveKey', 'compressed' ],
+                skipUpdateIfNoValuesChanged: true,
+            });
+        }
     }
 
     override async upsertIndexes(indexEntities: JagIndexEntity[]): Promise<void> {
@@ -82,6 +175,10 @@ export class JagDatabase extends IndexDatabase<JagIndexEntity, JagIndexEntityWhe
 
     get interfaceRepo(): Repository<JagGameInterfaceEntity> {
         return this._interfaceRepo;
+    }
+
+    get dataRepo(): Repository<JagDataEntity> {
+        return this._dataRepo;
     }
 
 }

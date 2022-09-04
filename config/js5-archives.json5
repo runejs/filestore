@@ -539,7 +539,6 @@
     },
     clientscripts: {
         key: 12,
-        compression: 'gzip',
         contentType: '.cs2'
     },
     fontmetrics: {

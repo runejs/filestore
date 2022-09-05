@@ -1,6 +1,6 @@
 {
-    "name": "@runejs/store",
-    "version": "1.0.0-beta.1",
+    "name": "@runejs/filestore",
+    "version": "1.0.0-next.0",
     "description": "Tools for managing and indexing the asset file store used with RuneJS.",
     "main": "./index.js",
     "types": "./index.d.ts",
@@ -8,20 +8,20 @@
         ".": "./index.js",
         "./config": "./config/index.js",
         "./db": "./db/index.js",
-        "./scripts": "./scripts/index.js",
-        "./util": "./util/index.js",
-        "./indexer": "./scripts/indexer.js",
-        "./unpacker": "./scripts/unpacker.js"
+        "./file-system": "./file-system/index.js",
+        "./http": "./http/index.js",
+        "./openrs2": "./openrs2/index.js"
     },
     "scripts": {
         "build": "tsc",
-        "start": "ts-node-dev src/dev.ts",
+        "start": "ts-node-dev src/scripts/dev.ts",
         "lint": "eslint --ext .ts src",
         "lint:fix": "eslint --ext .ts src --fix",
-        "unpack": "ts-node-dev src/scripts/unpacker.ts",
-        "unpacker": "npm run unpack",
-        "index": "ts-node-dev src/scripts/indexer.ts",
-        "indexer": "npm run index",
+        "http": "ts-node-dev --max-old-space-size=2048 src/http/server.ts",
+        "namehash": "ts-node-dev --max-old-space-size=2048 src/scripts/name-hasher.ts",
+        "unpack": "ts-node-dev --max-old-space-size=2048 src/scripts/unpacker.ts",
+        "index": "ts-node-dev --max-old-space-size=2048 src/scripts/indexer.ts",
+        "builds": "ts-node-dev src/scripts/builds.ts",
         "copy-documents": "copyfiles package.json README.md .npmignore LICENSE lib",
         "package": "rimraf lib && npm i && npm run build && npm run copy-documents && cd lib && npm publish --dry-run",
         "publish:next": "npm run package && cd lib && npm publish -tag next",
@@ -30,7 +30,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+ssh://git@github.com/runejs/store.git"
+        "url": "git+ssh://git@github.com/runejs/filestore.git"
     },
     "keywords": [
         "runejs",
@@ -44,27 +44,30 @@
     "author": "Kikorono",
     "license": "GPL-3.0",
     "bugs": {
-        "url": "https://github.com/runejs/store/issues"
+        "url": "https://github.com/runejs/filestore/issues"
     },
-    "homepage": "https://github.com/runejs/store#readme",
-    "peerDependencies": {
-        "@runejs/common": "2.0.2-beta.2",
-        "graceful-fs": ">=4.2.0",
-        "tslib": ">=2.3.0",
-        "typescript": ">=4.5.0"
-    },
+    "homepage": "https://github.com/runejs/filestore#readme",
     "dependencies": {
-        "@runejs/common": "2.0.2-beta.2",
-        "graceful-fs": "^4.2.0",
+        "@decorators/di": "^1.0.3",
+        "@decorators/express": "^2.6.0",
+        "@runejs/common": "3.0.0-beta.10",
+        "adm-zip": "^0.5.9",
+        "axios": "^0.27.2",
+        "compressjs": "^1.0.3",
+        "express": "^4.18.1",
+        "graceful-fs": ">=4.2.0",
         "json5": "^2.2.0",
         "reflect-metadata": "^0.1.13",
         "sqlite": "^4.0.25",
-        "tslib": "^2.3.1",
+        "tslib": ">=2.4.0",
         "typeorm": "^0.2.44",
-        "yargs": "^17.3.1"
+        "yargs": "^17.3.1",
+        "zlib": "^1.0.5"
     },
     "devDependencies": {
         "@runejs/eslint-config": "^1.1.0",
+        "@types/adm-zip": "^0.5.0",
+        "@types/express": "^4.17.13",
         "@types/graceful-fs": "^4.1.5",
         "@types/node": "^16.11.26",
         "@types/yargs": "^17.0.9",
@@ -75,15 +78,7 @@
         "eslint": "^8.11.0",
         "rimraf": "^3.0.2",
         "source-map-support": "^0.5.21",
-        "ts-node-dev": "^1.1.8",
-        "typescript": "^4.5.5"
-    },
-    "eslintConfig": {
-        "extends": [
-            "@runejs/eslint-config"
-        ],
-        "parserOptions": {
-            "project": "./tsconfig.json"
-        }
+        "ts-node-dev": "^2.0.0",
+        "typescript": "^4.7.4"
     }
 }

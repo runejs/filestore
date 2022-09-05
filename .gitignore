@@ -1,10 +1,11 @@
 /unpacked/
-packed/*
+js5/*
 /lib/
 /temp/
 /tmp/
 config/xtea/*
-/indexes/
+indexes/*
+index/*
 /logs/
 
 
@@ -26,4 +27,4 @@ yarn-error.log*
 *.sln
 *.sw?
 
-!packed/.gitkeep
+!js5/.gitkeep

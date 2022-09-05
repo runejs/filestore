@@ -7,15 +7,13 @@
 Node tools for managing and indexing the JS5 file store used with RuneJS.
 
 ## CLI Tools
-_@todo work in progress_
 
 - `index`
 - `unpack`
 
 ## Archives
-_@todo work in progress_
 
-### JS5 // Game Version 400+
+### JS5 File Store // Game Builds 400-604
 
 |                               Key | Archive Name     | Content Description               | File Format |       Build       |
 |----------------------------------:|:-----------------|:----------------------------------|:-----------:|:-----------------:|
@@ -33,8 +31,21 @@ _@todo work in progress_
 |   <sub><sup>idx</sup></sub> **9** | textures         | Game Textures                     |             | _400_<sup>+</sup> |
 |  <sub><sup>idx</sup></sub> **10** | binary           | Miscellaneous Binary Files        |             | _400_<sup>+</sup> |
 |  <sub><sup>idx</sup></sub> **11** | midi_jingles     | Shorter Midi Jingles              |    .mid     | _400_<sup>+</sup> |
-|                                   |                  |                                   |             |                   |
 |  <sub><sup>idx</sup></sub> **12** | clientscripts    | Client Script (CS2) Files         |    .cs2     | _435_<sup>+</sup> |
 |  <sub><sup>idx</sup></sub> **13** | fontmetrics      | Game Font Metrics                 |             | _443_<sup>+</sup> |
-|  <sub><sup>idx</sup></sub> **14** | vorbis           | Vorbis Sound Files                |    .ogg     | _451_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **14** | vorbis           | Vorbis Sound Files                |             | _451_<sup>+</sup> |
 |  <sub><sup>idx</sup></sub> **15** | midi_instruments | Midi Song Instruments             |             | _451_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **16** | config_loc       | Location Object Configs           |             | _489_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **17** | config_enum      | Enum Configs                      |             | _489_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **18** | config_npc       | NPC Configs                       |             | _489_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **19** | config_obj       | Item Object Configs               |             | _489_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **20** | config_seq       | Animation Sequence Configs        |             | _489_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **21** | config_spot      | Graphical Spot Animation Configs  |             | _489_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **22** | config_var_bit   | VarBit Configs                    |             | _489_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **23** | worldmapdata     | In-Game World Map Data            |             | _493_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **24** | quickchat        | Quickchat Data                    |             | _498_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **25** | quickchat_global | Global Quickchat Data             |             | _498_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **26** | materials        | Materials                         |             | _500_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **27** | config_particle  | Particle Configs                  |             | _523_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **28** | defaults         | Defaults                          |             | _537_<sup>+</sup> |
+|  <sub><sup>idx</sup></sub> **29** | billboards       | Billboards                        |             | _582_<sup>+</sup> |

@@ -1,9 +1,7 @@
 import { join } from 'path';
 import { existsSync, readdirSync, statSync, mkdirSync } from 'graceful-fs';
 import { logger } from '@runejs/common';
-
-import { Store } from '../index';
-import { ScriptExecutor, ArgumentOptions } from './index';
+import { ArgumentOptions, ScriptExecutor } from './script-executor';
 
 
 interface UnpackOptions {
@@ -34,63 +32,59 @@ const unpackerArgumentOptions: ArgumentOptions = {
 };
 
 
-async function unpackFiles(store: Store, args: UnpackOptions): Promise<void> {
+/*async function unpackFiles(store: Store, args: UnpackOptions): Promise<void> {
     const argDebugString = args ? Array.from(Object.entries(args))
         .map(([ key, val ]) => `${key} = ${val}`).join(', ') : '';
 
     const { archive: archiveName, debug } = args;
 
-    try {
-        store.loadPackedStore();
+    store.loadPackedStore();
 
-        if(archiveName === 'main') {
-            logger.info(`Unpacking JS5 file store with arguments:`, argDebugString);
+    if(archiveName === 'main') {
+        logger.info(`Unpacking JS5 file store with arguments:`, argDebugString);
 
-            store.decode(true);
+        store.decode(true);
 
-            store.encode(true);
-            store.compress(true);
+        store.encode(true);
+        store.compress(true);
 
-            if(!debug) {
-                store.write();
-            } else {
-                logger.info(`Flat file store writing is disabled in debug mode.`);
-            }
-
-            logger.info(`Decoding completed.`);
-
-            await store.saveIndexData(true, true, true);
+        if(!debug) {
+            store.write();
         } else {
-            logger.info(`Unpacking JS5 archive with arguments:`, argDebugString);
-
-            const a = store.find(archiveName);
-
-            if(!a) {
-                throw new Error(`Archive ${ a } was not found.`);
-            }
-
-            a.decode(true);
-
-            a.encode(true);
-            a.compress(true);
-
-            if(!debug) {
-                a.write();
-            } else {
-                logger.info(`Archive writing is disabled in debug mode.`);
-            }
-
-            logger.info(`Decoding completed.`);
-
-            await a.saveIndexData(true, true);
+            logger.info(`Flat file store writing is disabled in debug mode.`);
         }
-    } catch(error) {
-        logger.error(error);
+
+        logger.info(`Decoding completed.`);
+
+        await store.saveIndexData(true, true, true);
+    } else {
+        logger.info(`Unpacking JS5 archive with arguments:`, argDebugString);
+
+        const a = store.find(archiveName);
+
+        if(!a) {
+            throw new Error(`Archive ${ a } was not found.`);
+        }
+
+        a.decode(true);
+
+        a.encode(true);
+        a.compress(true);
+
+        if(!debug) {
+            a.write();
+        } else {
+            logger.info(`Archive writing is disabled in debug mode.`);
+        }
+
+        logger.info(`Decoding completed.`);
+
+        await a.saveIndexData(true, true);
     }
-}
+}*/
 
 
-new ScriptExecutor().executeScript<UnpackOptions>(unpackerArgumentOptions, async (terminal, args) => {
+new ScriptExecutor().executeScript<UnpackOptions>(unpackerArgumentOptions, async (args) => {
     const start = Date.now();
     logger.info(`Unpacking JS5 store...`);
 
@@ -102,9 +96,7 @@ new ScriptExecutor().executeScript<UnpackOptions>(unpackerArgumentOptions, async
         mkdirSync(logDir, { recursive: true });
     }
 
-    logger.destination(join(logDir, `unpack_${ build }.log`));
-
-    const store = await Store.create(build, dir);
+    /*const store = await Store.create(build, dir);
 
     const js5Dir = join(dir, 'packed');
 
@@ -122,11 +114,6 @@ new ScriptExecutor().executeScript<UnpackOptions>(unpackerArgumentOptions, async
         }
     }
 
-    logger.boom.flushSync();
-    logger.boom.end();
-
     const end = Date.now();
-    logger.info(`Unpacking completed in ${(end - start) / 1000} seconds.`);
-
-    process.exit(0);
+    logger.info(`Unpacking completed in ${(end - start) / 1000} seconds.`);*/
 });

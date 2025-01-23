@@ -107,7 +107,7 @@ export class RegionStore {
         let objectLoop = true;
 
         while(objectLoop) {
-            const objectIdOffset = landscapeFile.content.get('SMART');
+            const objectIdOffset = landscapeFile.content.get('SMART_SHORT');
 
             if(objectIdOffset === 0) {
                 objectLoop = false;
@@ -120,7 +120,7 @@ export class RegionStore {
             let positionLoop = true;
 
             while(positionLoop) {
-                const objectPositionInfoOffset = landscapeFile.content.get('SMART');
+                const objectPositionInfoOffset = landscapeFile.content.get('SMART_SHORT');
 
                 if(objectPositionInfoOffset === 0) {
                     positionLoop = false;

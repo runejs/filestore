@@ -37,7 +37,7 @@ export const createXteaRegion = (config: XteaDefinition): XteaRegion =>
 
 export const loadXteaRegionFiles = async (path: string): Promise<XteaRegionMap> => {
     const regions: XteaRegionMap = {};
-    const files = await loadConfigurationFiles(path);
+    const files = await loadConfigurationFiles<XteaDefinition[]>(path);
     for(const file of files) {
         for(const region of file) {
             const xteaRegion = createXteaRegion(region)

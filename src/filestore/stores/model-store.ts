@@ -565,7 +565,7 @@ export class ModelStore {
             let xOffset = 0;
             if((mask & 0x1) != 0) {
                 try {
-                    xOffset = xDataOffsetBuffer.get('SMART', 'UNSIGNED');
+                    xOffset = xDataOffsetBuffer.get('SMART_SHORT', 'UNSIGNED');
                 } catch {
                     logger.warn('Tried to read out of range xOffset for object', id);
                 }
@@ -573,7 +573,7 @@ export class ModelStore {
             let yOffset = 0;
             if((mask & 0x2) != 0) {
                 try {
-                    yOffset = yDataOffsetBuffer.get('SMART', 'UNSIGNED');
+                    yOffset = yDataOffsetBuffer.get('SMART_SHORT', 'UNSIGNED');
                 } catch {
                     logger.warn('Tried to read out of range yOffset for object', id);
                 }
@@ -581,7 +581,7 @@ export class ModelStore {
             let zOffset = 0;
             if((mask & 0x4) != 0) {
                 try {
-                    zOffset = zDataOffsetBuffer.get('SMART', 'UNSIGNED');
+                    zOffset = zDataOffsetBuffer.get('SMART_SHORT', 'UNSIGNED');
                 } catch {
                     logger.warn('Tried to read out of range zOffset for object', id);
                 }
@@ -644,11 +644,11 @@ export class ModelStore {
             const type = xDataOffsetBuffer.get('BYTE', 'UNSIGNED');
             switch(type) {
                 case 1:
-                    lastA = vertexDirectionOffsetBuffer.get('SMART', 'UNSIGNED') + accumulator;
+                    lastA = vertexDirectionOffsetBuffer.get('SMART_SHORT', 'UNSIGNED') + accumulator;
                     accumulator = lastA;
-                    lastB = vertexDirectionOffsetBuffer.get('SMART', 'UNSIGNED') + accumulator;
+                    lastB = vertexDirectionOffsetBuffer.get('SMART_SHORT', 'UNSIGNED') + accumulator;
                     accumulator = lastB;
-                    lastC = vertexDirectionOffsetBuffer.get('SMART', 'UNSIGNED') + accumulator;
+                    lastC = vertexDirectionOffsetBuffer.get('SMART_SHORT', 'UNSIGNED') + accumulator;
                     accumulator = lastC;
                     rsModel.faceIndicesA[i] = lastA;
                     rsModel.faceIndicesB[i] = lastB;
@@ -656,7 +656,7 @@ export class ModelStore {
                     break;
                 case 2:
                     lastB = lastC;
-                    lastC = vertexDirectionOffsetBuffer.get('SMART', 'UNSIGNED') + accumulator;
+                    lastC = vertexDirectionOffsetBuffer.get('SMART_SHORT', 'UNSIGNED') + accumulator;
                     accumulator = lastC;
                     rsModel.faceIndicesA[i] = lastA;
                     rsModel.faceIndicesB[i] = lastB;
@@ -664,7 +664,7 @@ export class ModelStore {
                     break;
                 case 3:
                     lastA = lastC;
-                    lastC = vertexDirectionOffsetBuffer.get('SMART', 'UNSIGNED') + accumulator;
+                    lastC = vertexDirectionOffsetBuffer.get('SMART_SHORT', 'UNSIGNED') + accumulator;
                     accumulator = lastC;
                     rsModel.faceIndicesA[i] = lastA;
                     rsModel.faceIndicesB[i] = lastB;
@@ -674,7 +674,7 @@ export class ModelStore {
                     oldTrianglePointOffsetX = lastA;
                     lastA = lastB;
                     lastB = oldTrianglePointOffsetX;
-                    lastC = vertexDirectionOffsetBuffer.get('SMART', 'UNSIGNED') + accumulator;
+                    lastC = vertexDirectionOffsetBuffer.get('SMART_SHORT', 'UNSIGNED') + accumulator;
                     accumulator = lastC;
                     rsModel.faceIndicesA[i] = lastA;
                     rsModel.faceIndicesB[i] = lastB;

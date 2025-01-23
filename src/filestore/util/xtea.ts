@@ -1,4 +1,4 @@
-import { XteaDefinition } from '../stores';
+import type { XteaDefinition } from '../stores';
 import { loadConfigurationFiles } from '@runejs/common/fs';
 
 

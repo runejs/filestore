@@ -1,8 +1,8 @@
 import { ByteBuffer } from '@runejs/common';
 
 import { FileData } from './file-data';
-import { FileIndex } from './file-index';
-import { FilestoreChannels, readIndexedDataChunk, decompress } from './data';
+import type { FileIndex } from './file-index';
+import { type FilestoreChannels, readIndexedDataChunk, decompress } from './data';
 
 
 export class Archive extends FileData {
@@ -17,7 +17,7 @@ export class Archive extends FileData {
      */
     public type: 'archive' | 'file' = 'archive';
 
-    private decoded: boolean = false;
+    private decoded = false;
 
     /**
      * Creates a new `Archive` object.

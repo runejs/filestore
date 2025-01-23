@@ -1,8 +1,8 @@
 import { logger } from '@runejs/common';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 
-import { Filestore, getFileName } from '../filestore';
-import { FileData } from '../file-data';
+import { type Filestore, getFileName } from '../filestore';
+import type { FileData } from '../file-data';
 
 
 /**

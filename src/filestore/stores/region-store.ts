@@ -1,9 +1,9 @@
 import { logger } from '@runejs/common';
-import { readFileSync } from 'fs';
-import path from 'path';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
-import { Filestore } from '../filestore';
-import { FileIndex } from '../file-index';
+import type { Filestore } from '../filestore';
+import type { FileIndex } from '../file-index';
 
 
 export const maxRegions = 32768;
@@ -193,11 +193,11 @@ export class RegionStore {
                         if(opcode === 0) {
                             run = false;
                             break;
-                        } else if(opcode === 1) {
+                        }if(opcode === 1) {
                             tileHeights[level][x][y] = buffer.get('BYTE', 'UNSIGNED');
                             run = false;
                             break;
-                        } else if(opcode <= 49) {
+                        }if(opcode <= 49) {
                             tileOverlayIds[level][x][y] = buffer.get('BYTE');
                             tileOverlayPaths[level][x][y] = (opcode - 2) / 4;
                             tileOverlayOrientations[level][x][y] = opcode - 2 & 3;

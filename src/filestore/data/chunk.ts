@@ -1,6 +1,6 @@
 import { ByteBuffer } from '@runejs/common';
 
-import { FilestoreChannels } from './filestore-loader';
+import type { FilestoreChannels } from './filestore-loader';
 
 
 export const indexFileLength = 6;
@@ -68,7 +68,8 @@ export const writeIndexChunk = (indexChunk: IndexChunk, indexChannel: ByteBuffer
 export const readDataChunk = (fileId: number, indexFile: IndexChunk, dataChannel: ByteBuffer): ByteBuffer => {
     const data = new ByteBuffer(indexFile.size);
 
-    let chunk = 0, remaining = indexFile.size;
+    let chunk = 0;
+    let remaining = indexFile.size;
     let ptr = indexFile.sector * sectorLength;
 
     do {
@@ -115,7 +116,7 @@ export const readDataChunk = (fileId: number, indexFile: IndexChunk, dataChannel
 };
 
 export const writeDataChunk = (indexId: number, fileId: number, fileBuffer: ByteBuffer, filestoreChannels: FilestoreChannels): void => {
-    let sector;
+    let sector: number;
 
     const writeBuffer = new ByteBuffer(sectorLength);
 
@@ -139,7 +140,7 @@ export const writeDataChunk = (indexId: number, fileId: number, fileBuffer: Byte
             }
         }
 
-        let writableMax;
+        let writableMax: number;
 
         if(0xFFFF < fileId) {
             writableMax = 510;

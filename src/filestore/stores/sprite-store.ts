@@ -1,17 +1,18 @@
 import { logger } from '@runejs/common';
-import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'node:fs';
 import { PNG } from 'pngjs';
 
-import { Filestore, getFileName } from '../filestore';
-import { FileData } from '../file-data';
+import { type Filestore, getFileName } from '../filestore';
+import type { FileData } from '../file-data';
 import { pngToBase64 } from '../util';
 
 
-export function toRgb(num: number): number[] {
+export function toRgb(inputNum: number): number[] {
+    let num = inputNum;
     num >>>= 0;
-    const b = num & 0xFF,
-        g = (num & 0xFF00) >>> 8,
-        r = (num & 0xFF0000) >>> 16;
+    const b = num & 0xFF;
+    const g = (num & 0xFF00) >>> 8;
+    const r = (num & 0xFF0000) >>> 16;
     return [ r, g, b ];
 }
 
@@ -38,7 +39,7 @@ export class Sprite {
     }
 
     public resizeToLibSize() {
-        if (this.width != this.maxWidth || this.height != this.maxHeight) {
+        if (this.width !== this.maxWidth || this.height !== this.maxHeight) {
             const resizedPixels = new Array(this.maxWidth * this.maxHeight);
             let pixelCount = 0;
             for (let y = 0; y < this.height; y++) {
@@ -146,13 +147,13 @@ export class SpritePack {
                             const pngBuffer = PNG.sync.write(png);
                             writeFileSync(`./unpacked/sprite-packs/${ this.fileData.fileId }_${ fileName }/${ i }.png`, pngBuffer);
                         } catch(e) {
-                            logger.error(`Error writing sprite to disk`, e);
+                            logger.error('Error writing sprite to disk', e);
                         }
                     }
                 } else if(this._sprites.length === 1) {
                     const sprite = this._sprites[0];
                     if(!sprite) {
-                        reject(`No sprite data found.`);
+                        reject('No sprite data found.');
                     } else {
                         const png = sprite.toPng();
                         png.pack();
@@ -177,7 +178,7 @@ export class SpritePack {
 
         if(buffer.length === 0) {
             throw new Error(`Empty file content for Sprite Pack ${this.fileData.fileId}.`);
-        } else {
+        }
             buffer.readerIndex = (buffer.length - 2);
             const spriteCount = buffer.get('SHORT', 'UNSIGNED');
             const sprites: Sprite[] = new Array(spriteCount);
@@ -271,7 +272,6 @@ export class SpritePack {
             }
 
             this._sprites = sprites;
-        }
 
         return this;
     }

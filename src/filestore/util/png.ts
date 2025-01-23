@@ -1,4 +1,4 @@
-import { PNG } from 'pngjs';
+import type { PNG } from 'pngjs';
 
 
 export const pngToBase64 = async (png: PNG): Promise<string> => {

@@ -1,11 +1,11 @@
-import { FilestoreChannels, loadFilestore } from './data';
-import { FileIndex, IndexId, indexIdMap } from './file-index';
+import { type FilestoreChannels, loadFilestore } from './data';
+import { FileIndex, type IndexId, indexIdMap } from './file-index';
 import { getFileNames } from './util';
 import {
     SpriteStore, MusicStore, BinaryStore, JingleStore, SoundStore,
     RegionStore, ConfigStore, ModelStore, WidgetStore, FontStore,
-    TextureStore, ItemStore, NpcStore, ObjectStore, XteaDefinition,
-    VarbitStore
+    TextureStore, type ItemStore, type NpcStore, type ObjectStore, type XteaDefinition,
+    type VarbitStore
 } from './stores';
 
 
@@ -68,7 +68,8 @@ export class Filestore {
      * Fetches the specified File Index.
      * @param indexId The string or numberic ID of the File Index to find.
      */
-    public getIndex(indexId: number | IndexId): FileIndex {
+    public getIndex(inputIndexId: number | IndexId): FileIndex {
+        let indexId = inputIndexId;
         if(typeof indexId !== 'number') {
             indexId = indexIdMap[indexId];
         }
@@ -78,9 +79,8 @@ export class Filestore {
             archiveIndex.decodeIndex();
             this.indexes.set(indexId, archiveIndex);
             return archiveIndex;
-        } else {
-            return this.indexes.get(indexId);
         }
+            return this.indexes.get(indexId);
     }
 
     public get itemStore(): ItemStore {

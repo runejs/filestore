@@ -1,7 +1,7 @@
 import { logger } from '@runejs/common';
-import { Archive } from '../../archive';
-import { ConfigStore } from '../config-store';
-import { FileData } from '../../file-data';
+import type { Archive } from '../../archive';
+import type { ConfigStore } from '../config-store';
+import type { FileData } from '../../file-data';
 
 
 /**
@@ -12,15 +12,15 @@ export class ObjectConfig {
     gameId: number;
     name: string | null = null;
 
-    solid: boolean = true;
-    nonWalkable: boolean = true;
-    hasOptions: boolean = false;
+    solid = true;
+    nonWalkable = true;
+    hasOptions = false;
     options: string[];
     walkable: boolean;
     configChangeDest?: number[];
-    configId: number = -1;
-    varbitId: number = -1;
-    supportsItems: boolean = false;
+    configId = -1;
+    varbitId = -1;
+    supportsItems = false;
 
     /**
      * 3d modelling information for this object.
@@ -79,7 +79,7 @@ export class ObjectConfig {
         ambient: 0
     };
     icon?: number;
-    wall: boolean = false;
+    wall = false;
 
 }
 
@@ -106,14 +106,14 @@ export class ObjectStore {
         const objectArchive = this.objectArchive;
 
         if(!objectArchive) {
-            logger.error(`Object archive not found.`);
+            logger.error('Object archive not found.');
             return null;
         }
 
         const objectFile = objectArchive.getFile(objectId) || null;
 
         if(!objectFile) {
-            logger.error(`Object file not found.`);
+            logger.error('Object file not found.');
             return null;
         }
 
@@ -139,7 +139,7 @@ export class ObjectStore {
                 break;
             }
 
-            if(opcode == 1) {
+            if(opcode === 1) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 if(length > 0) {
                     if(objectConfig.rendering.objectModels == null) {
@@ -153,9 +153,9 @@ export class ObjectStore {
                         buffer.readerIndex += length * 3;
                     }
                 }
-            } else if(opcode == 2) {
+            } else if(opcode === 2) {
                 objectConfig.name = buffer.getString();
-            } else if(opcode == 5) {
+            } else if(opcode === 5) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 if(length > 0) {
                     if(objectConfig.rendering.objectModels == null) {
@@ -168,32 +168,32 @@ export class ObjectStore {
                         buffer.readerIndex += length * 2;
                     }
                 }
-            } else if(opcode == 14) {
+            } else if(opcode === 14) {
                 objectConfig.rendering.sizeX = buffer.get('BYTE', 'UNSIGNED');
-            } else if(opcode == 15) {
+            } else if(opcode === 15) {
                 objectConfig.rendering.sizeY = buffer.get('BYTE', 'UNSIGNED');
-            } else if(opcode == 17) {
+            } else if(opcode === 17) {
                 objectConfig.solid = false;
-            } else if(opcode == 18) {
+            } else if(opcode === 18) {
                 objectConfig.walkable = false;
-            } else if(opcode == 19) {
+            } else if(opcode === 19) {
                 objectConfig.hasOptions = buffer.get('BYTE', 'UNSIGNED') === 1;
-            } else if(opcode == 21) {
+            } else if(opcode === 21) {
                 objectConfig.rendering.adjustToTerrain = true;
-            } else if(opcode == 22) {
+            } else if(opcode === 22) {
                 objectConfig.rendering.nonFlatShading = true;
-            } else if(opcode == 23) {
+            } else if(opcode === 23) {
                 objectConfig.wall = true;
-            } else if(opcode == 24) {
+            } else if(opcode === 24) {
                 objectConfig.rendering.animationId = buffer.get('SHORT', 'UNSIGNED');
-                if(objectConfig.rendering.animationId == 0xFFFF) {
+                if(objectConfig.rendering.animationId === 0xFFFF) {
                     objectConfig.rendering.animationId = -1;
                 }
-            } else if(opcode == 28) {
+            } else if(opcode === 28) {
                 buffer.get('BYTE', 'UNSIGNED');
-            } else if(opcode == 29) {
+            } else if(opcode === 29) {
                 objectConfig.rendering.ambient = buffer.get('BYTE');
-            } else if(opcode == 39) {
+            } else if(opcode === 39) {
                 objectConfig.rendering.contrast = 5 * buffer.get('BYTE');
             } else if(opcode >= 30 && opcode < 35) {
                 if(!objectConfig.options) {
@@ -202,7 +202,7 @@ export class ObjectStore {
 
                 const option = buffer.getString();
                 objectConfig.options[opcode - 30] = option.toLowerCase() === 'hidden' ? null : option;
-            } else if(opcode == 40) {
+            } else if(opcode === 40) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 objectConfig.rendering.recolorToFind = [];
                 objectConfig.rendering.recolorToReplace = [];
@@ -210,56 +210,56 @@ export class ObjectStore {
                     objectConfig.rendering.recolorToFind[index] = (buffer.get('SHORT', 'UNSIGNED')); // old color
                     objectConfig.rendering.recolorToReplace[index] = (buffer.get('SHORT', 'UNSIGNED')); // new color
                 }
-            } else if(opcode == 60) {
+            } else if(opcode === 60) {
                 objectConfig.icon = (buffer.get('SHORT', 'UNSIGNED')); // ??
-            } else if(opcode == 62) {
+            } else if(opcode === 62) {
                 objectConfig.rendering.rotated = true;
-            } else if(opcode == 64) {
+            } else if(opcode === 64) {
                 objectConfig.rendering.castsShadow = false;
-            } else if(opcode == 65) {
+            } else if(opcode === 65) {
                 objectConfig.rendering.modelSizeX = (buffer.get('SHORT', 'UNSIGNED')); // modelSizeX
-            } else if(opcode == 66) {
+            } else if(opcode === 66) {
                 objectConfig.rendering.modelSizeHeight = (buffer.get('SHORT', 'UNSIGNED')); // modelSizeHeight
-            } else if(opcode == 67) {
+            } else if(opcode === 67) {
                 objectConfig.rendering.modelSizeY = (buffer.get('SHORT', 'UNSIGNED')); // modelSizeY
-            } else if(opcode == 68) {
+            } else if(opcode === 68) {
                 objectConfig.rendering.mapSceneID = (buffer.get('SHORT', 'UNSIGNED')); // mapSceneID
-            } else if(opcode == 69) {
+            } else if(opcode === 69) {
                 objectConfig.rendering.face = buffer.get('BYTE', 'UNSIGNED');
-            } else if(opcode == 70) {
+            } else if(opcode === 70) {
                 objectConfig.rendering.translateX = (buffer.get('SHORT'));
-            } else if(opcode == 71) {
+            } else if(opcode === 71) {
                 objectConfig.rendering.translateY = (buffer.get('SHORT'));
-            } else if(opcode == 72) {
+            } else if(opcode === 72) {
                 objectConfig.rendering.translateLevel = (buffer.get('SHORT'));
-            } else if(opcode == 73) {
+            } else if(opcode === 73) {
                 objectConfig.rendering.obstructsGround = true;
-            } else if(opcode == 74) {
+            } else if(opcode === 74) {
                 objectConfig.rendering.hollow = true;
-            } else if(opcode == 75) {
+            } else if(opcode === 75) {
                 objectConfig.supportsItems = buffer.get('BYTE', 'UNSIGNED') === 1; // anInt2533
-            } else if(opcode == 77) {
+            } else if(opcode === 77) {
                 objectConfig.varbitId = buffer.get('SHORT', 'UNSIGNED'); // varbit id
-                if(objectConfig.varbitId == 0xffff) {
+                if(objectConfig.varbitId === 0xffff) {
                     objectConfig.varbitId = -1;
                 }
                 objectConfig.configId = buffer.get('SHORT', 'UNSIGNED'); // settings id
-                if(objectConfig.configId == 0xFFFF) {
+                if(objectConfig.configId === 0xFFFF) {
                     objectConfig.configId = -1;
                 }
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 objectConfig.configChangeDest = [];
                 for(let index = 0; index <= length; ++index) {
                     objectConfig.configChangeDest[index] = buffer.get('SHORT', 'UNSIGNED');
-                    if(0xFFFF == objectConfig.configChangeDest[index]) {
+                    if(0xFFFF === objectConfig.configChangeDest[index]) {
                         objectConfig.configChangeDest[index] = -1;
                     }
 
                 }
-            } else if(opcode == 78) {
+            } else if(opcode === 78) {
                 buffer.get('SHORT', 'UNSIGNED'); // anInt2513
                 buffer.get('BYTE', 'UNSIGNED'); // anInt2502
-            } else if(opcode == 79) {
+            } else if(opcode === 79) {
                 buffer.get('SHORT', 'UNSIGNED'); // anInt2499
                 buffer.get('SHORT', 'UNSIGNED'); // anInt2542
                 buffer.get('BYTE', 'UNSIGNED'); // anInt2502
@@ -280,7 +280,7 @@ export class ObjectStore {
      */
     public decodeObjectStore(): ObjectConfig[] {
         if(!this.objectArchive) {
-            logger.error(`Object archive not found.`);
+            logger.error('Object archive not found.');
             return null;
         }
 
@@ -291,7 +291,7 @@ export class ObjectStore {
             const objectFile = this.objectArchive.getFile(objectId) || null;
 
             if(!objectFile) {
-                logger.error(`Object file not found.`);
+                logger.error('Object file not found.');
                 return null;
             }
 

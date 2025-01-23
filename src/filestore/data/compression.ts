@@ -1,5 +1,5 @@
 import { ByteBuffer } from '@runejs/common';
-import { gunzipSync } from 'zlib';
+import { gunzipSync } from 'node:zlib';
 const seekBzip = require('seek-bzip');
 
 
@@ -11,7 +11,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
     const compression = buffer.get('BYTE', 'UNSIGNED');
     const compressedLength = buffer.get('INT');
 
-    if (keys && keys.length == 4 && (keys[0] != 0 || keys[1] != 0 || keys[2] != 0 || keys[3] != 0)) {
+    if (keys && keys.length === 4 && (keys[0] !== 0 || keys[1] !== 0 || keys[2] !== 0 || keys[3] !== 0)) {
         const readerIndex = buffer.readerIndex;
         let lengthOffset = readerIndex;
         if (buffer.length - (compressedLength + readerIndex + 4) >= 2) {
@@ -22,7 +22,7 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
         buffer.readerIndex = readerIndex;
     }
 
-    if(compression == 0) {
+    if(compression === 0) {
         // Uncompressed file
         const data = new ByteBuffer(compressedLength);
         buffer.copy(data, 0, buffer.readerIndex, compressedLength);
@@ -35,15 +35,15 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
         }
 
         return { compression, buffer: decryptedData, version };
-    } else {
+    }
         // Compressed file
         const uncompressedLength = buffer.get('INT');
         if (uncompressedLength < 0) {
-            throw new Error(`Invalid uncompressed length`);
+            throw new Error('Invalid uncompressed length');
         }
 
         const decryptedData = new ByteBuffer(
-            compression == 1 ? uncompressedLength : (buffer.length - buffer.readerIndex + 2)
+            compression === 1 ? uncompressedLength : (buffer.length - buffer.readerIndex + 2)
         );
         buffer.copy(decryptedData, 0, buffer.readerIndex);
 
@@ -53,13 +53,13 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
         } else if(compression === 2) { // GZIP
             decompressed = new ByteBuffer(gunzipSync(decryptedData));
         } else {
-            throw new Error(`Invalid compression type`);
+            throw new Error('Invalid compression type');
         }
 
         buffer.readerIndex = buffer.readerIndex + compressedLength;
 
         if(decompressed.length !== uncompressedLength) {
-            throw new Error(`Length mismatch`);
+            throw new Error('Length mismatch');
         }
 
         let version = -1;
@@ -68,7 +68,6 @@ export function decompress(buffer: ByteBuffer, keys?: number[]): { compression: 
         }
 
         return { compression, buffer: decompressed, version };
-    }
 }
 
 export function decryptXtea(input: ByteBuffer, keys: number[], length: number): ByteBuffer {

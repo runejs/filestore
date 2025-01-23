@@ -1,7 +1,7 @@
 import { logger } from '@runejs/common';
-import { Archive } from '../../archive';
-import { ConfigStore } from '../config-store';
-import { FileData } from '../../file-data';
+import type { Archive } from '../../archive';
+import type { ConfigStore } from '../config-store';
+import type { FileData } from '../../file-data';
 
 
 /**
@@ -37,14 +37,14 @@ export class VarbitStore {
         const varbitArchive = this.varbitArchive;
 
         if(!varbitArchive) {
-            logger.error(`Varbit archive not found.`);
+            logger.error('Varbit archive not found.');
             return null;
         }
 
         const varbitFile = varbitArchive.getFile(varbitId) || null;
 
         if(!varbitFile) {
-            logger.error(`Varbit file not found.`);
+            logger.error('Varbit file not found.');
             return null;
         }
 
@@ -86,7 +86,7 @@ export class VarbitStore {
      */
     public decodeVarbitStore(): VarbitConfig[] {
         if(!this.varbitArchive) {
-            logger.error(`Varbit archive not found.`);
+            logger.error('Varbit archive not found.');
             return null;
         }
 
@@ -97,7 +97,7 @@ export class VarbitStore {
             const varbitFile = this.varbitArchive.getFile(varbitId) || null;
 
             if(!varbitFile) {
-                logger.error(`Varbit file not found.`);
+                logger.error('Varbit file not found.');
                 return null;
             }
 

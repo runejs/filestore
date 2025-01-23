@@ -1,8 +1,8 @@
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common';
 
-import { Filestore } from '../filestore';
-import { FileIndex } from '../file-index';
+import type { Filestore } from '../filestore';
+import type { FileIndex } from '../file-index';
 
 
 export class RsModel {
@@ -58,14 +58,14 @@ export class RsModel {
         this.faceTextureV = new Array<Array<number>>(this.faceCount);
 
         for(let i = 0; i < this.faceCount; i++) {
-            let texturedFaceTypeIndex;
+            let texturedFaceTypeIndex: number;
             if(this.texturedFaceTypeIndices == null) {
                 texturedFaceTypeIndex = -1;
             } else {
                 texturedFaceTypeIndex = this.texturedFaceTypeIndices[i];
             }
 
-            let textureId;
+            let textureId: number;
             if(this.faceTextures == null) {
                 textureId = -1;
             } else {
@@ -175,7 +175,7 @@ export class RsModel {
             const i_61_ = this.verticesZ[faceC] - this.verticesZ[faceA];
             let i_62_ = i_57_ * i_61_ - i_60_ * i_58_;
             let i_63_ = i_58_ * i_59_ - i_61_ * i_56_;
-            let i_64_;
+            let i_64_: number;
             for(i_64_ = i_56_ * i_60_ - i_59_ * i_57_;
                 i_62_ > 8192 || i_63_ > 8192 || i_64_ > 8192 || i_62_ < -8192 || i_63_ < -8192 || i_64_ < -8192;
                 i_64_ >>= 1) {
@@ -189,7 +189,7 @@ export class RsModel {
             i_62_ = ~~(i_62_ * 256 / i_65_);
             i_63_ = ~~(i_63_ * 256 / i_65_);
             i_64_ = ~~(i_64_ * 256 / i_65_);
-            if(this.faceTypes == null || (this.faceTypes[i_52_] & 0x1) == 0) {
+            if(this.faceTypes == null || (this.faceTypes[i_52_] & 0x1) === 0) {
                 let class46 = this.vertexNormals[faceA];
                 class46.x += i_62_;
                 class46.y += i_63_;
@@ -216,6 +216,7 @@ export class RsModel {
             this.vertexNormalOffsets = new Array<VertexNormal>(this.vertexCount);
             for(let i_67_ = 0; i_67_ < this.vertexCount; i_67_++) {
                 const normal = this.vertexNormals[i_67_];
+                // biome-ignore lint/suspicious/noAssignInExpressions: Legacy
                 const normalOffset = this.vertexNormalOffsets[i_67_] = new VertexNormal();
                 normalOffset.x = normal.x;
                 normalOffset.y = normal.y;
@@ -242,7 +243,7 @@ export class RsModel {
                 normal = this.vertexNormals[faceC];
                 i_76_ = ~~(arg0 + (arg2 * normal.x + arg3 * normal.y + arg4 * normal.z) / (arg1 * normal.magnitude));
                 this.faceColorsZ[i] = ColorUtils.method816(faceColor, i_76_, 0);
-            } else if((this.faceTypes[i] & 0x1) == 0) {
+            } else if((this.faceTypes[i] & 0x1) === 0) {
                 const faceColor = this.faceColors[i];
                 const faceType = this.faceTypes[i];
                 let normal = this.vertexNormals[faceA];
@@ -274,6 +275,7 @@ export class VertexNormal {
     }
 }
 
+// biome-ignore lint/complexity/noStaticOnlyClass: Legacy
 export class ColorUtils {
 
     private static readonly UNKNOWN_COLOR_TABLE = ColorUtils.initUnknownColorTable();
@@ -305,7 +307,9 @@ export class ColorUtils {
     }
 
     // @TODO use @runejs/color when published
-    public static initHsbToRgb(arg0: number, arg1: number, arg2: number): Uint32Array {
+    public static initHsbToRgb(inputArg0: number, arg1: number, arg2: number): Uint32Array {
+        let arg0 = inputArg0;
+
         const table = new Uint32Array(65536);
         arg0 += Math.random() * 0.03 - 0.015;
         let i = arg1 * 128;
@@ -318,7 +322,7 @@ export class ColorUtils {
                 let green = d_61_;
                 let blue = d_61_;
                 if(d_59_ !== 0.0) {
-                    let d_65_;
+                    let d_65_: number;
                     if(d_61_ < 0.5) {
                         d_65_ = d_61_ * (1.0 + d_59_);
                     } else {
@@ -366,8 +370,8 @@ export class ColorUtils {
                 const greenUByte = green * 256.0;
                 const blueUByte = blue * 256.0;
                 let rgb = (redUByte << 16) + (greenUByte << 8) + blueUByte;
-                rgb = this.method707(rgb, arg0);
-                if(rgb == 0) {
+                rgb = ColorUtils.method707(rgb, arg0);
+                if(rgb === 0) {
                     rgb = 1;
                 }
                 table[i++] = rgb;
@@ -377,30 +381,31 @@ export class ColorUtils {
     }
 
     public static hsbToRgb(hsb: number): number {
-        return this.HSB_TO_RGB[hsb];
+        return ColorUtils.HSB_TO_RGB[hsb];
     }
 
     public static method707(rgb: number, arg1: number) {
         let red = (rgb >> 16) / 256.0;
         let green = (rgb >> 8 & 0xff) / 256.0;
         let blue = (rgb & 0xff) / 256.0;
-        red = Math.pow(red, arg1);
-        green = Math.pow(green, arg1);
-        blue = Math.pow(blue, arg1);
+        red = red ** arg1;
+        green = green ** arg1;
+        blue = blue ** arg1;
         const newRed = red * 256.0;
         const newGreen = green * 256.0;
         const newBlue = blue * 256.0;
         return (newRed << 16) + (newGreen << 8) + newBlue;
     }
 
-    public static method816(faceColor: number, arg1: number, faceType: number): number {
-        if((faceType & 0x2) == 2) {
+    public static method816(faceColor: number, inputArg1: number, faceType: number): number {
+        let arg1 = inputArg1;
+        if((faceType & 0x2) === 2) {
             if(arg1 < 0) {
                 arg1 = 0;
             } else if(arg1 > 127) {
                 arg1 = 127;
             }
-            arg1 = this.UNKNOWN_COLOR_TABLE[arg1];
+            arg1 = ColorUtils.UNKNOWN_COLOR_TABLE[arg1];
             return arg1;
         }
         arg1 = arg1 * (faceColor & 0x7f) >> 7;
@@ -412,7 +417,8 @@ export class ColorUtils {
         return (faceColor & 0xff80) + arg1;
     }
 
-    public static method709(arg0: number, arg1: number): number {
+    public static method709(arg0: number, inputArg1: number): number {
+        let arg1 = inputArg1;
         arg1 = (127 - arg1) * (arg0 & 0x7f) >> 7;
         if(arg1 < 2) {
             arg1 = 2;
@@ -489,23 +495,23 @@ export class ModelStore {
         const facesCompressTypeOffset = offset;
         offset += rsModel.faceCount;
         const facePrioritiesOffset = offset;
-        if(modelPriority == 255) {
+        if(modelPriority === 255) {
             offset += rsModel.faceCount;
         }
         const faceSkinsOffset = offset;
-        if(hasFaceSkins == 1) {
+        if(hasFaceSkins === 1) {
             offset += rsModel.faceCount;
         }
         const faceTypesOffset = offset;
-        if(hasFaceTypes == 1) {
+        if(hasFaceTypes === 1) {
             offset += rsModel.faceCount;
         }
         const vertexSkinsOffset = offset;
-        if(hasVertexSkins == 1) {
+        if(hasVertexSkins === 1) {
             offset += rsModel.vertexCount;
         }
         const faceAlphasOffset = offset;
-        if(hasFaceAlphas == 1) {
+        if(hasFaceAlphas === 1) {
             offset += rsModel.faceCount;
         }
         const faceIndicesOffset = offset;
@@ -532,23 +538,23 @@ export class ModelStore {
             rsModel.texturedFaceIndicesB = new Uint16Array(rsModel.texturedFaceCount);
             rsModel.texturedFaceIndicesC = new Uint16Array(rsModel.texturedFaceCount);
         }
-        if(hasVertexSkins == 1) {
+        if(hasVertexSkins === 1) {
             rsModel.vertexSkins = new Array(rsModel.texturedFaceCount);
         }
-        if(hasFaceTypes == 1) {
+        if(hasFaceTypes === 1) {
             rsModel.faceTypes = new Uint32Array(rsModel.faceCount);
             rsModel.texturedFaceTypeIndices = new Int8Array(rsModel.faceCount);
             rsModel.faceTextures = new Int8Array(rsModel.faceCount);
         }
-        if(modelPriority == 255) {
+        if(modelPriority === 255) {
             rsModel.facePriorities = new Uint8Array(rsModel.faceCount);
         } else {
             rsModel.facePriority = modelPriority & 128;
         }
-        if(hasFaceAlphas == 1) {
+        if(hasFaceAlphas === 1) {
             rsModel.faceAlphas = new Uint8Array(rsModel.faceCount);
         }
-        if(hasFaceSkins == 1) {
+        if(hasFaceSkins === 1) {
             rsModel.faceSkins = new Array(rsModel.faceCount);
         }
         rsModel.faceColors = new Uint32Array(rsModel.faceCount);
@@ -563,7 +569,7 @@ export class ModelStore {
         for(let i = 0; i < rsModel.vertexCount; i++) {
             const mask = vertexDirectionOffsetBuffer.get('BYTE', 'UNSIGNED');
             let xOffset = 0;
-            if((mask & 0x1) != 0) {
+            if((mask & 0x1) !== 0) {
                 try {
                     xOffset = xDataOffsetBuffer.get('SMART_SHORT', 'UNSIGNED');
                 } catch {
@@ -571,7 +577,7 @@ export class ModelStore {
                 }
             }
             let yOffset = 0;
-            if((mask & 0x2) != 0) {
+            if((mask & 0x2) !== 0) {
                 try {
                     yOffset = yDataOffsetBuffer.get('SMART_SHORT', 'UNSIGNED');
                 } catch {
@@ -579,7 +585,7 @@ export class ModelStore {
                 }
             }
             let zOffset = 0;
-            if((mask & 0x4) != 0) {
+            if((mask & 0x4) !== 0) {
                 try {
                     zOffset = zDataOffsetBuffer.get('SMART_SHORT', 'UNSIGNED');
                 } catch {
@@ -592,7 +598,7 @@ export class ModelStore {
             baseOffsetX = rsModel.verticesX[i];
             baseOffsetY = rsModel.verticesY[i];
             baseOffsetZ = rsModel.verticesZ[i];
-            if(hasVertexSkins == 1) {
+            if(hasVertexSkins === 1) {
                 rsModel.vertexSkins[i] = vertexSkinOffsetBuffer.get('BYTE', 'UNSIGNED');
             }
         }
@@ -603,19 +609,19 @@ export class ModelStore {
         vertexSkinOffsetBuffer.readerIndex = faceSkinsOffset;
         for(let i = 0; i < rsModel.faceCount; i++) {
             rsModel.faceColors[i] = vertexDirectionOffsetBuffer.get('SHORT', 'UNSIGNED');
-            if(hasFaceTypes == 1) {
+            if(hasFaceTypes === 1) {
                 const mask = xDataOffsetBuffer.get('BYTE', 'UNSIGNED');
-                if((mask & 0x1) == 1) {
+                if((mask & 0x1) === 1) {
                     rsModel.faceTypes[i] = 1;
                     useFaceTypes = true;
                 } else {
                     rsModel.faceTypes[i] = 0;
                 }
-                if((mask & 0x2) == 2) {
+                if((mask & 0x2) === 2) {
                     rsModel.texturedFaceTypeIndices[i] = mask >> 2;
                     rsModel.faceTextures[i] = rsModel.faceColors[i];
                     rsModel.faceColors[i] = 127;
-                    if(rsModel.faceTextures[i] != -1) {
+                    if(rsModel.faceTextures[i] !== -1) {
                         useFaceTextures = true;
                     }
                 } else {
@@ -623,13 +629,13 @@ export class ModelStore {
                     rsModel.faceTextures[i] = -1;
                 }
             }
-            if(modelPriority == 255) {
+            if(modelPriority === 255) {
                 rsModel.facePriorities[i] = yDataOffsetBuffer.get('BYTE', 'UNSIGNED');
             }
-            if(hasFaceAlphas == 1) {
+            if(hasFaceAlphas === 1) {
                 rsModel.faceAlphas[i] = zDataOffsetBuffer.get('BYTE', 'UNSIGNED');
             }
-            if(hasFaceSkins == 1) {
+            if(hasFaceSkins === 1) {
                 rsModel.faceSkins[i] = vertexSkinOffsetBuffer.get('BYTE', 'UNSIGNED');
             }
         }
@@ -639,7 +645,7 @@ export class ModelStore {
         let lastB = 0;
         let lastC = 0;
         let accumulator = 0;
-        let oldTrianglePointOffsetX;
+        let oldTrianglePointOffsetX: number;
         for(let i = 0; i < rsModel.faceCount; i++) {
             const type = xDataOffsetBuffer.get('BYTE', 'UNSIGNED');
             switch(type) {
@@ -692,10 +698,10 @@ export class ModelStore {
             let useTexturedFaceTypeIndices = false;
             for(let face = 0; face < rsModel.faceCount; face++) {
                 const texturedFaceTypeIndex = rsModel.texturedFaceTypeIndices[face] & 0xff;
-                if(texturedFaceTypeIndex != 255) {
-                    if((rsModel.texturedFaceIndicesA[texturedFaceTypeIndex] & 0xffff) == rsModel.faceIndicesA[face] &&
-                        (rsModel.texturedFaceIndicesB[texturedFaceTypeIndex] & 0xffff) == rsModel.faceIndicesB[face] &&
-                        (rsModel.texturedFaceIndicesC[texturedFaceTypeIndex] & 0xffff) == rsModel.faceIndicesC[face]) {
+                if(texturedFaceTypeIndex !== 255) {
+                    if((rsModel.texturedFaceIndicesA[texturedFaceTypeIndex] & 0xffff) === rsModel.faceIndicesA[face] &&
+                        (rsModel.texturedFaceIndicesB[texturedFaceTypeIndex] & 0xffff) === rsModel.faceIndicesB[face] &&
+                        (rsModel.texturedFaceIndicesC[texturedFaceTypeIndex] & 0xffff) === rsModel.faceIndicesC[face]) {
                         rsModel.texturedFaceTypeIndices[face] = -1;
                     } else {
                         useTexturedFaceTypeIndices = true;

@@ -1,9 +1,9 @@
 import { logger } from '@runejs/common';
 import { ByteBuffer } from '@runejs/common';
 
-import { Archive } from '../../archive';
-import { ConfigStore } from '../config-store';
-import { FileData } from '../../file-data';
+import type { Archive } from '../../archive';
+import type { ConfigStore } from '../config-store';
+import type { FileData } from '../../file-data';
 
 
 /**
@@ -14,7 +14,7 @@ export class ItemConfig {
     gameId: number;
     name: string | null = null;
     stackable?: boolean;
-    value: number = 0;
+    value = 0;
     members?: boolean;
     worldOptions?: string[];
     widgetOptions?: string[];
@@ -93,14 +93,14 @@ export class ItemStore {
         const itemArchive = this.itemArchive;
 
         if(!itemArchive) {
-            logger.error(`Item archive not found.`);
+            logger.error('Item archive not found.');
             return null;
         }
 
         const itemFile = itemArchive.getFile(itemId) || null;
 
         if(!itemFile) {
-            logger.error(`Item file not found.`);
+            logger.error('Item file not found.');
             return null;
         }
 
@@ -366,23 +366,23 @@ export class ItemStore {
                 }
             } else if(opcode === 65) {
                 itemConfig.tradable = true;
-            } else if(opcode == 78) {
+            } else if(opcode === 78) {
                 itemConfig.model3d.maleModels[2] = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode == 79) {
+            } else if(opcode === 79) {
                 itemConfig.model3d.femaleModels[2] = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode == 90) {
+            } else if(opcode === 90) {
                 itemConfig.model3d.maleHeadModels[0] = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode == 91) {
+            } else if(opcode === 91) {
                 itemConfig.model3d.femaleHeadModels[0] = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode == 92) {
+            } else if(opcode === 92) {
                 itemConfig.model3d.maleHeadModels[1] = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode == 93) {
+            } else if(opcode === 93) {
                 itemConfig.model3d.femaleHeadModels[1] = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode == 95) {
+            } else if(opcode === 95) {
                 itemConfig.model2d.rotationZ = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode == 97) {
+            } else if(opcode === 97) {
                 itemConfig.bankNoteId = (buffer.get('SHORT', 'UNSIGNED'));
-            } else if(opcode == 98) {
+            } else if(opcode === 98) {
                 itemConfig.bankNoteTemplate = (buffer.get('SHORT', 'UNSIGNED'));
             } else if(opcode >= 100 && opcode < 110) {
                 if(!itemConfig.stackableIds) {
@@ -391,17 +391,17 @@ export class ItemStore {
                 }
                 itemConfig.stackableIds[opcode - 100] = (buffer.get('SHORT', 'UNSIGNED'));
                 itemConfig.stackableAmounts[opcode - 100] = (buffer.get('SHORT', 'UNSIGNED'));
-            } else if(opcode == 110) {
+            } else if(opcode === 110) {
                 itemConfig.rendering.resizeX = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode == 111) {
+            } else if(opcode === 111) {
                 itemConfig.rendering.resizeY = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode == 112) {
+            } else if(opcode === 112) {
                 itemConfig.rendering.resizeZ = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode == 113) {
+            } else if(opcode === 113) {
                 itemConfig.rendering.ambient = buffer.get('BYTE');
-            } else if(opcode == 114) {
+            } else if(opcode === 114) {
                 itemConfig.rendering.contrast = buffer.get('BYTE');
-            } else if(opcode == 115) {
+            } else if(opcode === 115) {
                 itemConfig.teamId = buffer.get('BYTE', 'UNSIGNED');
             }
         }
@@ -416,7 +416,7 @@ export class ItemStore {
      */
     public decodeItemStore(): ItemConfig[] {
         if(!this.itemArchive) {
-            logger.error(`Item archive not found.`);
+            logger.error('Item archive not found.');
             return null;
         }
 
@@ -427,7 +427,7 @@ export class ItemStore {
             const itemFile = this.itemArchive.getFile(itemId) || null;
 
             if(!itemFile) {
-                logger.error(`Item file not found.`);
+                logger.error('Item file not found.');
                 return null;
             }
 

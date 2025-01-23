@@ -1,10 +1,10 @@
 import { ByteBuffer } from '@runejs/common';
 
-import { FileIndex } from '../file-index';
-import { Filestore } from '../filestore';
-import { FileData } from '../file-data';
-import { Archive } from '../archive';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import type { FileIndex } from '../file-index';
+import type { Filestore } from '../filestore';
+import type { FileData } from '../file-data';
+import type { Archive } from '../archive';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { logger } from '@runejs/common';
 
 
@@ -69,7 +69,7 @@ export class ParentWidget extends WidgetBase {
 }
 
 export class ContainerWidget extends WidgetBase {
-    public type: number = 0;
+    public type = 0;
     public scrollHeight: number;
     public scrollPosition: number;
     public scrollWidth: number;
@@ -77,7 +77,7 @@ export class ContainerWidget extends WidgetBase {
 }
 
 export class TextWidget extends WidgetBase {
-    type: number = 1;
+    type = 1;
     textAlignmentX: number;
     textAlignmentY: number;
     lineHeight: number;
@@ -87,7 +87,7 @@ export class TextWidget extends WidgetBase {
 }
 
 export class InteractableItemWidget extends WidgetBase {
-    type: number = 2;
+    type = 2;
     items: number[];
     itemAmounts: number[];
     itemSwapable: boolean;
@@ -103,7 +103,7 @@ export class InteractableItemWidget extends WidgetBase {
 }
 
 export class RectangleWidget extends WidgetBase {
-    type: number = 3;
+    type = 3;
     filled: boolean;
     textColor: number;
     alternateTextColor: number;
@@ -112,7 +112,7 @@ export class RectangleWidget extends WidgetBase {
 }
 
 export class LinkWidget extends WidgetBase {
-    type: number = 4;
+    type = 4;
     textAlignmentX: number;
     textAlignmentY: number;
     lineHeight: number;
@@ -127,7 +127,7 @@ export class LinkWidget extends WidgetBase {
 }
 
 export class SpriteWidget extends WidgetBase {
-    type: number = 5;
+    type = 5;
     spriteId: number;
     alternateSpriteId: number;
 
@@ -136,7 +136,7 @@ export class SpriteWidget extends WidgetBase {
 }
 
 export class ModelWidget extends WidgetBase {
-    type: number = 6;
+    type = 6;
     modelType: number;
     modelId: number;
     alternateModelType: number;
@@ -153,7 +153,7 @@ export class ModelWidget extends WidgetBase {
 }
 
 export class StaticItemWidget extends WidgetBase {
-    type: number = 7;
+    type = 7;
     items: number[];
     itemAmounts: number[];
     isInventory: boolean;
@@ -167,12 +167,12 @@ export class StaticItemWidget extends WidgetBase {
 }
 
 export class TooltipWidget extends WidgetBase {
-    type: number = 8;
+    type = 8;
     text: string;
 }
 
 export class LineWidget extends WidgetBase {
-    type: number = 9;
+    type = 9;
     lineWidth: number;
     textColor: number;
 }
@@ -214,7 +214,7 @@ export class WidgetStore {
         const file = this.widgetFileIndex.files.get(id);
         if(file.type === 'file') {
             return this.decodeWidgetFile(id, file);
-        } else if(file.type === 'archive') {
+        }if(file.type === 'archive') {
             const widgetParent = new ParentWidget(id);
             const archive: Archive = file as Archive;
             archive.decodeArchiveFiles();
@@ -241,9 +241,8 @@ export class WidgetStore {
         const content = widgetFile.content;
         if(content[0] === -1) {
             return this.decodeWidgetFormat2(id, content);
-        } else {
-            return this.decodeWidgetFormat1(id, content);
         }
+            return this.decodeWidgetFormat1(id, content);
     }
 
     /**
@@ -293,8 +292,8 @@ export class WidgetStore {
         return widget;
     }
 
-    public decodeWidgetFormat2(widgetId: number, buffer: ByteBuffer): WidgetBase {
-        buffer = new ByteBuffer(buffer);
+    public decodeWidgetFormat2(widgetId: number, inputBuffer: ByteBuffer): WidgetBase {
+        const buffer = new ByteBuffer(inputBuffer);
 
         buffer.readerIndex = 1; // skip the first byte for the new format
 
@@ -365,7 +364,7 @@ export class WidgetStore {
             widget.lineHeight = buffer.get('BYTE', 'UNSIGNED');
             widget.textAlignmentX = buffer.get('BYTE', 'UNSIGNED');
             widget.textAlignmentY = buffer.get('BYTE', 'UNSIGNED');
-            widget.textShadowed = buffer.get('BYTE', 'UNSIGNED') == 1;
+            widget.textShadowed = buffer.get('BYTE', 'UNSIGNED') === 1;
             widget.textColor = buffer.get('INT');
         }
 
@@ -387,8 +386,8 @@ export class WidgetStore {
         return widget;
     }
 
-    public decodeWidgetFormat1(widgetId: number, buffer: ByteBuffer): WidgetBase {
-        buffer = new ByteBuffer(buffer);
+    public decodeWidgetFormat1(widgetId: number, inputBuffer: ByteBuffer): WidgetBase {
+        const buffer = new ByteBuffer(inputBuffer);
 
         const widgetType = buffer.get('BYTE');
         const widget: WidgetBase = this.createWidget(widgetType);
@@ -555,11 +554,11 @@ export class WidgetStore {
             widget.itemAmounts = new Array(widget.width * widget.height);
             widget.textAlignmentX = buffer.get('BYTE', 'UNSIGNED');
             widget.fontId = buffer.get('SHORT', 'UNSIGNED');
-            widget.textShadowed = buffer.get('BYTE', 'UNSIGNED') == 1;
+            widget.textShadowed = buffer.get('BYTE', 'UNSIGNED') === 1;
             widget.textColor = buffer.get('INT');
             widget.itemSpritePadsX = buffer.get('SHORT');
             widget.itemSpritePadsY = buffer.get('SHORT');
-            widget.isInventory = buffer.get('BYTE', 'UNSIGNED') == 1;
+            widget.isInventory = buffer.get('BYTE', 'UNSIGNED') === 1;
 
             widget.options = new Array(5);
 
@@ -597,25 +596,4 @@ export class WidgetStore {
 
         return widget;
     }
-
-    private decodeListener(buffer: ByteBuffer): any[] {
-        const length = buffer.get('BYTE', 'UNSIGNED');
-        if(length === 0) {
-            return null;
-        }
-
-        const objects: any[] = new Array(length);
-
-        for(let i = 0; i < length; i++) {
-            const opcode = buffer.get('BYTE', 'UNSIGNED');
-            if(opcode === 0) {
-                objects[i] = buffer.get('INT');
-            } else if(opcode === 1) {
-                objects[i] = buffer.getString();
-            }
-        }
-
-        return objects;
-    }
-
 }

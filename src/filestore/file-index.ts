@@ -2,7 +2,7 @@ import { logger } from '@runejs/common';
 
 import { Archive } from './archive';
 import { FileData } from './file-data';
-import { FilestoreChannels, readIndexedDataChunk, decompress } from './data';
+import { type FilestoreChannels, readIndexedDataChunk, decompress } from './data';
 import { hash } from './util';
 
 

@@ -1,9 +1,9 @@
 import { logger } from '@runejs/common';
 import { PNG } from 'pngjs';
-import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, rmdirSync, writeFileSync } from 'node:fs';
 
-import { Filestore } from '../filestore';
-import { SpriteStore, toRgb } from './sprite-store';
+import type { Filestore } from '../filestore';
+import { type SpriteStore, toRgb } from './sprite-store';
 import { ColorUtils } from './model-store';
 import { pngToBase64 } from '../util';
 
@@ -32,11 +32,11 @@ export class Texture {
     size: number;
 
     public static setSize(size: number) {
-        this.TEXTURE_SIZE = size;
+        Texture.TEXTURE_SIZE = size;
     }
 
     public static setIntensity(intensity: number) {
-        this.TEXTURE_INTENSITY = intensity;
+        Texture.TEXTURE_INTENSITY = intensity;
     }
 
     public generatePixels(spriteStore: SpriteStore): boolean {
@@ -62,12 +62,12 @@ export class Texture {
             const spritePixels = sprite.pixelIdx;
             const spritePalette = sprite.palette;
             const color = this.colors[i];
-            if((color & ~0xffffff) == 50331648) {
+            if((color & ~0xffffff) === 50331648) {
                 const i_15_ = color & 0xff00ff;
                 const i_16_ = color >> 8 & 0xff;
                 for(let j = 0; j < spritePalette.length; j++) {
                     let i_18_ = spritePalette[j];
-                    if((i_18_ & 0xffff) == i_18_ >> 8) {
+                    if((i_18_ & 0xffff) === i_18_ >> 8) {
                         i_18_ &= 0xff;
                         spritePalette[j] = i_15_ * i_18_ >> 8 & 0xff00ff | i_16_ * i_18_ & 0xff00;
                     }
@@ -76,7 +76,7 @@ export class Texture {
             for(let j = 0; j < spritePalette.length; j++) {
                 spritePalette[j] = ColorUtils.method707(spritePalette[j], Texture.TEXTURE_INTENSITY);
             }
-            let renderType;
+            let renderType: number;
             if(i === 0) {
                 renderType = 0;
             } else {
@@ -118,12 +118,12 @@ export class Texture {
 
     public animate(gameTick: number) {
         if(this.pixels != null) {
-            if(this.direction == 1 || this.direction == 3) {
+            if(this.direction === 1 || this.direction === 3) {
                 if(Texture.pixelsBuffer == null || Texture.pixelsBuffer.length < this.pixels.length) {
                     Texture.pixelsBuffer = new Array(this.pixels.length);
                 }
-                let size;
-                if(this.pixels.length == 16384) {
+                let size: number;
+                if(this.pixels.length === 16384) {
                     size = 64;
                 } else {
                     size = 128;
@@ -131,7 +131,7 @@ export class Texture {
                 const colorCount = this.pixels.length / 4;
                 let textureSpeed = size * gameTick * this.speed;
                 const colorCountMin1 = colorCount - 1;
-                if(this.direction == 1) {
+                if(this.direction === 1) {
                     textureSpeed = -textureSpeed;
                 }
                 for(let i = 0; i < colorCount; i++) {
@@ -145,12 +145,12 @@ export class Texture {
                 this.pixels = Texture.pixelsBuffer;
                 Texture.pixelsBuffer = is;
             }
-            if(this.direction == 2 || this.direction == 4) {
+            if(this.direction === 2 || this.direction === 4) {
                 if(Texture.pixelsBuffer == null || Texture.pixelsBuffer.length < this.pixels.length) {
                     Texture.pixelsBuffer = new Array(this.pixels.length);
                 }
-                let size;
-                if(this.pixels.length == 16384) {
+                let size: number;
+                if(this.pixels.length === 16384) {
                     size = 64;
                 } else {
                     size = 128;
@@ -158,7 +158,7 @@ export class Texture {
                 const colorCount = this.pixels.length / 4;
                 let textureSpeed = gameTick * this.speed;
                 const sizeMin1 = size - 1;
-                if(this.direction == 2) {
+                if(this.direction === 2) {
                     textureSpeed = -textureSpeed;
                 }
                 for(let x = 0; x < colorCount; x += size) {
@@ -192,7 +192,7 @@ export class Texture {
                 const png = this.toPng();
                 png.pack();
                 const pngBuffer = PNG.sync.write(png);
-                writeFileSync(path + `/${this.id}.png`, pngBuffer);
+                writeFileSync(`${path}/${this.id}.png`, pngBuffer);
                 resolve();
             } catch(e) {
                 reject(e);
@@ -272,7 +272,7 @@ export class TextureStore {
         const texture = new Texture();
         texture.id = id;
         texture.rgb = buffer.get('SHORT', 'UNSIGNED');
-        texture.opaque = buffer.get('BYTE', 'UNSIGNED') == 1;
+        texture.opaque = buffer.get('BYTE', 'UNSIGNED') === 1;
         const spritesCount = buffer.get('BYTE', 'UNSIGNED');
         if(spritesCount < 1 || spritesCount > 4) {
             throw new Error();
@@ -315,7 +315,7 @@ export class TextureStore {
         if(!generated) {
             return null;
         }
-        if(texture.rgb == 0) {
+        if(texture.rgb === 0) {
             texture.resetPixels();
         } else {
             //texture.anInt2137--; // TODO Find out why this?
@@ -346,7 +346,7 @@ export class TextureStore {
             return false;
         }
         texture.generatePixels(this.fileStore.spriteStore);
-        return texture.size == Texture.LOW_MEMORY_TEXTURE_SIZE;
+        return texture.size === Texture.LOW_MEMORY_TEXTURE_SIZE;
     }
 
 }

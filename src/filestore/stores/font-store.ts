@@ -1,8 +1,8 @@
 import { logger } from '@runejs/common';
 import { createCanvas, createImageData } from 'canvas';
 
-import { Filestore } from '../filestore';
-import { SpritePack, SpriteStore, Sprite, toRgb } from './sprite-store';
+import type { Filestore } from '../filestore';
+import { type SpritePack, type SpriteStore, type Sprite, toRgb } from './sprite-store';
 
 
 /**
@@ -48,7 +48,7 @@ export class Font {
      * @param textColor The color to draw the text in.
      * @returns A base64 encoded PNG image.
      */
-    public drawString(string: string, textColor: number = 0xffffff): string {
+    public drawString(string: string, textColor = 0xffffff): string {
         const stringWidth = this.getStringWidth(string);
         const stringHeight = this.getStringHeight(string);
         const characters = string.split('');
@@ -56,7 +56,7 @@ export class Font {
         const canvas = createCanvas(stringWidth, stringHeight);
         const context = canvas.getContext('2d');
 
-        let x: number = 0;
+        let x = 0;
         for (const char of characters) {
             const charPixels = this.getCharPixels(char, textColor);
             const charWidth = this.getCharWidth(char);
@@ -77,7 +77,7 @@ export class Font {
      * @param char The character or character code to get the pixels of.
      * @param color The color to set the character's pixels to. Defaults to white.
      */
-    public getCharPixels(char: string | number, color: number = 0xffffff): Uint8ClampedArray | null {
+    public getCharPixels(char: string | number, color = 0xffffff): Uint8ClampedArray | null {
         const sprite = this.getSprite(char);
         if(!sprite) {
             return null;
@@ -169,7 +169,8 @@ export class Font {
      * Gets the `Sprite` for the specified character or character code.
      * @param char The character or character code to get the sprite glyph for.
      */
-    public getSprite(char: string | number): Sprite | null {
+    public getSprite(inputChar: string | number): Sprite | null {
+        let char = inputChar;
         if(typeof char === 'string') {
             char = char.charCodeAt(0);
         }

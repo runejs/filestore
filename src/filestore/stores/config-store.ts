@@ -1,6 +1,6 @@
-import { Filestore } from '../filestore';
-import { FileIndex } from '../file-index';
-import { Archive } from '../archive';
+import type { Filestore } from '../filestore';
+import type { FileIndex } from '../file-index';
+import type { Archive } from '../archive';
 import { NpcStore, ObjectStore, ItemStore, VarbitStore } from './configs';
 
 
@@ -83,7 +83,8 @@ export class ConfigStore {
         this.varbitStore = new VarbitStore(this);
     }
 
-    public getArchive(configId: ConfigId | number): Archive {
+    public getArchive(inputConfigId: ConfigId | number): Archive {
+        let configId = inputConfigId;
         if(typeof configId !== 'number') {
             configId = configIdMap[configId];
         }

@@ -5,9 +5,7 @@ import path from 'node:path';
 import type { Filestore } from '../filestore';
 import type { FileIndex } from '../file-index';
 
-
 export const maxRegions = 32768;
-
 
 export interface MapFile {
     fileId: number;
@@ -50,25 +48,31 @@ export interface XteaDefinition {
     name_hash: number;
     name: string;
     mapsquare: number;
-    key: [number,number,number,number];
+    key: [number, number, number, number];
 }
 
-
-export type TileArray = (Uint8Array[])[];
+export type TileArray = Uint8Array[][];
 
 export class RegionStore {
-
     public readonly xteas: { [key: number]: XteaDefinition } = {};
 
     private readonly regionIndex: FileIndex;
 
-    public constructor(private fileStore: Filestore, xteas?: { [p: number]: XteaDefinition }) {
+    public constructor(
+        private fileStore: Filestore,
+        xteas?: { [p: number]: XteaDefinition },
+    ) {
         this.regionIndex = this.fileStore.getIndex('regions');
-        if(xteas) {
+        if (xteas) {
             this.xteas = xteas;
         } else {
-            const array = JSON.parse(readFileSync(path.join(this.fileStore.configDir, 'map-keys.json'), 'utf8'));
-            for(let i = 0; i < array.length; i++) {
+            const array = JSON.parse(
+                readFileSync(
+                    path.join(this.fileStore.configDir, 'map-keys.json'),
+                    'utf8',
+                ),
+            );
+            for (let i = 0; i < array.length; i++) {
                 const object: XteaDefinition = array[i];
                 this.xteas[object.name] = object;
             }
@@ -81,7 +85,7 @@ export class RegionStore {
 
     public getRegion(regionX: number, regionY: number): Region | null {
         const mapFile = this.getMapFile(regionX, regionY);
-        if(!mapFile) {
+        if (!mapFile) {
             return null;
         }
 
@@ -90,12 +94,20 @@ export class RegionStore {
         return { regionX, regionY, mapFile, landscapeFile };
     }
 
-    public getLandscapeFile(regionX: number, regionY: number): LandscapeFile | null {
+    public getLandscapeFile(
+        regionX: number,
+        regionY: number,
+    ): LandscapeFile | null {
         const keys = this.getMapKeys(regionX, regionY);
 
-        const landscapeFile = this.regionIndex.getFile(`l${regionX}_${regionY}`, keys);
-        if(!landscapeFile) {
-            logger.warn(`Landscape file not found for region ${regionX},${regionY}`);
+        const landscapeFile = this.regionIndex.getFile(
+            `l${regionX}_${regionY}`,
+            keys,
+        );
+        if (!landscapeFile) {
+            logger.warn(
+                `Landscape file not found for region ${regionX},${regionY}`,
+            );
             return null;
         }
 
@@ -106,10 +118,10 @@ export class RegionStore {
 
         let objectLoop = true;
 
-        while(objectLoop) {
+        while (objectLoop) {
             const objectIdOffset = landscapeFile.content.get('SMART_SHORT');
 
-            if(objectIdOffset === 0) {
+            if (objectIdOffset === 0) {
                 objectLoop = false;
                 break;
             }
@@ -119,10 +131,11 @@ export class RegionStore {
 
             let positionLoop = true;
 
-            while(positionLoop) {
-                const objectPositionInfoOffset = landscapeFile.content.get('SMART_SHORT');
+            while (positionLoop) {
+                const objectPositionInfoOffset =
+                    landscapeFile.content.get('SMART_SHORT');
 
-                if(objectPositionInfoOffset === 0) {
+                if (objectPositionInfoOffset === 0) {
                     positionLoop = false;
                     break;
                 }
@@ -131,27 +144,38 @@ export class RegionStore {
 
                 const worldX = (regionX & 0xff) * 64;
                 const worldY = regionY * 64;
-                const x = (objectPositionInfo >> 6 & 0x3f) + worldX;
+                const x = ((objectPositionInfo >> 6) & 0x3f) + worldX;
                 const y = (objectPositionInfo & 0x3f) + worldY;
-                const level = objectPositionInfo >> 12 & 0x3;
-                const objectMetadata = landscapeFile.content.get('BYTE', 'UNSIGNED');
+                const level = (objectPositionInfo >> 12) & 0x3;
+                const objectMetadata = landscapeFile.content.get(
+                    'BYTE',
+                    'UNSIGNED',
+                );
                 const type = objectMetadata >> 2;
                 const orientation = objectMetadata & 0x3;
 
-                landscapeObjects.push({ objectId, x, y, level, type, orientation });
+                landscapeObjects.push({
+                    objectId,
+                    x,
+                    y,
+                    level,
+                    type,
+                    orientation,
+                });
             }
         }
 
         return {
             fileId: landscapeFile.fileId,
-            regionX, regionY,
-            landscapeObjects
+            regionX,
+            regionY,
+            landscapeObjects,
         };
     }
 
     public getMapFile(regionX: number, regionY: number): MapFile | null {
         const mapFile = this.regionIndex.getFile(`m${regionX}_${regionY}`);
-        if(!mapFile) {
+        if (!mapFile) {
             logger.warn(`Map file not found for region ${regionX},${regionY}`);
             return null;
         }
@@ -166,7 +190,7 @@ export class RegionStore {
         const buffer = mapFile.content;
         buffer.readerIndex = 0;
 
-        for(let level = 0; level < 4; level++) {
+        for (let level = 0; level < 4; level++) {
             tileHeights[level] = new Array(64);
             tileSettings[level] = new Array(64);
             tileOverlayIds[level] = new Array(64);
@@ -174,7 +198,7 @@ export class RegionStore {
             tileOverlayOrientations[level] = new Array(64);
             tileUnderlayIds[level] = new Array(64);
 
-            for(let x = 0; x < 64; x++) {
+            for (let x = 0; x < 64; x++) {
                 tileHeights[level][x] = new Array(64);
                 tileSettings[level][x] = new Uint8Array(64);
                 tileOverlayIds[level][x] = new Uint8Array(64);
@@ -182,26 +206,32 @@ export class RegionStore {
                 tileOverlayOrientations[level][x] = new Uint8Array(64);
                 tileUnderlayIds[level][x] = new Uint8Array(64);
 
-                for(let y = 0; y < 64; y++) {
+                for (let y = 0; y < 64; y++) {
                     tileSettings[level][x][y] = 0;
 
                     let run = true;
 
-                    while(run) {
+                    while (run) {
                         const opcode = buffer.get('BYTE', 'UNSIGNED');
 
-                        if(opcode === 0) {
+                        if (opcode === 0) {
                             run = false;
                             break;
-                        }if(opcode === 1) {
-                            tileHeights[level][x][y] = buffer.get('BYTE', 'UNSIGNED');
+                        }
+                        if (opcode === 1) {
+                            tileHeights[level][x][y] = buffer.get(
+                                'BYTE',
+                                'UNSIGNED',
+                            );
                             run = false;
                             break;
-                        }if(opcode <= 49) {
+                        }
+                        if (opcode <= 49) {
                             tileOverlayIds[level][x][y] = buffer.get('BYTE');
                             tileOverlayPaths[level][x][y] = (opcode - 2) / 4;
-                            tileOverlayOrientations[level][x][y] = opcode - 2 & 3;
-                        } else if(opcode <= 81) {
+                            tileOverlayOrientations[level][x][y] =
+                                (opcode - 2) & 3;
+                        } else if (opcode <= 81) {
                             tileSettings[level][x][y] = opcode - 49;
                         } else {
                             tileUnderlayIds[level][x][y] = opcode - 81;
@@ -213,10 +243,14 @@ export class RegionStore {
 
         return {
             fileId: mapFile.fileId,
-            regionX, regionY,
-            tileHeights, tileOverlayIds, tileOverlayOrientations,
-            tileOverlayPaths, tileSettings, tileUnderlayIds
+            regionX,
+            regionY,
+            tileHeights,
+            tileOverlayIds,
+            tileOverlayOrientations,
+            tileOverlayPaths,
+            tileSettings,
+            tileUnderlayIds,
         };
     }
-
 }

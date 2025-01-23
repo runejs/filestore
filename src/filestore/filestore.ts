@@ -2,22 +2,31 @@ import { type FilestoreChannels, loadFilestore } from './data';
 import { FileIndex, type IndexId, indexIdMap } from './file-index';
 import { getFileNames } from './util';
 import {
-    SpriteStore, MusicStore, BinaryStore, JingleStore, SoundStore,
-    RegionStore, ConfigStore, ModelStore, WidgetStore, FontStore,
-    TextureStore, type ItemStore, type NpcStore, type ObjectStore, type XteaDefinition,
-    type VarbitStore
+    SpriteStore,
+    MusicStore,
+    BinaryStore,
+    JingleStore,
+    SoundStore,
+    RegionStore,
+    ConfigStore,
+    ModelStore,
+    WidgetStore,
+    FontStore,
+    TextureStore,
+    type ItemStore,
+    type NpcStore,
+    type ObjectStore,
+    type XteaDefinition,
+    type VarbitStore,
 } from './stores';
 
-
-export let fileNames: { [ key: string ]: string | null };
+export let fileNames: { [key: string]: string | null };
 
 export const getFileName = (nameHash: number): string | null => {
     return fileNames[nameHash.toString()] || nameHash.toString();
 };
 
-
 export class Filestore {
-
     public readonly filestoreDir: string;
     public readonly configDir: string;
 
@@ -42,7 +51,8 @@ export class Filestore {
         options?: {
             configDir?: string;
             xteas?: { [key: number]: XteaDefinition };
-        }) {
+        },
+    ) {
         this.filestoreDir = filestoreDir;
         this.configDir = options?.configDir || filestoreDir;
         this.channels = loadFilestore(filestoreDir);
@@ -70,17 +80,17 @@ export class Filestore {
      */
     public getIndex(inputIndexId: number | IndexId): FileIndex {
         let indexId = inputIndexId;
-        if(typeof indexId !== 'number') {
+        if (typeof indexId !== 'number') {
             indexId = indexIdMap[indexId];
         }
 
-        if(!this.indexes.has(indexId)) {
+        if (!this.indexes.has(indexId)) {
             const archiveIndex = new FileIndex(indexId, this.channels);
             archiveIndex.decodeIndex();
             this.indexes.set(indexId, archiveIndex);
             return archiveIndex;
         }
-            return this.indexes.get(indexId);
+        return this.indexes.get(indexId);
     }
 
     public get itemStore(): ItemStore {
@@ -98,5 +108,4 @@ export class Filestore {
     public get objectStore(): ObjectStore {
         return this.configStore?.objectStore;
     }
-
 }

@@ -4,14 +4,11 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { type Filestore, getFileName } from '../filestore';
 import type { FileData } from '../file-data';
 
-
 /**
  * A single MIDI file object.
  */
 export class MidiFile {
-
-    public constructor(public readonly fileData: FileData) {
-    }
+    public constructor(public readonly fileData: FileData) {}
 
     /**
      * Writes this unpacked MIDI file to the disk under `./unpacked/midi/{midiFileName}.mid`
@@ -19,14 +16,20 @@ export class MidiFile {
     public async writeToDisk(): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
-                const fileName = getFileName(this.fileData.nameHash).replace(/ /g, '_');
-                if(!existsSync('./unpacked/midi')) {
+                const fileName = getFileName(this.fileData.nameHash).replace(
+                    / /g,
+                    '_',
+                );
+                if (!existsSync('./unpacked/midi')) {
                     mkdirSync('./unpacked/midi');
                 }
                 const data = this.fileData.decompress();
-                writeFileSync(`./unpacked/midi/${this.fileId}_${fileName}.mid`, Buffer.from(data));
+                writeFileSync(
+                    `./unpacked/midi/${this.fileId}_${fileName}.mid`,
+                    Buffer.from(data),
+                );
                 resolve();
-            } catch(error) {
+            } catch (error) {
                 reject(error);
             }
         });
@@ -35,27 +38,23 @@ export class MidiFile {
     public get fileId(): number {
         return this.fileData?.fileId || -1;
     }
-
 }
-
 
 /**
  * Controls MIDI file storage.
  */
 export class MusicStore {
-
-    public constructor(private fileStore: Filestore) {
-    }
+    public constructor(private fileStore: Filestore) {}
 
     /**
      * Writes all unpacked MIDI files to the disk under `./unpacked/midi/`
      */
     public async writeToDisk(): Promise<void> {
         const files = this.decodeMusicStore();
-        for(const midi of files) {
+        for (const midi of files) {
             try {
                 await midi.writeToDisk();
-            } catch(e) {
+            } catch (e) {
                 logger.error(e);
             }
         }
@@ -67,7 +66,7 @@ export class MusicStore {
      * @returns The decoded MidiFile object, or null if the file is not found.
      */
     public getMidi(nameOrId: string | number): MidiFile | null {
-        if(!nameOrId) {
+        if (!nameOrId) {
             return null;
         }
 
@@ -86,17 +85,17 @@ export class MusicStore {
         const fileCount = midiArchiveIndex.files.size;
         const midiFiles: MidiFile[] = new Array(fileCount);
 
-        for(let midiId = 0; midiId < fileCount; midiId++) {
+        for (let midiId = 0; midiId < fileCount; midiId++) {
             try {
                 const fileData = midiArchiveIndex.getFile(midiId);
-                if(!fileData) {
+                if (!fileData) {
                     midiFiles[midiId] = null;
                     logger.warn(`No file found for midi ID ${midiId}.`);
                     continue;
                 }
 
                 midiFiles[midiId] = new MidiFile(fileData);
-            } catch(e) {
+            } catch (e) {
                 midiFiles[midiId] = null;
                 logger.error(`Error parsing midi ID ${midiId}.`);
                 logger.error(e);
@@ -105,5 +104,4 @@ export class MusicStore {
 
         return midiFiles;
     }
-
 }

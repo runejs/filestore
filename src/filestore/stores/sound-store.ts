@@ -4,14 +4,11 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import type { Filestore } from '../filestore';
 import type { FileData } from '../file-data';
 
-
 /**
  * A single sound file object.
  */
 export class SoundFile {
-
-    public constructor(public readonly fileData: FileData) {
-    }
+    public constructor(public readonly fileData: FileData) {}
 
     /**
      * Writes this unpacked sound file to the disk under `./unpacked/sounds/{soundId}.wav`
@@ -19,13 +16,16 @@ export class SoundFile {
     public async writeToDisk(): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
-                if(!existsSync('./unpacked/sounds')) {
+                if (!existsSync('./unpacked/sounds')) {
                     mkdirSync('./unpacked/sounds');
                 }
                 const data = this.fileData.decompress();
-                writeFileSync(`./unpacked/sounds/${this.fileId}.wav`, Buffer.from(data));
+                writeFileSync(
+                    `./unpacked/sounds/${this.fileId}.wav`,
+                    Buffer.from(data),
+                );
                 resolve();
-            } catch(error) {
+            } catch (error) {
                 reject(error);
             }
         });
@@ -34,27 +34,23 @@ export class SoundFile {
     public get fileId(): number {
         return this.fileData?.fileId || -1;
     }
-
 }
-
 
 /**
  * Controls sound file storage.
  */
 export class SoundStore {
-
-    public constructor(private fileStore: Filestore) {
-    }
+    public constructor(private fileStore: Filestore) {}
 
     /**
      * Writes all unpacked WAV files to the disk under `./unpacked/sounds/`
      */
     public async writeToDisk(): Promise<void> {
         const files = this.decodeSoundStore();
-        for(const wav of files) {
+        for (const wav of files) {
             try {
                 await wav.writeToDisk();
-            } catch(e) {
+            } catch (e) {
                 logger.error(e);
             }
         }
@@ -66,7 +62,7 @@ export class SoundStore {
      * @returns The decoded SoundFile object, or null if the file is not found.
      */
     public getSound(id: number): SoundFile | null {
-        if(id === undefined || id === null) {
+        if (id === undefined || id === null) {
             return null;
         }
 
@@ -84,17 +80,17 @@ export class SoundStore {
         const fileCount = soundArchiveIndex.files.size;
         const soundFiles: SoundFile[] = new Array(fileCount);
 
-        for(let soundId = 0; soundId < fileCount; soundId++) {
+        for (let soundId = 0; soundId < fileCount; soundId++) {
             try {
                 const fileData = soundArchiveIndex.getFile(soundId);
-                if(!fileData) {
+                if (!fileData) {
                     soundFiles[soundId] = null;
                     logger.warn(`No file found for sound ID ${soundId}.`);
                     continue;
                 }
 
                 soundFiles[soundId] = new SoundFile(fileData);
-            } catch(e) {
+            } catch (e) {
                 soundFiles[soundId] = null;
                 logger.error(`Error parsing sound ID ${soundId}.`);
                 logger.error(e);
@@ -103,5 +99,4 @@ export class SoundStore {
 
         return soundFiles;
     }
-
 }

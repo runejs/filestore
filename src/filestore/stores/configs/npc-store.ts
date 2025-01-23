@@ -4,12 +4,10 @@ import type { Archive } from '../../archive';
 import type { ConfigStore } from '../config-store';
 import type { FileData } from '../../file-data';
 
-
 /**
  * Contains game client need-to-know level information about a single game npc.
  */
 export class NpcConfig {
-
     gameId: number;
     name: string | null = null;
     animations: {
@@ -23,7 +21,7 @@ export class NpcConfig {
         walk: -1,
         turnAround: -1,
         turnRight: -1,
-        turnLeft: -1
+        turnLeft: -1,
     };
     options?: string[];
     minimapVisible = true;
@@ -56,16 +54,14 @@ export class NpcConfig {
         boundary: 1,
         sizeX: 128,
         sizeY: 128,
-        renderPriority: false
+        renderPriority: false,
     };
 }
-
 
 /**
  * Controls files within the NPC Archive of the configuration index.
  */
 export class NpcStore {
-
     /**
      * The NPC Archive, containing details about every game NPC.
      */
@@ -83,14 +79,14 @@ export class NpcStore {
     public getNpc(npcId: number): NpcConfig | null {
         const npcArchive = this.npcArchive;
 
-        if(!npcArchive) {
+        if (!npcArchive) {
             logger.error('Npc archive not found.');
             return null;
         }
 
         const npcFile = npcArchive.getFile(npcId) || null;
 
-        if(!npcFile) {
+        if (!npcFile) {
             logger.error('Npc file not found.');
             return null;
         }
@@ -110,92 +106,105 @@ export class NpcStore {
 
         let run = true;
 
-        while(run) {
+        while (run) {
             const opcode = buffer.get('BYTE', 'UNSIGNED');
-            if(opcode === 0) {
+            if (opcode === 0) {
                 run = false;
                 break;
             }
 
-            if(opcode === 1) {
+            if (opcode === 1) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 npcConfig.model.models = new Array(length);
-                for(let idx = 0; idx < length; ++idx) {
-                    npcConfig.model.models[idx] = buffer.get('SHORT', 'UNSIGNED');
+                for (let idx = 0; idx < length; ++idx) {
+                    npcConfig.model.models[idx] = buffer.get(
+                        'SHORT',
+                        'UNSIGNED',
+                    );
                 }
-            } else if(opcode === 2) {
+            } else if (opcode === 2) {
                 npcConfig.name = buffer.getString();
-            } else if(opcode === 12) {
+            } else if (opcode === 12) {
                 npcConfig.rendering.boundary = buffer.get('BYTE', 'UNSIGNED');
-            } else if(opcode === 13) {
+            } else if (opcode === 13) {
                 npcConfig.animations.stand = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode === 14) {
+            } else if (opcode === 14) {
                 npcConfig.animations.walk = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode === 15) {
+            } else if (opcode === 15) {
                 buffer.get('SHORT', 'UNSIGNED'); // junk
-            } else if(opcode === 16) {
+            } else if (opcode === 16) {
                 buffer.get('SHORT', 'UNSIGNED'); // junk
-            } else if(opcode === 17) {
+            } else if (opcode === 17) {
                 npcConfig.animations.walk = buffer.get('SHORT', 'UNSIGNED');
-                npcConfig.animations.turnAround = buffer.get('SHORT', 'UNSIGNED');
-                npcConfig.animations.turnRight = buffer.get('SHORT', 'UNSIGNED');
+                npcConfig.animations.turnAround = buffer.get(
+                    'SHORT',
+                    'UNSIGNED',
+                );
+                npcConfig.animations.turnRight = buffer.get(
+                    'SHORT',
+                    'UNSIGNED',
+                );
                 npcConfig.animations.turnLeft = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode >= 30 && opcode < 35) {
-                if(!npcConfig.options) {
+            } else if (opcode >= 30 && opcode < 35) {
+                if (!npcConfig.options) {
                     npcConfig.options = new Array(5).fill(null);
                 }
 
                 const option = buffer.getString();
-                npcConfig.options[opcode - 30] = option.toLowerCase() === 'hidden' ? null : option;
-            } else if(opcode === 40) {
+                npcConfig.options[opcode - 30] =
+                    option.toLowerCase() === 'hidden' ? null : option;
+            } else if (opcode === 40) {
                 // Model color replacement
                 const length = buffer.get('BYTE', 'UNSIGNED');
-                for(let i = 0; i < length; i++) {
+                for (let i = 0; i < length; i++) {
                     buffer.get('SHORT', 'UNSIGNED');
                     buffer.get('SHORT', 'UNSIGNED');
                 }
-            } else if(opcode === 60) {
+            } else if (opcode === 60) {
                 const length = buffer.get('BYTE', 'UNSIGNED');
                 npcConfig.model.headModels = new Array(length);
-                for(let i = 0; length > i; i++) {
-                    npcConfig.model.headModels[i] = buffer.get('SHORT', 'UNSIGNED');
+                for (let i = 0; length > i; i++) {
+                    npcConfig.model.headModels[i] = buffer.get(
+                        'SHORT',
+                        'UNSIGNED',
+                    );
                 }
-            } else if(opcode === 93) {
+            } else if (opcode === 93) {
                 npcConfig.minimapVisible = false;
-            } else if(opcode === 95) {
+            } else if (opcode === 95) {
                 npcConfig.combatLevel = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode === 97) {
+            } else if (opcode === 97) {
                 npcConfig.rendering.sizeX = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode === 98) {
+            } else if (opcode === 98) {
                 npcConfig.rendering.sizeY = buffer.get('SHORT', 'UNSIGNED');
-            } else if(opcode === 99) {
+            } else if (opcode === 99) {
                 npcConfig.rendering.renderPriority = true;
-            } else if(opcode === 100) {
+            } else if (opcode === 100) {
                 const ambient = buffer.get('BYTE');
-            } else if(opcode === 101) {
-                const contrast = (buffer.get('BYTE')) * 5;
-            } else if(opcode === 102) {
-                npcConfig.headIcon = (buffer.get('SHORT', 'UNSIGNED'));
-            } else if(opcode === 103) {
-                npcConfig.turnDegrees = (buffer.get('SHORT', 'UNSIGNED'));
-            } else if(opcode === 106) {
+            } else if (opcode === 101) {
+                const contrast = buffer.get('BYTE') * 5;
+            } else if (opcode === 102) {
+                npcConfig.headIcon = buffer.get('SHORT', 'UNSIGNED');
+            } else if (opcode === 103) {
+                npcConfig.turnDegrees = buffer.get('SHORT', 'UNSIGNED');
+            } else if (opcode === 106) {
                 npcConfig.varbitId = buffer.get('SHORT', 'UNSIGNED');
                 npcConfig.settingId = buffer.get('SHORT', 'UNSIGNED');
-                if(npcConfig.varbitId === 65535) {
+                if (npcConfig.varbitId === 65535) {
                     npcConfig.varbitId = -1;
                 }
-                if(npcConfig.settingId === 65535) {
+                if (npcConfig.settingId === 65535) {
                     npcConfig.settingId = -1;
                 }
                 npcConfig.childrenIds = [];
                 const childCount = buffer.get('BYTE', 'UNSIGNED');
-                for(let i = 0; childCount >= i; i++) {
+                for (let i = 0; childCount >= i; i++) {
                     npcConfig.childrenIds[i] = buffer.get('SHORT', 'UNSIGNED');
-                    if(npcConfig.childrenIds[i] === 0xFFFF) {
+                    if (npcConfig.childrenIds[i] === 0xffff) {
                         npcConfig.childrenIds[i] = -1;
                     }
                 }
-            } else if(opcode === 107) {
+            } else if (opcode === 107) {
                 npcConfig.clickable = false;
             }
         }
@@ -209,7 +218,7 @@ export class NpcStore {
      * the resulting NpcConfig array.
      */
     public decodeNpcStore(): NpcConfig[] {
-        if(!this.npcArchive) {
+        if (!this.npcArchive) {
             logger.error('Npc archive not found.');
             return null;
         }
@@ -217,27 +226,30 @@ export class NpcStore {
         const npcCount = this.npcArchive.files.size;
         const npcList: NpcConfig[] = new Array(npcCount);
 
-        for(let npcId = 0; npcId < npcCount; npcId++) {
+        for (let npcId = 0; npcId < npcCount; npcId++) {
             const npcFile = this.npcArchive.getFile(npcId) || null;
 
-            if(!npcFile) {
+            if (!npcFile) {
                 logger.error('Npc file not found.');
                 return null;
             }
 
             npcList[npcId] = this.decodeNpcFile(npcFile);
 
-            if(npcList[npcId].childrenIds) {
-                this.children.set(npcList[npcId].gameId, npcList[npcId].childrenIds);
+            if (npcList[npcId].childrenIds) {
+                this.children.set(
+                    npcList[npcId].gameId,
+                    npcList[npcId].childrenIds,
+                );
             }
         }
 
-        for(const childrenEntry of this.children.entries()) {
+        for (const childrenEntry of this.children.entries()) {
             const parentId = childrenEntry[0];
             const childrenIds = childrenEntry[1];
 
-            for(const childId of childrenIds) {
-                if(npcList[childId]) {
+            for (const childId of childrenIds) {
+                if (npcList[childId]) {
                     npcList[childId].parentId = parentId;
                 }
             }
@@ -245,5 +257,4 @@ export class NpcStore {
 
         return npcList;
     }
-
 }

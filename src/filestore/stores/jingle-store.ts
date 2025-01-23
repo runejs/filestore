@@ -4,14 +4,11 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import type { Filestore } from '../filestore';
 import type { FileData } from '../file-data';
 
-
 /**
  * A single OGG file object.
  */
 export class OggFile {
-
-    public constructor(public readonly fileData: FileData) {
-    }
+    public constructor(public readonly fileData: FileData) {}
 
     /**
      * Writes this unpacked OGG file to the disk under `./unpacked/ogg/{oggId}.ogg`
@@ -19,13 +16,16 @@ export class OggFile {
     public async writeToDisk(): Promise<void> {
         return new Promise((resolve, reject) => {
             try {
-                if(!existsSync('./unpacked/ogg')) {
+                if (!existsSync('./unpacked/ogg')) {
                     mkdirSync('./unpacked/ogg');
                 }
                 const data = this.fileData.decompress();
-                writeFileSync(`./unpacked/ogg/${this.fileId}.ogg`, Buffer.from(data));
+                writeFileSync(
+                    `./unpacked/ogg/${this.fileId}.ogg`,
+                    Buffer.from(data),
+                );
                 resolve();
-            } catch(error) {
+            } catch (error) {
                 reject(error);
             }
         });
@@ -34,27 +34,23 @@ export class OggFile {
     public get fileId(): number {
         return this.fileData?.fileId || -1;
     }
-
 }
-
 
 /**
  * Controls short jingle (.ogg) file storage.
  */
 export class JingleStore {
-
-    public constructor(private fileStore: Filestore) {
-    }
+    public constructor(private fileStore: Filestore) {}
 
     /**
      * Writes all unpacked OGG files to the disk under `./unpacked/ogg/`
      */
     public async writeToDisk(): Promise<void> {
         const files = this.decodeJingleStore();
-        for(const ogg of files) {
+        for (const ogg of files) {
             try {
                 await ogg.writeToDisk();
-            } catch(e) {
+            } catch (e) {
                 logger.error(e);
             }
         }
@@ -66,7 +62,7 @@ export class JingleStore {
      * @returns The decoded OggFile object, or null if the file is not found.
      */
     public getOgg(id: number): OggFile | null {
-        if(id === undefined || id === null) {
+        if (id === undefined || id === null) {
             return null;
         }
 
@@ -84,17 +80,17 @@ export class JingleStore {
         const fileCount = oggArchiveIndex.files.size;
         const oggFiles: OggFile[] = new Array(fileCount);
 
-        for(let oggId = 0; oggId < fileCount; oggId++) {
+        for (let oggId = 0; oggId < fileCount; oggId++) {
             try {
                 const fileData = oggArchiveIndex.getFile(oggId);
-                if(!fileData) {
+                if (!fileData) {
                     oggFiles[oggId] = null;
                     logger.warn(`No file found for OGG ID ${oggId}.`);
                     continue;
                 }
 
                 oggFiles[oggId] = new OggFile(fileData);
-            } catch(e) {
+            } catch (e) {
                 oggFiles[oggId] = null;
                 logger.error(`Error parsing OGG ID ${oggId}.`);
                 logger.error(e);
@@ -103,5 +99,4 @@ export class JingleStore {
 
         return oggFiles;
     }
-
 }

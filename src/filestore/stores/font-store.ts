@@ -2,8 +2,12 @@ import { logger } from '@runejs/common';
 import { createCanvas, createImageData } from 'canvas';
 
 import type { Filestore } from '../filestore';
-import { type SpritePack, type SpriteStore, type Sprite, toRgb } from './sprite-store';
-
+import {
+    type SpritePack,
+    type SpriteStore,
+    type Sprite,
+    toRgb,
+} from './sprite-store';
 
 /**
  * A list of game font file names.
@@ -25,19 +29,19 @@ export const fontNames: FontName[] = [
     FontName.b12_full,
     FontName.q8_full,
     FontName.lunar_alphabet,
-    FontName.lunar_alphabet_lrg
+    FontName.lunar_alphabet_lrg,
 ];
 
-
 export class Font {
-
     /**
      * The `SpritePack` containing this `Font`'s various character glypth.
      */
     public readonly spritePack: SpritePack;
 
-    public constructor(public readonly name: string,
-                       private readonly spriteStore: SpriteStore) {
+    public constructor(
+        public readonly name: string,
+        private readonly spriteStore: SpriteStore,
+    ) {
         this.spritePack = this.spriteStore.getSpritePack(this.name);
         this.spritePack?.decode();
     }
@@ -62,7 +66,11 @@ export class Font {
             const charWidth = this.getCharWidth(char);
             const charHeight = this.getCharHeight(char);
             const charSprite = this.getSprite(char);
-            const imageData = createImageData(charPixels, charWidth, charHeight);
+            const imageData = createImageData(
+                charPixels,
+                charWidth,
+                charHeight,
+            );
 
             const y = charSprite.offsetY;
             context.putImageData(imageData, x, y);
@@ -77,20 +85,23 @@ export class Font {
      * @param char The character or character code to get the pixels of.
      * @param color The color to set the character's pixels to. Defaults to white.
      */
-    public getCharPixels(char: string | number, color = 0xffffff): Uint8ClampedArray | null {
+    public getCharPixels(
+        char: string | number,
+        color = 0xffffff,
+    ): Uint8ClampedArray | null {
         const sprite = this.getSprite(char);
-        if(!sprite) {
+        if (!sprite) {
             return null;
         }
 
         const pixels = sprite.getPixels();
 
-        for(let x = 0; x < sprite.width; x++) {
-            for(let y = 0; y < sprite.height; y++) {
+        for (let x = 0; x < sprite.width; x++) {
+            for (let y = 0; y < sprite.height; y++) {
                 const i = (sprite.width * y + x) << 2;
 
-                if(pixels[i] !== 0) {
-                    const [ r, g, b ] = toRgb(color);
+                if (pixels[i] !== 0) {
+                    const [r, g, b] = toRgb(color);
 
                     pixels[i] = r;
                     pixels[i + 1] = g;
@@ -117,7 +128,7 @@ export class Font {
         let height = this.getCharHeight('A');
 
         if (height === 0) {
-            throw new Error('Default height couldn\'t be defined!');
+            throw new Error("Default height couldn't be defined!");
         }
 
         for (const char of string.split('')) {
@@ -145,7 +156,9 @@ export class Font {
      * @param string The string to find the width of.
      */
     public getStringWidth(string: string): number {
-        const widths = string.split('').map(stringChar => this.getCharWidth(stringChar));
+        const widths = string
+            .split('')
+            .map((stringChar) => this.getCharWidth(stringChar));
         return widths.reduce((a, b) => a + b, 0);
     }
 
@@ -171,26 +184,23 @@ export class Font {
      */
     public getSprite(inputChar: string | number): Sprite | null {
         let char = inputChar;
-        if(typeof char === 'string') {
+        if (typeof char === 'string') {
             char = char.charCodeAt(0);
         }
 
         try {
             return this.spritePack.sprites[char] || null;
-        } catch(error) {
+        } catch (error) {
             logger.error(`Error loading glyph ${char}`, error);
             return null;
         }
     }
-
 }
-
 
 /**
  * Contains information and tools for the game's fonts.
  */
 export class FontStore {
-
     /**
      * A map of loaded game fonts by name.
      */
@@ -204,8 +214,11 @@ export class FontStore {
      * Load the list of registered game fonts and their associated Sprite Packs.
      */
     public loadFonts(): FontStore {
-        for(const fontName of fontNames) {
-            this.fonts.set(fontName, new Font(fontName, this.filestore.spriteStore));
+        for (const fontName of fontNames) {
+            this.fonts.set(
+                fontName,
+                new Font(fontName, this.filestore.spriteStore),
+            );
         }
 
         return this;
@@ -222,6 +235,8 @@ export class FontStore {
      * Fetches a font by its ID
      */
     public getFontById(spriteId: number): Font {
-        return Array.from(this.fonts.values()).find(e => e.spritePack.packId === spriteId);
+        return Array.from(this.fonts.values()).find(
+            (e) => e.spritePack.packId === spriteId,
+        );
     }
 }

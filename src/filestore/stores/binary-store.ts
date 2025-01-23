@@ -4,35 +4,38 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { type Filestore, getFileName } from '../filestore';
 import type { FileData } from '../file-data';
 
-
 /**
  * Controls misc binary file storage.
  */
 export class BinaryStore {
-
-    public constructor(private fileStore: Filestore) {
-    }
+    public constructor(private fileStore: Filestore) {}
 
     /**
      * Writes the specified file or all binary files to the disk.
      * @param binaryFile [optional] The file to write to disk. Writes all stored binary files to disk if not provided.
      */
     public async writeToDisk(binaryFile?: FileData): Promise<void> {
-        if(!binaryFile) {
+        if (!binaryFile) {
             // Write all files
             const binaryFiles: FileData[] = this.decodeBinaryFileStore();
-            binaryFiles.forEach(async file => this.writeToDisk(file));
+            binaryFiles.forEach(async (file) => this.writeToDisk(file));
         } else {
             // Write single file
             return new Promise((resolve, reject) => {
                 try {
-                    const fileName = getFileName(binaryFile.nameHash).replace(/ /g, '_');
-                    if(!existsSync('./unpacked/binary')) {
+                    const fileName = getFileName(binaryFile.nameHash).replace(
+                        / /g,
+                        '_',
+                    );
+                    if (!existsSync('./unpacked/binary')) {
                         mkdirSync('./unpacked/binary');
                     }
-                    writeFileSync(`./unpacked/binary/${binaryFile.fileId}_${fileName}`, Buffer.from(binaryFile.content));
+                    writeFileSync(
+                        `./unpacked/binary/${binaryFile.fileId}_${fileName}`,
+                        Buffer.from(binaryFile.content),
+                    );
                     resolve();
-                } catch(error) {
+                } catch (error) {
                     reject(error);
                 }
             });
@@ -45,7 +48,7 @@ export class BinaryStore {
      * @returns The binary FileData object, or null if the file is not found.
      */
     public getBinaryFile(nameOrId: string | number): FileData | null {
-        if(!nameOrId) {
+        if (!nameOrId) {
             return null;
         }
 
@@ -62,11 +65,17 @@ export class BinaryStore {
         const binaryFileCount = binaryIndex.files.size;
         const binaryFiles: FileData[] = new Array(binaryFileCount);
 
-        for(let binaryFileId = 0; binaryFileId < binaryFileCount; binaryFileId++) {
+        for (
+            let binaryFileId = 0;
+            binaryFileId < binaryFileCount;
+            binaryFileId++
+        ) {
             const fileData = binaryIndex.getFile(binaryFileId);
-            if(!fileData) {
+            if (!fileData) {
                 binaryFiles[binaryFileId] = null;
-                logger.warn(`No file found for binary file ID ${binaryFileId}.`);
+                logger.warn(
+                    `No file found for binary file ID ${binaryFileId}.`,
+                );
                 continue;
             }
 
@@ -75,5 +84,4 @@ export class BinaryStore {
 
         return binaryFiles;
     }
-
 }

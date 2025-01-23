@@ -7,6 +7,11 @@
     "scripts": {
         "build": "tsc",
         "clean": "rimraf lib",
+        "lint": "biome lint",
+        "lint:fix": "biome lint --write",
+        "format": "biome format",
+        "format:fix": "biome format --write",
+        "fin": "npm run lint:fix && npm run format:fix",
         "start": "ts-node src/run.ts",
         "package": "rimraf lib && npm i && npm run build && npm publish --dry-run"
     },
@@ -42,6 +47,7 @@
         "tslib": ">=2.8.1"
     },
     "devDependencies": {
+        "@biomejs/biome": "1.9.4",
         "@types/node": "^22.10.10",
         "@types/pngjs": "^6.0.5",
         "rimraf": "^6.0.1",

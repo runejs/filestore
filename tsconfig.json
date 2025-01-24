@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "target": "es6",
+        "target": "ESNext",
         "jsx": "preserve",
         "importHelpers": true,
         "moduleResolution": "node",

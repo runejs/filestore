@@ -1,11 +1,13 @@
 import { ByteBuffer } from '@runejs/common';
 
-import { decompress, readIndexedDataChunk, FilestoreChannels } from './data';
-import { FileIndex } from './file-index';
-
+import {
+    decompress,
+    readIndexedDataChunk,
+    type FilestoreChannels,
+} from './data';
+import type { FileIndex } from './file-index';
 
 export class FileData {
-
     /**
      * The ID of this file within it's File Index.
      */
@@ -52,7 +54,7 @@ export class FileData {
     public type: 'archive' | 'file' = 'file';
 
     protected readonly filestoreChannels: FilestoreChannels;
-    private decompressed: boolean = false;
+    private decompressed = false;
 
     /**
      * Creates a new `FileData` object.
@@ -60,7 +62,11 @@ export class FileData {
      * @param index The File Index that this file belongs to.
      * @param filestoreChannels The main filestore channel for data access.
      */
-    public constructor(fileId: number, index: FileIndex, filestoreChannels: FilestoreChannels) {
+    public constructor(
+        fileId: number,
+        index: FileIndex,
+        filestoreChannels: FilestoreChannels,
+    ) {
         this.fileId = fileId;
         this.index = index;
         this.filestoreChannels = filestoreChannels;
@@ -72,17 +78,20 @@ export class FileData {
      * @returns The decompressed file data buffer.
      */
     public decompress(keys?: number[]): ByteBuffer {
-        if(this.decompressed) {
+        if (this.decompressed) {
             this.content.readerIndex = 0;
             this.content.writerIndex = 0;
             return this.content;
         }
 
         this.decompressed = true;
-        const archiveEntry = readIndexedDataChunk(this.fileId, this.index.indexId, this.filestoreChannels);
+        const archiveEntry = readIndexedDataChunk(
+            this.fileId,
+            this.index.indexId,
+            this.filestoreChannels,
+        );
         const { buffer } = decompress(archiveEntry?.dataFile, keys);
         this.content = buffer;
         return this.content;
     }
-
 }

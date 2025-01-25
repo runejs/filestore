@@ -1,12 +1,14 @@
 import { ByteBuffer } from '@runejs/common';
 
 import { FileData } from './file-data';
-import { FileIndex } from './file-index';
-import { FilestoreChannels, readIndexedDataChunk, decompress } from './data';
-
+import type { FileIndex } from './file-index';
+import {
+    type FilestoreChannels,
+    readIndexedDataChunk,
+    decompress,
+} from './data';
 
 export class Archive extends FileData {
-
     /**
      * A map of files housed within this Archive.
      */
@@ -17,7 +19,7 @@ export class Archive extends FileData {
      */
     public type: 'archive' | 'file' = 'archive';
 
-    private decoded: boolean = false;
+    private decoded = false;
 
     /**
      * Creates a new `Archive` object.
@@ -25,7 +27,11 @@ export class Archive extends FileData {
      * @param index The File Index that this Archive belongs to.
      * @param filestoreChannels The main filestore channel for data access.
      */
-    public constructor(id: number, index: FileIndex, filestoreChannels: FilestoreChannels);
+    public constructor(
+        id: number,
+        index: FileIndex,
+        filestoreChannels: FilestoreChannels,
+    );
 
     /**
      * Creates a new `Archive` object.
@@ -33,14 +39,29 @@ export class Archive extends FileData {
      * @param index The File Index that this Archive belongs to.
      * @param filestoreChannels The main filestore channel for data access.
      */
-    public constructor(fileData: FileData, index: FileIndex, filestoreChannels: FilestoreChannels);
+    public constructor(
+        fileData: FileData,
+        index: FileIndex,
+        filestoreChannels: FilestoreChannels,
+    );
 
-    public constructor(idOrFileData: number | FileData, index: FileIndex, filestoreChannels: FilestoreChannels) {
-        super(typeof idOrFileData === 'number' ? idOrFileData : idOrFileData.fileId, index, filestoreChannels);
+    public constructor(
+        idOrFileData: number | FileData,
+        index: FileIndex,
+        filestoreChannels: FilestoreChannels,
+    ) {
+        super(
+            typeof idOrFileData === 'number'
+                ? idOrFileData
+                : idOrFileData.fileId,
+            index,
+            filestoreChannels,
+        );
 
-        if(typeof idOrFileData !== 'number') {
+        if (typeof idOrFileData !== 'number') {
             const fileData = idOrFileData as FileData;
-            const { content, nameHash, crc, whirlpool, version, compression } = fileData;
+            const { content, nameHash, crc, whirlpool, version, compression } =
+                fileData;
             this.content = content;
             this.nameHash = nameHash;
             this.crc = crc;
@@ -64,12 +85,18 @@ export class Archive extends FileData {
      * Decodes the packed Archive files from the filestore on disk.
      */
     public decodeArchiveFiles(): void {
-        if(this.decoded) {
+        if (this.decoded) {
             return;
         }
 
-        const archiveEntry = readIndexedDataChunk(this.fileId, this.index.indexId, this.filestoreChannels);
-        const  { compression, version, buffer } = decompress(archiveEntry.dataFile);
+        const archiveEntry = readIndexedDataChunk(
+            this.fileId,
+            this.index.indexId,
+            this.filestoreChannels,
+        );
+        const { compression, version, buffer } = decompress(
+            archiveEntry.dataFile,
+        );
         const archiveSize = this.files.size;
 
         this.content = buffer;
@@ -78,15 +105,17 @@ export class Archive extends FileData {
         this.content = buffer;
         this.compression = compression;
         this.files.clear();
-        buffer.readerIndex = (buffer.length - 1);
+        buffer.readerIndex = buffer.length - 1;
         const chunkCount = buffer.get('BYTE', 'UNSIGNED');
 
-        const chunkSizes: number[][] = new Array(chunkCount).fill(new Array(archiveSize));
+        const chunkSizes: number[][] = new Array(chunkCount).fill(
+            new Array(archiveSize),
+        );
         const sizes: number[] = new Array(archiveSize).fill(0);
-        buffer.readerIndex = (buffer.length - 1 - chunkCount * archiveSize * 4);
-        for(let chunk = 0; chunk < chunkCount; chunk++) {
+        buffer.readerIndex = buffer.length - 1 - chunkCount * archiveSize * 4;
+        for (let chunk = 0; chunk < chunkCount; chunk++) {
             let chunkSize = 0;
-            for(let id = 0; id < archiveSize; id++) {
+            for (let id = 0; id < archiveSize; id++) {
                 const delta = buffer.get('INT');
                 chunkSize += delta;
 
@@ -95,24 +124,36 @@ export class Archive extends FileData {
             }
         }
 
-        for(let id = 0; id < archiveSize; id++) {
-            const fileData = new FileData(id, this.index, this.filestoreChannels);
+        for (let id = 0; id < archiveSize; id++) {
+            const fileData = new FileData(
+                id,
+                this.index,
+                this.filestoreChannels,
+            );
             fileData.content = new ByteBuffer(sizes[id]);
             this.files.set(id, fileData);
         }
 
         buffer.readerIndex = 0;
 
-        for(let chunk = 0; chunk < chunkCount; chunk++) {
-            for(let id = 0; id < archiveSize; id++) {
+        for (let chunk = 0; chunk < chunkCount; chunk++) {
+            for (let id = 0; id < archiveSize; id++) {
                 const chunkSize = chunkSizes[chunk][id];
-                this.files.get(id).content.putBytes(buffer.getSlice(buffer.readerIndex, chunkSize));
-                buffer.copy(this.files.get(id).content, 0, buffer.readerIndex, buffer.readerIndex + chunkSize);
-                buffer.readerIndex = (buffer.readerIndex + chunkSize);
+                this.files
+                    .get(id)
+                    .content.putBytes(
+                        buffer.getSlice(buffer.readerIndex, chunkSize),
+                    );
+                buffer.copy(
+                    this.files.get(id).content,
+                    0,
+                    buffer.readerIndex,
+                    buffer.readerIndex + chunkSize,
+                );
+                buffer.readerIndex = buffer.readerIndex + chunkSize;
             }
         }
 
         this.decoded = true;
     }
-
 }

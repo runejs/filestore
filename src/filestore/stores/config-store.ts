@@ -1,32 +1,31 @@
-import { Filestore } from '../filestore';
-import { FileIndex } from '../file-index';
-import { Archive } from '../archive';
+import type { Filestore } from '../filestore';
+import type { FileIndex } from '../file-index';
+import type { Archive } from '../archive';
 import { NpcStore, ObjectStore, ItemStore, VarbitStore } from './configs';
-
 
 /**
  * String representations of config file/archive ids.
  */
 export type ConfigId =
-    'character' |
-    'objects' |
-    'npcs' |
-    'items' |
-    'animations' |
-    'graphics' |
-    'varbits';
+    | 'character'
+    | 'objects'
+    | 'npcs'
+    | 'items'
+    | 'animations'
+    | 'graphics'
+    | 'varbits';
 
 /**
  * A map of unique config keys to file/archive ids within the config store.
  */
 export const configIdMap: { [key: string]: number } = {
-    'character': 3,
-    'objects': 6,
-    'npcs': 9,
-    'items': 10,
-    'animations': 12,
-    'graphics': 13,
-    'varbits': 14
+    character: 3,
+    objects: 6,
+    npcs: 9,
+    items: 10,
+    animations: 12,
+    graphics: 13,
+    varbits: 14,
 };
 
 /**
@@ -35,8 +34,8 @@ export const configIdMap: { [key: string]: number } = {
  */
 export const getConfigId = (config: number): ConfigId => {
     const ids: string[] = Object.keys(configIdMap);
-    for(const id of ids) {
-        if(configIdMap[id] === config) {
+    for (const id of ids) {
+        if (configIdMap[id] === config) {
             return id as ConfigId;
         }
     }
@@ -44,12 +43,10 @@ export const getConfigId = (config: number): ConfigId => {
     return null;
 };
 
-
 /**
  * Contains various configuration related Archives.
  */
 export class ConfigStore {
-
     /**
      * A Store used to access the Item Archive, containing details about every game item.
      */
@@ -83,12 +80,12 @@ export class ConfigStore {
         this.varbitStore = new VarbitStore(this);
     }
 
-    public getArchive(configId: ConfigId | number): Archive {
-        if(typeof configId !== 'number') {
+    public getArchive(inputConfigId: ConfigId | number): Archive {
+        let configId = inputConfigId;
+        if (typeof configId !== 'number') {
             configId = configIdMap[configId];
         }
 
         return this.configIndex.getArchive(configId);
     }
-
 }

@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "module": "commonjs",
-        "target": "es6",
+        "target": "ESNext",
         "jsx": "preserve",
         "importHelpers": true,
         "moduleResolution": "node",
@@ -13,14 +13,8 @@
         "allowJs": true,
         "declaration": true,
         "outDir": "./lib",
-        "types": [
-            "node"
-        ]
+        "types": ["node"]
     },
-    "include": [
-        "src/**/*.ts"
-    ],
-    "exclude": [
-        "node_modules"
-    ]
+    "include": ["src/**/*.ts"],
+    "exclude": ["node_modules"]
 }

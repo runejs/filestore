@@ -2,9 +2,12 @@ import { logger } from '@runejs/common';
 
 import { Archive } from './archive';
 import { FileData } from './file-data';
-import { FilestoreChannels, readIndexedDataChunk, decompress } from './data';
+import {
+    type FilestoreChannels,
+    readIndexedDataChunk,
+    decompress,
+} from './data';
 import { hash } from './util';
-
 
 const NAME_FLAG = 0x01;
 const WHIRLPOOL_FLAG = 0x02;
@@ -12,26 +15,38 @@ const WHIRLPOOL_FLAG = 0x02;
 /**
  * String representations of numeric index ids.
  */
-export type IndexId = 'configs' | 'sprites' | 'music' | 'jingles' | 'sounds' | 'binary' |
-    'widgets' | 'regions' | 'models' | 'textures' | 'scripts' | 'frames' | 'skeletons';
+export type IndexId =
+    | 'configs'
+    | 'sprites'
+    | 'music'
+    | 'jingles'
+    | 'sounds'
+    | 'binary'
+    | 'widgets'
+    | 'regions'
+    | 'models'
+    | 'textures'
+    | 'scripts'
+    | 'frames'
+    | 'skeletons';
 
 /**
  * A map of unique index keys to numeric ids.
  */
 export const indexIdMap: { [key: string]: number } = {
-    'skeletons': 0,
-    'frames': 1,
-    'configs': 2,
-    'widgets': 3,
-    'sounds': 4,
-    'regions': 5,
-    'music': 6,
-    'models': 7,
-    'sprites': 8,
-    'textures': 9,
-    'binary': 10,
-    'jingles': 11,
-    'scripts': 12
+    skeletons: 0,
+    frames: 1,
+    configs: 2,
+    widgets: 3,
+    sounds: 4,
+    regions: 5,
+    music: 6,
+    models: 7,
+    sprites: 8,
+    textures: 9,
+    binary: 10,
+    jingles: 11,
+    scripts: 12,
 };
 
 /**
@@ -40,8 +55,8 @@ export const indexIdMap: { [key: string]: number } = {
  */
 export const getIndexId = (index: number): IndexId => {
     const ids: string[] = Object.keys(indexIdMap);
-    for(const id of ids) {
-        if(indexIdMap[id] === index) {
+    for (const id of ids) {
+        if (indexIdMap[id] === index) {
             return id as IndexId;
         }
     }
@@ -49,9 +64,7 @@ export const getIndexId = (index: number): IndexId => {
     return null;
 };
 
-
 export class FileIndex {
-
     /**
      * The ID of this File Index.
      */
@@ -80,7 +93,10 @@ export class FileIndex {
     /**
      * A map of all files housed within this File Index. Values are either an `Archive` or `FileData` object.
      */
-    public files: Map<number, Archive | FileData> = new Map<number, Archive | FileData>();
+    public files: Map<number, Archive | FileData> = new Map<
+        number,
+        Archive | FileData
+    >();
 
     private readonly filestoreChannels: FilestoreChannels;
 
@@ -114,30 +130,40 @@ export class FileIndex {
      * @param keys The XTEA keys.
      * @returns The requested FileData object, or null if no matching file was found.
      */
-    public getFile(fileIdOrName: number | string, keys?: number[]): FileData | null;
-    public getFile(fileIdOrName: number | string, keys?: number[]): FileData | null {
+    public getFile(
+        fileIdOrName: number | string,
+        keys?: number[],
+    ): FileData | null;
+    public getFile(
+        fileIdOrName: number | string,
+        keys?: number[],
+    ): FileData | null {
         let fileData: FileData;
 
-        if(typeof fileIdOrName === 'string') {
+        if (typeof fileIdOrName === 'string') {
             fileData = this.findByName(fileIdOrName) as FileData;
         } else {
             const archiveId = fileIdOrName as number;
             fileData = this.files.get(archiveId) as FileData;
         }
 
-        if(!fileData) {
+        if (!fileData) {
             return null;
         }
 
-        if(fileData.type === 'archive') {
+        if (fileData.type === 'archive') {
             logger.error(fileData);
-            throw new Error(`Requested item ${fileIdOrName} in index ${this.indexId} is of type Archive, not FileData.`);
+            throw new Error(
+                `Requested item ${fileIdOrName} in index ${this.indexId} is of type Archive, not FileData.`,
+            );
         }
 
         try {
             fileData.decompress(keys);
         } catch (e) {
-            logger.warn(`Unable to decompress file ${fileIdOrName} in index ${this.indexId} with keys ${keys}`);
+            logger.warn(
+                `Unable to decompress file ${fileIdOrName} in index ${this.indexId} with keys ${keys}`,
+            );
             return null;
         }
 
@@ -167,19 +193,21 @@ export class FileIndex {
     public getArchive(archiveIdOrName: number | string): Archive | null {
         let archive: Archive;
 
-        if(typeof archiveIdOrName === 'string') {
+        if (typeof archiveIdOrName === 'string') {
             archive = this.findByName(archiveIdOrName) as Archive;
         } else {
             const archiveId = archiveIdOrName as number;
             archive = this.files.get(archiveId) as Archive;
         }
 
-        if(!archive) {
+        if (!archive) {
             return null;
         }
 
-        if(archive.type === 'file') {
-            throw new Error(`Requested item ${archiveIdOrName} in index ${this.indexId} is of type FileData, not Archive.`);
+        if (archive.type === 'file') {
+            throw new Error(
+                `Requested item ${archiveIdOrName} in index ${this.indexId} is of type FileData, not Archive.`,
+            );
         }
 
         archive.decodeArchiveFiles();
@@ -195,9 +223,9 @@ export class FileIndex {
     public findByName(fileName: string): Archive | FileData | null {
         const indexFileCount = this.files.size;
         const nameHash = hash(fileName);
-        for(let fileId = 0; fileId < indexFileCount; fileId++) {
+        for (let fileId = 0; fileId < indexFileCount; fileId++) {
             const item = this.files.get(fileId);
-            if(item?.nameHash === nameHash) {
+            if (item?.nameHash === nameHash) {
                 return item;
             }
         }
@@ -209,15 +237,21 @@ export class FileIndex {
      * Decodes the packed index file data from the filestore on disk.
      */
     public decodeIndex(): void {
-        const indexEntry = readIndexedDataChunk(this.indexId, 255, this.filestoreChannels);
-        const { compression, version, buffer } = decompress(indexEntry.dataFile);
+        const indexEntry = readIndexedDataChunk(
+            this.indexId,
+            255,
+            this.filestoreChannels,
+        );
+        const { compression, version, buffer } = decompress(
+            indexEntry.dataFile,
+        );
 
         this.version = version;
         this.compression = compression;
 
         /* file header */
         this.format = buffer.get('BYTE', 'UNSIGNED');
-        if(this.format >= 6) {
+        if (this.format >= 6) {
             this.version = buffer.get('INT');
         }
         this.settings = buffer.get('BYTE', 'UNSIGNED');
@@ -227,62 +261,66 @@ export class FileIndex {
         const ids: number[] = new Array(fileCount);
         let accumulator = 0;
         let size = -1;
-        for(let i = 0; i < ids.length; i++) {
+        for (let i = 0; i < ids.length; i++) {
             const delta = buffer.get('SHORT', 'UNSIGNED');
             ids[i] = accumulator += delta;
-            if(ids[i] > size) {
+            if (ids[i] > size) {
                 size = ids[i];
             }
         }
 
         size++;
 
-        for(const id of ids) {
+        for (const id of ids) {
             this.files.set(id, new FileData(id, this, this.filestoreChannels));
         }
 
         /* read the name hashes if present */
-        if((this.settings & NAME_FLAG) !== 0) {
-            for(const id of ids) {
+        if ((this.settings & NAME_FLAG) !== 0) {
+            for (const id of ids) {
                 const nameHash = buffer.get('INT');
                 this.files.get(id).nameHash = nameHash;
             }
         }
 
         /* read the crc values */
-        for(const id of ids) {
+        for (const id of ids) {
             this.files.get(id).crc = buffer.get('INT');
         }
 
         /* read the whirlpool values */
-        if((this.settings & WHIRLPOOL_FLAG) !== 0) {
-            for(const id of ids) {
-                buffer.copy(this.files.get(id).whirlpool, 0,
-                    buffer.readerIndex, buffer.readerIndex + 64);
-                buffer.readerIndex = (buffer.readerIndex + 64);
+        if ((this.settings & WHIRLPOOL_FLAG) !== 0) {
+            for (const id of ids) {
+                buffer.copy(
+                    this.files.get(id).whirlpool,
+                    0,
+                    buffer.readerIndex,
+                    buffer.readerIndex + 64,
+                );
+                buffer.readerIndex = buffer.readerIndex + 64;
             }
         }
 
         /* read the version numbers */
-        for(const id of ids) {
+        for (const id of ids) {
             this.files.get(id).version = buffer.get('INT');
         }
 
         /* read the child sizes */
         const members: number[][] = new Array(size).fill([]);
-        for(const id of ids) {
+        for (const id of ids) {
             members[id] = new Array(buffer.get('SHORT', 'UNSIGNED'));
         }
 
         /* read the child ids */
-        for(const id of ids) {
+        for (const id of ids) {
             accumulator = 0;
             size = -1;
 
-            for(let i = 0; i < members[id].length; i++) {
+            for (let i = 0; i < members[id].length; i++) {
                 const delta = buffer.get('SHORT', 'UNSIGNED');
                 members[id][i] = accumulator += delta;
-                if(members[id][i] > size) {
+                if (members[id][i] > size) {
                     size = members[id][i];
                 }
             }
@@ -291,31 +329,36 @@ export class FileIndex {
 
             /* allocate specific entries within the array */
             const file = this.files.get(id);
-            if(members[id].length > 1) {
-                if(file.type === 'file') {
-                    this.files.set(id, new Archive(file, this, this.filestoreChannels));
+            if (members[id].length > 1) {
+                if (file.type === 'file') {
+                    this.files.set(
+                        id,
+                        new Archive(file, this, this.filestoreChannels),
+                    );
                 }
 
                 const archive = this.files.get(id) as Archive;
 
-                for(const childId of members[id]) {
-                    archive.files.set(childId, new FileData(childId, this, this.filestoreChannels));
+                for (const childId of members[id]) {
+                    archive.files.set(
+                        childId,
+                        new FileData(childId, this, this.filestoreChannels),
+                    );
                 }
             }
         }
 
         /* read the child name hashes */
-        if((this.settings & NAME_FLAG) !== 0) {
-            for(const id of ids) {
+        if ((this.settings & NAME_FLAG) !== 0) {
+            for (const id of ids) {
                 const archive = this.files.get(id) as Archive;
-                for(const childId of members[id]) {
+                for (const childId of members[id]) {
                     const nameHash = buffer.get('INT');
-                    if(archive?.files?.get(childId)) {
+                    if (archive?.files?.get(childId)) {
                         archive.files.get(childId).nameHash = nameHash;
                     }
                 }
             }
         }
     }
-
 }
